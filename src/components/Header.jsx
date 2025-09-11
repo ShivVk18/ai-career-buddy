@@ -116,7 +116,7 @@ export default async function Header() {
                 
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/ai-cover-letter"
+                    href="/cover-letter"
                     className="flex items-center gap-3 px-4 py-3 text-gray-200 hover:text-white hover:bg-white/10 rounded-2xl transition-all duration-300 group cursor-pointer"
                   >
                     <div className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded-xl group-hover:scale-110 transition-all duration-300">
