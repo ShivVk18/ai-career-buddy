@@ -1,0 +1,376 @@
+
+generator client {
+  provider = "prisma-client-js"
+
+}
+
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  clerkUserId   String    @unique // clerk user id
+  email         String    @unique
+  name          String?
+  imageUrl      String?
+  industry      String?    // Combined industry-subindustry (e.g., "tech-software-development")
+  industryInsight IndustryInsight? @relation(fields: [industry], references: [industry])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Profile fields
+  bio           String?
+  experience    Int?      // Years of experience
+
+  // Relations
+  skills        String[]  // Array of skills
+  assessments   Assessment[]
+  resume        Resume?
+  coverLetter   CoverLetter[]
+  
+  // New Relations for AscendAI features
+  careerPaths   CareerPath[]
+  networkConnections NetworkConnection[]
+  careerGoals   CareerGoal[]
+  practiceSessions PracticeSession[]
+  skillAnalyses SkillGapAnalysis[]
+  mockInterviews MockInterview[]
+}
+
+model Assessment {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  quizScore     Float     // Overall quiz score
+  questions     Json[]    // Array of {question, answer, userAnswer, isCorrect}
+  category      String    // "Technical", "Behavioral", etc.
+  improvementTip String?  // AI-generated improvement tip
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Resume {
+  id          String    @id @default(cuid())
+  userId      String    @unique    // One resume per user
+  user        User      @relation(fields: [userId], references: [id])
+  content     String    @db.Text // Markdown content
+  
+  // Template System
+  templateId  String?   // Link to resume template
+  template    ResumeTemplate? @relation("TemplateResumes", fields: [templateId], references: [id])
+  customCSS   String?   // User customizations
+  colorScheme String?   // Selected color scheme
+  fontFamily  String?   // Selected font family
+  
+  atsScore    Float?
+  feedback    String?
+  
+  // Tailoring for specific jobs
+  tailoredVersions ResumeVersion[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// New Resume Template System
+model ResumeTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // tech, creative, finance, etc.
+  difficulty  String   // entry, mid, senior
+  style       String   // minimalist, creative, ats
+  
+  // Template content
+  htmlContent String   @db.Text
+  cssStyles   String   @db.Text
+  thumbnail   String   // preview image URL
+  
+  // Customization options
+  colorSchemes Json[]  // Available color palettes
+  fontOptions  String[] // Available fonts
+  layoutVariations Json[] // Different layout options
+  
+  // Analytics
+  isActive    Boolean  @default(true)
+  usageCount  Int      @default(0)
+  successRate Float?   // Job application success rate
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  resumes     Resume[] @relation("TemplateResumes")
+  
+  @@index([category, style])
+}
+
+// Resume versions for job-specific tailoring
+model ResumeVersion {
+  id             String   @id @default(cuid())
+  resumeId       String
+  resume         Resume   @relation(fields: [resumeId], references: [id])
+  
+  jobTitle       String
+  companyName    String
+  jobDescription String?  @db.Text
+  tailoredContent String  @db.Text
+  atsScore       Float?
+  matchPercentage Float? // How well it matches the job
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([resumeId])
+}
+
+model CoverLetter {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  content         String    // Markdown content
+  jobDescription  String?
+  companyName     String    // Name of the company applying to
+  jobTitle        String    // Position applying for
+  status          String    @default("draft") // draft, completed
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// Career Roadmap System
+model CareerPath {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  currentRole   String
+  targetRole    String
+  industry      String
+  
+  // Roadmap content
+  steps         Json[]   // Array of learning steps
+  milestones    Json[]   // Career milestones
+  resources     Json[]   // Learning resources
+  
+  // Progress tracking
+  progress      Float    @default(0) // 0-100
+  currentStep   Int      @default(0)
+  timeline      Int      // Estimated months to complete
+  
+  // Status
+  status        String   @default("active") // active, completed, paused
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([userId, status])
+}
+
+// Skill Gap Analysis
+model SkillGapAnalysis {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  
+  jobTitle          String
+  jobDescription    String   @db.Text
+  companyName       String?
+  
+  // Analysis results
+  userSkills        String[] // User's current skills
+  requiredSkills    String[] // Skills required for job
+  matchedSkills     String[] // Skills user has
+  missingSkills     String[] // Skills user lacks
+  
+  matchPercentage   Float    // Overall match percentage
+  confidenceScore   Float    // AI confidence in analysis
+  
+  // Recommendations
+  learningPaths     Json[]   // Suggested learning resources
+  prioritySkills    String[] // Most important missing skills
+  timeToAcquire     Json[]   // Estimated time for each skill
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// Mock Interview System
+model MockInterview {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  // Interview details
+  jobRole         String
+  interviewType   String   // technical, behavioral, mixed
+  difficulty      String   // easy, medium, hard
+  
+  // Interview content
+  questions       Json[]   // Array of questions asked
+  responses       Json[]   // User responses with timestamps
+  
+  // Analysis results
+  overallScore    Float
+  confidenceScore Float
+  communicationScore Float
+  technicalScore  Float?   // For technical interviews
+  
+  // Feedback
+  strengths       String[]
+  improvements    String[]
+  aiTips          String[] // AI-generated improvement tips
+  
+  // Metadata
+  duration        Int      // Duration in minutes
+  completedAt     DateTime?
+  status          String   @default("started") // started, completed, abandoned
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId, status])
+}
+
+// Practice Sessions (for various activities)
+model PracticeSession {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  type            String   // interview, presentation, networking, pitch
+  category        String?  // technical, behavioral, etc.
+  
+  // Session data
+  duration        Int      // Duration in minutes
+  performanceScore Float
+  feedback        Json     // Structured feedback
+  
+  // Media
+  recording       String?  // URL to recording
+  transcript      String?  // Speech-to-text transcript
+  
+  // AI Analysis
+  emotionAnalysis Json?    // Emotion detection results
+  speechAnalysis  Json?    // Speech pattern analysis
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, type])
+}
+
+// Professional Networking
+model NetworkConnection {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  // Contact details
+  contactName String
+  email       String?
+  linkedin    String?
+  company     String
+  role        String
+  
+  // Relationship
+  relationship String  // mentor, peer, referral, recruiter, etc.
+  strength    Int      // 1-10 connection strength
+  
+  // Interaction history
+  lastContact DateTime?
+  contactCount Int     @default(0)
+  notes       String?
+  tags        String[] // Custom tags
+  
+  // Networking goals
+  purpose     String?  // Why this connection is important
+  nextAction  String?  // Planned next interaction
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// Goal Setting and Tracking
+model CareerGoal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  // Goal details
+  title       String
+  description String
+  category    String   // salary, role, skill, location, etc.
+  priority    String   @default("medium") // low, medium, high
+  
+  // Timeline
+  targetDate  DateTime
+  startDate   DateTime @default(now())
+  
+  // Progress
+  status      String   @default("active") // active, completed, paused, cancelled
+  progress    Float    @default(0) // 0-100
+  
+  // Milestones and actions
+  milestones  Json[]   // Breakdown of smaller goals
+  actions     Json[]   // Action items to achieve goal
+  
+  // Metrics
+  targetValue String?  // e.g., salary amount, skill level
+  currentValue String? // Current progress value
+  
+  // Reflection
+  notes       String?
+  lessons     String[] // Lessons learned
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId, status])
+}
+
+// Combined Industry Trends and Salary Insights
+model IndustryInsight {
+  id            String    @id @default(cuid())
+  industry      String    @unique  // The industry this data belongs to (e.g., "tech-software-development")
+
+  // Users in this industry
+  users         User[]
+
+  // Salary data
+  salaryRanges  Json[]    // Array of { role: string, min: float, max: float, median: float, location: string? }
+
+  // Industry trends
+  growthRate    Float     // Industry growth rate
+  demandLevel   String    // "High", "Medium", "Low"
+  topSkills     String[]  // Most in-demand skills
+
+  // Market conditions
+  marketOutlook String    // "Positive", "Neutral", "Negative"
+  keyTrends     String[]  // Array of current industry trends
+
+  // Learning suggestions
+  recommendedSkills String[]  // Skills recommended for the industry
+
+  // Job market data
+  jobAvailability Json[]    // Available positions by role and location
+  hiringTrends   Json[]     // Hiring patterns and seasonal trends
+  
+  // Remote work data
+  remoteWorkPercentage Float? // Percentage of remote-friendly roles
+  hybridWorkTrends     Json[]  // Hybrid work patterns
+
+  lastUpdated   DateTime  @default(now())
+  nextUpdate    DateTime  // Scheduled update time
+
+  @@index([industry])
+}
