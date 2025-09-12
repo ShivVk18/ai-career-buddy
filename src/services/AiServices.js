@@ -1,4 +1,3 @@
-// lib/aiServices.js
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
@@ -32,6 +31,38 @@ class aiServices {
     return true;
   }
 
+  // Helper function to clean and validate JSON response
+  cleanJsonResponse(response) {
+    // Remove markdown code blocks
+    let cleaned = response.replace(/```(?:json)?\n?/g, "").trim();
+    
+    // Remove any trailing text after the JSON
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}') + 1;
+    
+    if (jsonStart !== -1 && jsonEnd > jsonStart) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd);
+    }
+    
+    return cleaned;
+  }
+
+  // Helper function to safely parse JSON with fallback
+  safeJsonParse(jsonString, fallbackData = null) {
+    try {
+      return JSON.parse(jsonString);
+    } catch (error) {
+      console.error("JSON Parse Error:", error.message);
+      console.error("Problematic JSON:", jsonString.substring(0, 500) + "...");
+      
+      if (fallbackData) {
+        return fallbackData;
+      }
+      
+      throw new Error(`Invalid JSON response: ${error.message}`);
+    }
+  }
+
   async generateContent(prompt, options = {}) {
     try {
       if (!this.checkRateLimit()) {
@@ -62,8 +93,10 @@ class aiServices {
         throw new Error("No response generated");
       }
 
+      // Handle truncated responses more gracefully
       if (candidate.finishReason === "MAX_TOKENS") {
-        console.warn("Response truncated due to token limit");
+        console.warn("Response truncated due to token limit - using partial response");
+        // Don't throw error for MAX_TOKENS, try to parse what we have
       }
 
       const text = candidate.content?.parts?.[0]?.text || response.text;
@@ -79,7 +112,7 @@ class aiServices {
   }
 
   async generateQuiz(industry, skills) {
-   const prompt = `
+    const prompt = `
 You are an AI that outputs ONLY valid JSON.
 
 Generate exactly 10 multiple-choice interview questions for a ${industry} professional${
@@ -113,9 +146,8 @@ Rules:
         temperature: 0.3,
       });
        
-      
-      const cleanedText = response.replace(/```(?:json)?\n?/g, "").trim();
-      const quiz = JSON.parse(cleanedText);
+      const cleanedText = this.cleanJsonResponse(response);
+      const quiz = this.safeJsonParse(cleanedText);
       return quiz.questions;
     } catch (error) {
       console.error("Error generating quiz:", error);
@@ -189,9 +221,8 @@ Rules:
   }
 
   // Industry insights generation
-  // Industry insights generation
-async generateIndustryInsights(industry) {
-  const prompt = `
+  async generateIndustryInsights(industry) {
+    const prompt = `
 You are an AI that outputs ONLY valid JSON.
 Do not add explanations, notes, or markdown.
 
@@ -219,19 +250,19 @@ Rules:
 3. Do not include comments, markdown, or text outside JSON.
 `;
 
-  try {
-    const response = await this.generateContent(prompt, {
-      maxOutputTokens: 2000,
-      temperature: 0.3,
-    });
+    try {
+      const response = await this.generateContent(prompt, {
+        maxOutputTokens: 2000,
+        temperature: 0.3,
+      });
 
-    const cleanedText = response.replace(/```(?:json)?\n?/g, "").trim();
-    return JSON.parse(cleanedText);
-  } catch (error) {
-    console.error("Error generating industry insights:", error);
-    throw new Error("Failed to generate industry insights");
+      const cleanedText = this.cleanJsonResponse(response);
+      return this.safeJsonParse(cleanedText);
+    } catch (error) {
+      console.error("Error generating industry insights:", error);
+      throw new Error("Failed to generate industry insights");
+    }
   }
-}
 
   // Resume improvement
   async improveResumeContent(current, type, industry) {
@@ -255,6 +286,350 @@ Rules:
       maxOutputTokens: 300,
       temperature: 0.6,
     });
+  }
+
+  // Optimized career roadmap generation - much smaller and focused
+  async generateCareerRoadmap(data, user) {
+    // Super minimal prompt to avoid token limits
+    const prompt = `Generate career roadmap JSON for ${data.currentRole} to ${data.targetRole} in ${data.industry}.
+
+Skills: ${user.skills?.join(", ") || "Basic"}
+Experience: ${user.experience} years
+
+Return exact JSON:
+{
+  "steps": [
+    {"id": 1, "title": "Assess Skills", "description": "Evaluate current abilities", "duration": "2 weeks", "priority": "High", "category": "skill", "estimatedHours": 20, "dependencies": [], "resources": ["Online assessments", "Skill frameworks"]},
+    {"id": 2, "title": "Learn Core Tech", "description": "Master essential technologies", "duration": "2 months", "priority": "High", "category": "skill", "estimatedHours": 80, "dependencies": [1], "resources": ["Courses", "Tutorials"]},
+    {"id": 3, "title": "Build Portfolio", "description": "Create demonstration projects", "duration": "1 month", "priority": "Medium", "category": "experience", "estimatedHours": 60, "dependencies": [2], "resources": ["GitHub", "Project ideas"]},
+    {"id": 4, "title": "Get Certified", "description": "Obtain industry certifications", "duration": "3 weeks", "priority": "Medium", "category": "certification", "estimatedHours": 40, "dependencies": [2], "resources": ["Certification sites", "Practice exams"]}
+  ],
+  "milestones": [
+    {"id": 1, "title": "Skills Mapped", "description": "Gap analysis complete", "targetMonth": 1, "criteria": ["Assessment done", "Plan created"], "reward": "Clear direction"},
+    {"id": 2, "title": "Portfolio Ready", "description": "Projects showcase skills", "targetMonth": 4, "criteria": ["3+ projects", "Documentation complete"], "reward": "Interview readiness"}
+  ],
+  "resources": [
+    {"title": "Online Courses", "type": "course", "url": "https://coursera.org", "description": "Skill development", "estimatedCost": "$49/month", "timeCommitment": "5h/week"},
+    {"title": "Practice Platform", "type": "project", "url": "https://github.com", "description": "Build portfolio", "estimatedCost": "Free", "timeCommitment": "10h/week"}
+  ],
+  "timeline": 6
+}
+
+Customize for specific role transition. Keep JSON compact.`;
+
+    try {
+      const response = await this.generateContent(prompt, {
+        maxOutputTokens: 2500,  // Reduced from 4000
+        temperature: 0.2,       // Lower temperature for more consistent output
+      });
+
+      this.debugLog("Raw AI Response", response.substring(0, 200) + "...");
+
+      let cleanedText = this.cleanJsonResponse(response);
+      
+      // Additional cleaning for partial responses
+      if (cleanedText.includes('"timeline"')) {
+        // Find the last complete field
+        const timelineIndex = cleanedText.lastIndexOf('"timeline"');
+        if (timelineIndex !== -1) {
+          const afterTimeline = cleanedText.substring(timelineIndex);
+          const nextComma = afterTimeline.indexOf(',');
+          const nextBrace = afterTimeline.indexOf('}');
+          
+          if (nextBrace !== -1 && (nextComma === -1 || nextBrace < nextComma)) {
+            // Timeline is the last field, this is likely complete
+            cleanedText = cleanedText.substring(0, timelineIndex + afterTimeline.substring(0, nextBrace + 1).length);
+          }
+        }
+      }
+      
+      // Create comprehensive fallback data
+      const fallbackData = {
+        steps: [
+          {
+            id: 1,
+            title: "Skills Assessment & Gap Analysis",
+            description: "Evaluate current skills against target role requirements",
+            duration: "2 weeks",
+            priority: "High",
+            category: "skill",
+            estimatedHours: 15,
+            dependencies: [],
+            resources: ["Industry skill frameworks", "Online assessment tools", "Job posting analysis"]
+          },
+          {
+            id: 2,
+            title: "Core Skill Development",
+            description: "Focus on the top 3 most important missing skills",
+            duration: "2-3 months",
+            priority: "High",
+            category: "education",
+            estimatedHours: 100,
+            dependencies: [1],
+            resources: ["Online courses", "Technical documentation", "Practice projects"]
+          },
+          {
+            id: 3,
+            title: "Hands-on Project Experience",
+            description: "Build practical projects showcasing new skills",
+            duration: "1-2 months",
+            priority: "Medium",
+            category: "experience",
+            estimatedHours: 80,
+            dependencies: [2],
+            resources: ["Personal projects", "Open source contributions", "Portfolio development"]
+          },
+          {
+            id: 4,
+            title: "Industry Networking",
+            description: "Connect with professionals in target role",
+            duration: "Ongoing",
+            priority: "Medium",
+            category: "networking",
+            estimatedHours: 20,
+            dependencies: [],
+            resources: ["LinkedIn networking", "Industry meetups", "Professional associations"]
+          }
+        ],
+        milestones: [
+          {
+            id: 1,
+            title: "Skills Gap Identified",
+            description: "Clear understanding of what skills need development",
+            targetMonth: 1,
+            criteria: ["Skills assessment completed", "Learning plan created", "Resources identified"],
+            reward: "Focused learning direction"
+          },
+          {
+            id: 2,
+            title: "Portfolio Established",
+            description: "Demonstrable projects showing target role competencies",
+            targetMonth: 4,
+            criteria: ["2-3 projects completed", "Portfolio website live", "Case studies written"],
+            reward: "Interview-ready portfolio"
+          },
+          {
+            id: 3,
+            title: "Network Established",
+            description: "Meaningful connections in target industry",
+            targetMonth: 6,
+            criteria: ["10+ relevant connections", "Informational interviews conducted", "Industry knowledge current"],
+            reward: "Insider job opportunities"
+          }
+        ],
+        resources: [
+          {
+            title: "Online Learning Platform",
+            type: "course",
+            url: "https://coursera.org",
+            description: "Comprehensive courses for skill development",
+            estimatedCost: "$49/month",
+            timeCommitment: "5-10 hours/week"
+          },
+          {
+            title: "GitHub Portfolio",
+            type: "project",
+            url: "https://github.com",
+            description: "Showcase projects and code samples",
+            estimatedCost: "Free",
+            timeCommitment: "2-5 hours/week"
+          },
+          {
+            title: "LinkedIn Learning",
+            type: "course",
+            url: "https://linkedin.com/learning",
+            description: "Professional development courses",
+            estimatedCost: "$29.99/month",
+            timeCommitment: "3-5 hours/week"
+          },
+          {
+            title: "Industry Certifications",
+            type: "certification",
+            url: "https://example.com",
+            description: "Relevant professional certifications",
+            estimatedCost: "$100-500",
+            timeCommitment: "20-40 hours prep"
+          }
+        ],
+        timeline: 6
+      };
+
+      this.debugLog("Cleaned JSON", cleanedText.substring(0, 200) + "...");
+      
+      const result = this.safeJsonParse(cleanedText, fallbackData);
+      
+      // Validate the structure
+      if (!result.steps || !Array.isArray(result.steps) || result.steps.length === 0) {
+        console.warn("Invalid or missing steps, using fallback");
+        result.steps = fallbackData.steps;
+      }
+      
+      if (!result.milestones || !Array.isArray(result.milestones) || result.milestones.length === 0) {
+        console.warn("Invalid or missing milestones, using fallback");
+        result.milestones = fallbackData.milestones;
+      }
+      
+      if (!result.resources || !Array.isArray(result.resources) || result.resources.length === 0) {
+        console.warn("Invalid or missing resources, using fallback");
+        result.resources = fallbackData.resources;
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error generating career roadmap:", error);
+      
+      // Return comprehensive fallback roadmap
+      return {
+        steps: [
+          {
+            id: 1,
+            title: "Skills Assessment",
+            description: "Evaluate current skills against target role requirements",
+            duration: "2 weeks",
+            priority: "High",
+            category: "skill",
+            estimatedHours: 20,
+            dependencies: [],
+            resources: ["Skills assessment tools", "Job requirement analysis", "Industry research"]
+          },
+          {
+            id: 2,
+            title: "Targeted Skill Development",
+            description: "Focus on developing the most critical missing skills",
+            duration: "2-3 months",
+            priority: "High",
+            category: "education",
+            estimatedHours: 120,
+            dependencies: [1],
+            resources: ["Online courses", "Books", "Practice exercises"]
+          },
+          {
+            id: 3,
+            title: "Portfolio Development",
+            description: "Create projects that demonstrate new capabilities",
+            duration: "1-2 months",
+            priority: "Medium",
+            category: "experience",
+            estimatedHours: 80,
+            dependencies: [2],
+            resources: ["Project templates", "Portfolio guides", "GitHub"]
+          },
+          {
+            id: 4,
+            title: "Professional Networking",
+            description: "Build connections in target industry/role",
+            duration: "Ongoing",
+            priority: "Medium",
+            category: "networking",
+            estimatedHours: 30,
+            dependencies: [],
+            resources: ["LinkedIn", "Professional associations", "Industry events"]
+          }
+        ],
+        milestones: [
+          {
+            id: 1,
+            title: "Learning Plan Complete",
+            description: "Skills gap identified and learning plan established",
+            targetMonth: 1,
+            criteria: ["Skills assessment done", "Gap analysis complete", "Learning resources identified"],
+            reward: "Clear development roadmap"
+          },
+          {
+            id: 2,
+            title: "Portfolio Ready",
+            description: "Demonstrable projects showcasing target role skills",
+            targetMonth: 4,
+            criteria: ["3+ projects completed", "Portfolio website live", "Work samples documented"],
+            reward: "Interview-ready demonstration of abilities"
+          }
+        ],
+        resources: [
+          {
+            title: "Online Learning Platform",
+            type: "course",
+            url: "https://coursera.org",
+            description: "Professional development courses",
+            estimatedCost: "$49/month",
+            timeCommitment: "5-10 hours/week"
+          },
+          {
+            title: "GitHub",
+            type: "project",
+            url: "https://github.com",
+            description: "Code repository and portfolio hosting",
+            estimatedCost: "Free",
+            timeCommitment: "2-3 hours/week"
+          },
+          {
+            title: "Professional Network",
+            type: "network",
+            url: "https://linkedin.com",
+            description: "Industry connections and job opportunities",
+            estimatedCost: "Free (Premium $29.99/month)",
+            timeCommitment: "1-2 hours/week"
+          }
+        ],
+        timeline: 6
+      };
+    }
+  }
+
+  // Update career roadmap progress
+  async generateProgressUpdate(roadmap, completedSteps, userFeedback) {
+    const prompt = `
+Analyze the career roadmap progress and provide personalized recommendations.
+
+Current roadmap progress:
+- Total steps: ${roadmap.steps.length}
+- Completed steps: ${completedSteps.length}
+- Current step: ${roadmap.currentStep}
+- Overall progress: ${roadmap.progress}%
+
+User feedback on completed steps:
+${userFeedback || "No feedback provided"}
+
+Provide specific, actionable advice for the next 2-3 steps and any adjustments needed.
+Keep the response encouraging and practical.
+Maximum 200 words.
+`;
+
+    try {
+      return await this.generateContent(prompt, {
+        maxOutputTokens: 1500,
+        temperature: 0.6,
+      });
+    } catch (error) {
+      console.error("Error generating progress update:", error);
+      return "Continue following your roadmap. Focus on the next step and track your progress regularly.";
+    }
+  }
+
+  // Generate skill recommendations based on roadmap
+  async generateSkillRecommendations(currentRole, targetRole, industry, currentSkills) {
+    const prompt = `
+As a career advisor, analyze the skill gap between "${currentRole}" and "${targetRole}" in ${industry}.
+
+Current skills: ${currentSkills?.join(", ") || "Not specified"}
+
+Provide a prioritized list of 5-7 skills to develop, with:
+1. Why each skill is important
+2. How to learn it (specific resources)
+3. Time investment needed
+4. Priority level (1-5)
+
+Format as plain text, not JSON. Be concise but specific.
+`;
+
+    try {
+      return await this.generateContent(prompt, {
+        maxOutputTokens: 1500,
+        temperature: 0.5,
+      });
+    } catch (error) {
+      console.error("Error generating skill recommendations:", error);
+      return "Focus on developing technical skills, leadership abilities, and industry-specific knowledge relevant to your target role.";
+    }
   }
 }
 

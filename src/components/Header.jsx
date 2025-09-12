@@ -1,24 +1,29 @@
-import React from "react";
-import { Button } from "./ui/button";
-import {
-  PenBox,
-  LayoutDashboard,
-  FileText,
-  GraduationCap,
-  ChevronDown,
-  StarsIcon,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
-import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import Image from "next/image";
+import { 
+  TrendingUp, 
+  Sparkles, 
+  ChevronDown, 
+  FileText, 
+  PenBox, 
+  GraduationCap,
+  MapPin,
+  Target,
+  BookOpen,
+  Award,
+  Users,
+  Calendar
+} from "lucide-react";
 import { checkUser } from "@/lib/checkUser";
 
 export default async function Header() {
@@ -78,7 +83,7 @@ export default async function Header() {
               </Button>
             </Link>
 
-            {/* Growth Tools Dropdown with enhanced styling */}
+            {/* Growth Tools Dropdown with enhanced styling and Career Roadmap */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="group relative px-5 py-2 h-11 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 hover:from-blue-500 hover:via-purple-500 hover:to-blue-600 text-white shadow-xl hover:shadow-2xl hover:shadow-purple-500/40 transition-all duration-500 rounded-2xl border-0 overflow-hidden">
@@ -97,8 +102,37 @@ export default async function Header() {
               
               <DropdownMenuContent 
                 align="end" 
-                className="w-56 mt-2 bg-gray-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50 rounded-3xl p-2"
+                className="w-72 mt-2 bg-gray-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50 rounded-3xl p-3"
               >
+                {/* Career Roadmap Section */}
+                <DropdownMenuLabel className="px-2 py-1 text-xs font-medium text-purple-400 uppercase tracking-wider">
+                  Career Roadmap
+                </DropdownMenuLabel>
+                
+                <DropdownMenuItem asChild>
+                  <Link 
+                    href="/roadmap" 
+                    className="flex items-center gap-3 px-4 py-3 text-gray-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-blue-500/10 rounded-2xl transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="p-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 rounded-xl group-hover:scale-110 transition-all duration-300">
+                      <MapPin className="h-4 w-4 text-purple-400" />
+                    </div>
+                    <div>
+                      <div className="font-medium">My Career Path</div>
+                      <div className="text-xs text-gray-400">Personalized roadmap</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+
+                
+
+                <DropdownMenuSeparator className="my-2 bg-white/10" />
+
+                {/* Tools Section */}
+                <DropdownMenuLabel className="px-2 py-1 text-xs font-medium text-blue-400 uppercase tracking-wider">
+                  Career Tools
+                </DropdownMenuLabel>
+                
                 <DropdownMenuItem asChild>
                   <Link 
                     href="/resume" 
@@ -108,8 +142,8 @@ export default async function Header() {
                       <FileText className="h-4 w-4 text-blue-400" />
                     </div>
                     <div>
-                      <div className="font-medium">Build Resume</div>
-                      <div className="text-xs text-gray-400">AI-powered builder</div>
+                      <div className="font-medium">Resume Builder</div>
+                      <div className="text-xs text-gray-400">AI-powered creation</div>
                     </div>
                   </Link>
                 </DropdownMenuItem>
@@ -143,6 +177,13 @@ export default async function Header() {
                     </div>
                   </Link>
                 </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-2 bg-white/10" />
+
+                
+            
+
+               
               </DropdownMenuContent>
             </DropdownMenu>
           </SignedIn>
