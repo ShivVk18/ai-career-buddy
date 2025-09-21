@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { inngest } from "./Client";
 import { db } from "../prisma";
 
-// Initialize the Google AI client
+
 const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "AIzaSyCO8rkIcXYIaRqWeLqUg-Omdn34bR1HUqs"
 });

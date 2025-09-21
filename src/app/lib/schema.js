@@ -34,35 +34,28 @@ export const contactSchema = z.object({
   twitter: z.string().optional(),
 });
 
-export const entrySchema = z
-  .object({
-    title: z.string().min(1, "Title is required"),
-    organization: z.string().min(1, "Organization is required"),
-    startDate: z.string().min(1, "Start date is required"),
-    endDate: z.string().optional(),
-    description: z.string().min(1, "Description is required"),
-    current: z.boolean().default(false),
-  })
-  .refine(
-    (data) => {
-      if (!data.current && !data.endDate) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "End date is required unless this is your current position",
-      path: ["endDate"],
-    }
-  );
+export const entrySchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  organization: z.string().min(1, "Organization is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  current: z.boolean().default(false),
+});
 
 export const resumeSchema = z.object({
-  contactInfo: contactSchema,
-  summary: z.string().min(1, "Professional summary is required"),
-  skills: z.string().min(1, "Skills are required"),
-  experience: z.array(entrySchema),
-  education: z.array(entrySchema),
-  projects: z.array(entrySchema),
+  name: z.string().min(1, "Name is required"),
+  contactInfo: z.object({
+    email: z.string().email("Invalid email").optional(),
+    mobile: z.string().optional(),
+    linkedin: z.string().url("Invalid LinkedIn URL").optional(),
+    twitter: z.string().url("Invalid Twitter URL").optional(),
+  }),
+  summary: z.string().optional(),
+  skills: z.string().optional(),
+  experience: z.array(entrySchema).default([]),
+  education: z.array(entrySchema).default([]),
+  projects: z.array(entrySchema).default([]),
 });
 
 export const coverLetterSchema = z.object({

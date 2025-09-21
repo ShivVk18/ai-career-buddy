@@ -1,3 +1,4 @@
+
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
@@ -22,7 +23,8 @@ import {
   BookOpen,
   Award,
   Users,
-  Calendar
+  Calendar,
+  SearchCheck
 } from "lucide-react";
 import { checkUser } from "@/lib/checkUser";
 
@@ -159,6 +161,21 @@ export default async function Header() {
                     <div>
                       <div className="font-medium">Cover Letter</div>
                       <div className="text-xs text-gray-400">Smart generation</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild>
+                  <Link 
+                    href="/resume-parser" 
+                    className="flex items-center gap-3 px-4 py-3 text-gray-200 hover:text-white hover:bg-white/10 rounded-2xl transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 rounded-xl group-hover:scale-110 transition-all duration-300">
+                      <SearchCheck className="h-4 w-4 text-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="font-medium">ATS Checker</div>
+                      <div className="text-xs text-gray-400">Resume optimization</div>
                     </div>
                   </Link>
                 </DropdownMenuItem>
