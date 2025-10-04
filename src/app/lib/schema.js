@@ -63,3 +63,17 @@ export const coverLetterSchema = z.object({
   jobTitle: z.string().min(1, "Job title is required"),
   jobDescription: z.string().min(1, "Job description is required"),
 });
+
+export const resumeParserSchema = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  jobTitle: z.string().min(1, "Job title is required"),
+  jobDescription: z.string().min(1, "Job description is required"),
+  resumePdf: z
+    .any()
+    .refine((file) => file?.size <= 5 * 1024 * 1024, {
+      message: "File size should be less than 5MB",
+    })
+    .refine((file) => file?.type === "application/pdf", {
+      message: "Only PDF files are accepted",
+    }),
+});

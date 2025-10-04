@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 const ai = new GoogleGenAI({
   apiKey:
     process.env.GEMINI_API_KEY ,
+  
 });
 
 class aiServices {
@@ -630,6 +631,54 @@ Format as plain text, not JSON. Be concise but specific.
       console.error("Error generating skill recommendations:", error);
       return "Focus on developing technical skills, leadership abilities, and industry-specific knowledge relevant to your target role.";
     }
+  }
+
+  async resumeParser(companyName,jobTitle,jobDescription,resumePdf){   
+
+    const contents = [
+        { text: `You are an expert in ATS (Applicant Tracking Systems), resume writing, and job market analysis.  
+Your task is to evaluate the resume thoroughly and provide constructive feedback.  
+
+### Instructions:
+1. Rate the resume’s **ATS compatibility** (0–100).  
+2. Highlight **strengths** (what’s good in the resume).  
+3. Point out **weaknesses** (grammar issues, formatting, vague points, etc.).  
+4. Suggest **improvements** (action verbs, quantifiable achievements, tailoring tips).  
+5. If a job description is provided, evaluate how well the resume matches it.  
+6. Give **tailored suggestions** for increasing relevance and impact.  
+7. Feedback should be **clear, detailed, and professional**, not generic.  
+
+### Context:
+- Company Name: ${companyName}
+- Job Title: ${jobTitle}  
+- Job Description: ${jobDescription}  
+
+### Response Format:
+Respond ONLY in **valid JSON** with the following schema (no markdown, no extra text).`},
+        {
+            inlineData: {
+                mimeType: 'application/pdf',
+                data: Buffer.from(fs.readFileSync(resumePdf)).toString("base64")
+            }
+        }
+    ]; 
+
+     try {
+      return await this.generateContent(
+        {
+          model: "gemini-2.5-flash",
+          contents,
+          config: {
+            maxOutputTokens: 4000,
+            temperature: 0.2,
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error generating resume ats score:", error);
+      return "Focus on developing technical skills, leadership abilities, and industry-specific knowledge relevant to your target role.";
+    }
+   
   }
 }
 

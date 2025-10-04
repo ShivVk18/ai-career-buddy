@@ -39,6 +39,7 @@ model User {
   practiceSessions PracticeSession[]
   skillAnalyses SkillGapAnalysis[]
   mockInterviews MockInterview[]
+  atsScores      ATSScore[]
 }
 
 model Assessment {
@@ -370,4 +371,39 @@ model IndustryInsight {
   nextUpdate    DateTime  // Scheduled update time
 
   @@index([industry])
+}
+
+model ATSScore {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+
+  // Core ATS evaluation
+  atsScore       Float
+  matchPercentage Float?
+
+  // Analysis sections
+  strengths      String[]
+  weaknesses     String[]
+  improvements   String[]
+
+  // Skills context
+  relevantSkills String[]
+  missingSkills  String[]
+  recommendations Json[]
+
+  // AI context
+  finalSummary   String   @db.Text
+  analyzedBy     String?  // e.g. "GPT-5", "Custom-LLM"
+
+  // Metadata
+  jobTitle       String?
+  companyName    String?
+  jobDescription String?  @db.Text
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+ 
 }

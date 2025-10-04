@@ -6,7 +6,7 @@ import {
   useMotionTemplate,
   useMotionValue,
   useTransform,
-} from "framer-motion";
+} from "motion/react";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,7 @@ export function Button({
   return (
     <Component
       className={cn(
-        "relative h-13 w-50 overflow-hidden bg-transparent p-[1px] text-xl",
+        "relative h-16 w-40 overflow-hidden bg-transparent p-[1px] text-xl",
         containerClassName
       )}
       style={{

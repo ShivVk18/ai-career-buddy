@@ -5,6 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
+import { Spotlight } from "@/components/ui/spotlight";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
+import { SparklesCore } from "@/components/ui/sparkles";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -12,13 +16,12 @@ import {
   CheckCircle2,
   Brain,
   Rocket,
-  Users,
   Zap,
-  Globe,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  Star,
+  Trophy,
 } from "lucide-react";
-import ModernHeroSection from "@/components/HeroSection";
 import {
   Accordion,
   AccordionContent,
@@ -26,10 +29,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { howItWorks } from "@/data/howitWorks";
-import { AnimatedSection, AnimatedCard, AnimatedText, FloatingElement } from "@/components/AnimatedSection";
+import { AnimatedSection, AnimatedCard, AnimatedText } from "@/components/AnimatedSection";
 import { GradientText } from "@/components/GradientText";
 
-// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -74,18 +76,18 @@ export default function LandingPage() {
     {
       title: "Smart Career Assessment",
       description: "Discover your strengths and identify growth opportunities with our comprehensive skills evaluation tool.",
-      icon: <Target className="h-8 w-8 text-purple-500" />,
+      icon: <Target className="h-8 w-8 text-orange-500" />,
       className: "md:col-span-2",
     },
     {
       title: "Personalized Learning Paths",
       description: "Get customized skill development recommendations based on your career goals.",
-      icon: <BookOpen className="h-8 w-8 text-blue-500" />,
+      icon: <BookOpen className="h-8 w-8 text-amber-500" />,
     },
     {
       title: "Industry Insights",
       description: "Stay updated with latest trends and requirements in your field.",
-      icon: <TrendingUp className="h-8 w-8 text-green-500" />,
+      icon: <TrendingUp className="h-8 w-8 text-rose-500" />,
     },
     {
       title: "Goal Tracking",
@@ -95,7 +97,7 @@ export default function LandingPage() {
     {
       title: "AI-Powered Recommendations",
       description: "Receive intelligent suggestions for your next career moves and skill improvements.",
-      icon: <Brain className="h-8 w-8 text-indigo-500" />,
+      icon: <Brain className="h-8 w-8 text-purple-500" />,
       className: "md:col-span-2",
     },
   ];
@@ -127,17 +129,17 @@ export default function LandingPage() {
     {
       title: "Clear Direction",
       description: "Stop second-guessing your career choices with data-driven insights",
-      icon: <Target className="h-6 w-6 text-blue-400" />
+      icon: <Target className="h-6 w-6 text-orange-400" />
     },
     {
       title: "Skill Development",
       description: "Focus your learning efforts on skills that matter most for your goals",
-      icon: <TrendingUp className="h-6 w-6 text-green-400" />
+      icon: <TrendingUp className="h-6 w-6 text-amber-400" />
     },
     {
       title: "Stay Competitive",
       description: "Keep up with industry changes and emerging opportunities",
-      icon: <Rocket className="h-6 w-6 text-purple-400" />
+      icon: <Rocket className="h-6 w-6 text-rose-400" />
     },
     {
       title: "Build Confidence",
@@ -146,25 +148,150 @@ export default function LandingPage() {
     }
   ];
 
-  return (
-    <div className="relative min-h-screen bg-black text-white overflow-hidden">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <FloatingElement amplitude={20} duration={8} className="absolute top-1/4 left-1/4">
-          <div className="w-2 h-2 bg-blue-400/20 rounded-full blur-sm"></div>
-        </FloatingElement>
-        <FloatingElement amplitude={15} duration={6} className="absolute top-1/3 right-1/4">
-          <div className="w-3 h-3 bg-purple-400/20 rounded-full blur-sm"></div>
-        </FloatingElement>
-        <FloatingElement amplitude={25} duration={10} className="absolute bottom-1/4 left-1/3">
-          <div className="w-1 h-1 bg-pink-400/20 rounded-full blur-sm"></div>
-        </FloatingElement>
-      </div>
+  const testimonialUsers = [
+    { id: 1, name: "Sarah M.", designation: "Software Engineer", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" },
+    { id: 2, name: "John D.", designation: "Product Manager", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=John" },
+    { id: 3, name: "Emma W.", designation: "UX Designer", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma" },
+    { id: 4, name: "Mike R.", designation: "Data Analyst", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike" },
+  ];
 
+  const heroWords = "Transform Your Career Journey with AI-Powered Guidance";
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20 text-white overflow-hidden">
       {/* Hero Section */}
-      <AnimatedSection className="relative z-10">
-        <ModernHeroSection />
-      </AnimatedSection>
+      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="orange" />
+        <Spotlight className="top-10 left-full h-[80vh] w-[50vw]" fill="amber" />
+        <Spotlight className="top-28 left-80 h-[80vh] w-[50vw]" fill="rose" />
+        
+        <SparklesCore
+          id="hero-sparkles"
+          background="transparent"
+          minSize={0.4}
+          maxSize={1}
+          particleDensity={100}
+          className="absolute inset-0"
+          particleColor="#f97316"
+        />
+
+        <motion.div
+          animate={{
+            y: [0, -20, 0],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute top-20 left-10 w-72 h-72 bg-orange-500/20 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            y: [0, 20, 0],
+            opacity: [0.2, 0.5, 0.2],
+          }}
+          transition={{
+            duration: 5,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          className="absolute bottom-20 right-10 w-96 h-96 bg-rose-500/20 rounded-full blur-3xl"
+        />
+
+        <div className="relative z-10 max-w-7xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mb-8"
+          >
+            <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-orange-500/10 to-rose-500/10 border border-orange-500/20 backdrop-blur-xl">
+              <Star className="h-4 w-4 text-orange-400 mr-2" />
+              <span className="text-sm font-medium text-orange-300">AI-Powered Career Platform</span>
+              <Trophy className="h-4 w-4 text-rose-400 ml-2" />
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mb-8"
+          >
+            <TextGenerateEffect 
+              words={heroWords}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight"
+            />
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1 }}
+            className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed"
+          >
+            Discover your potential, map your path, and accelerate your professional growth with personalized insights and expert guidance
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16"
+          >
+            <Link href="/assessment">
+              <Button
+                size="lg"
+                className="px-8 py-6 text-lg bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white border-0 rounded-2xl shadow-2xl transition-all duration-300"
+              >
+                Start Free Assessment
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+
+            <Link href="/features">
+              <Button
+                size="lg"
+                variant="outline"
+                className="px-8 py-6 text-lg border-orange-500/30 hover:bg-orange-500/10 rounded-2xl backdrop-blur-xl hover:border-orange-500/50 transition-all duration-300"
+              >
+                Explore Features
+              </Button>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.4 }}
+            className="flex flex-col items-center gap-4"
+          >
+            <div className="flex items-center justify-center">
+              <AnimatedTooltip items={testimonialUsers} />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 1.6 + i * 0.1 }}
+                  >
+                    <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                  </motion.div>
+                ))}
+              </div>
+              <span className="text-gray-400 text-sm ml-2">Trusted by 10,000+ professionals</span>
+            </div>
+          </motion.div>
+
+         
+        </div>
+      </section>
 
       {/* Benefits Section */}
       <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 relative z-10">
@@ -196,29 +323,22 @@ export default function LandingPage() {
                 whileHover={{
                   y: -10,
                   scale: 1.05,
-                  rotate: [0, 1, -1, 0],
                   transition: { duration: 0.3 }
                 }}
-                className="glass-dark p-6 rounded-2xl border border-white/10 hover:border-white/30 transition-all duration-500 cursor-pointer group"
+                className="relative group"
               >
-                <motion.div 
-                  className="flex items-center mb-4"
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <motion.div
-                    animate={{ rotate: [0, 5, -5, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative glass-dark p-6 rounded-2xl border border-orange-500/10 hover:border-orange-500/30 transition-all duration-500 cursor-pointer backdrop-blur-xl bg-slate-900/50">
+                  <div className="flex items-center mb-4">
                     {benefit.icon}
-                  </motion.div>
-                  <h3 className="text-xl font-semibold ml-3 group-hover:text-blue-400 transition-colors duration-300">
-                    {benefit.title}
-                  </h3>
-                </motion.div>
-                <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
-                  {benefit.description}
-                </p>
+                    <h3 className="text-xl font-semibold ml-3 group-hover:text-orange-400 transition-colors duration-300">
+                      {benefit.title}
+                    </h3>
+                  </div>
+                  <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
+                    {benefit.description}
+                  </p>
+                </div>
               </motion.div>
             ))}
           </motion.div>
@@ -242,9 +362,8 @@ export default function LandingPage() {
           </AnimatedSection>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
-            {/* Animated connection lines for desktop */}
             <motion.div 
-              className="hidden lg:block absolute top-16 left-1/2 w-3/4 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 via-green-500 to-orange-500 opacity-30 transform -translate-x-1/2"
+              className="hidden lg:block absolute top-16 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-orange-500/30 via-amber-500/30 to-orange-500/30"
               initial={{ scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
               transition={{ duration: 1.5, delay: 0.5 }}
@@ -257,36 +376,30 @@ export default function LandingPage() {
                 delay={index * 0.15}
                 className="relative"
               >
-                <div className="glass-dark p-6 rounded-2xl border border-white/10 hover:border-white/30 transition-all duration-500 text-center relative z-10 group">
-                  {/* Animated step number */}
-                  <motion.div 
-                    className="absolute -top-4 left-1/2 transform -translate-x-1/2"
-                    whileHover={{ scale: 1.2, rotate: 360 }}
-                    transition={{ duration: 0.5 }}
-                  >
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative glass-dark p-6 rounded-2xl border border-orange-500/10 hover:border-orange-500/30 transition-all duration-500 text-center backdrop-blur-xl bg-slate-900/50">
                     <motion.div 
-                      className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-bold"
-                      variants={pulseVariants}
-                      animate="animate"
-                    >
-                      {step.step}
-                    </motion.div>
-                  </motion.div>
-                  
-                  <div className="pt-4">
-                    <motion.div 
-                      className="flex justify-center mb-4"
-                      whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
+                      className="absolute -top-4 left-1/2 transform -translate-x-1/2"
+                      whileHover={{ scale: 1.2 }}
                       transition={{ duration: 0.5 }}
                     >
-                      {step.icon}
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-600 to-rose-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-orange-500/50">
+                        {step.step}
+                      </div>
                     </motion.div>
-                    <h3 className="text-xl font-semibold mb-3 text-white group-hover:text-blue-400 transition-colors duration-300">
-                      {step.title}
-                    </h3>
-                    <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
-                      {step.description}
-                    </p>
+                    
+                    <div className="pt-4">
+                      <div className="flex justify-center mb-4">
+                        {step.icon}
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-white group-hover:text-orange-400 transition-colors duration-300">
+                        {step.title}
+                      </h3>
+                      <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </AnimatedCard>
@@ -322,24 +435,18 @@ export default function LandingPage() {
                     scale: 1.02,
                     transition: { duration: 0.3 }
                   }}
+                  className="relative group"
                 >
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <BentoGridItem
                     title={item.title}
                     description={item.description}
                     header={
-                      <div className="flex flex-1 w-full h-full min-h-[8rem] rounded-xl bg-gradient-to-br from-neutral-200 dark:from-neutral-900 dark:to-neutral-800 to-neutral-100 items-center justify-center">
-                        <motion.div
-                          whileHover={{ 
-                            scale: 1.2, 
-                            rotate: [0, -10, 10, 0] 
-                          }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          {item.icon}
-                        </motion.div>
+                      <div className="flex flex-1 w-full h-full min-h-[8rem] rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 items-center justify-center">
+                        {item.icon}
                       </div>
                     }
-                    className={`${item.className} glass-dark border-white/10 hover:border-white/30 transition-all duration-500 group cursor-pointer`}
+                    className={`${item.className} relative glass-dark border-orange-500/10 hover:border-orange-500/30 transition-all duration-500 cursor-pointer backdrop-blur-xl bg-slate-900/50`}
                     icon={item.icon}
                   />
                 </motion.div>
@@ -371,12 +478,13 @@ export default function LandingPage() {
                 <AnimatedCard key={index} delay={index * 0.1}>
                   <AccordionItem 
                     value={`item-${index}`}
-                    className="glass-dark border-white/10 rounded-2xl px-6 md:px-8 hover:border-white/30 transition-all duration-500 group"
+                    className="relative group glass-dark border-orange-500/10 rounded-2xl px-6 md:px-8 hover:border-orange-500/30 transition-all duration-500 backdrop-blur-xl bg-slate-900/50"
                   >
-                    <AccordionTrigger className="text-left text-white hover:text-blue-400 transition-colors py-6 text-lg group-hover:scale-[1.01] transition-transform duration-300">
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <AccordionTrigger className="relative text-left text-white hover:text-orange-400 transition-colors py-6 text-lg">
                       {faq.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-gray-400 pb-6 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
+                    <AccordionContent className="relative text-gray-400 pb-6 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
                       {faq.answer}
                     </AccordionContent>
                   </AccordionItem>
@@ -390,12 +498,8 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-20 md:py-24 px-4 sm:px-6 lg:px-8 relative">
         <AnimatedSection>
-          <motion.div
-            className="max-w-4xl mx-auto text-center"
-            whileHover={{ scale: 1.02 }}
-            transition={{ duration: 0.3 }}
-          >
-            <BackgroundGradient className="rounded-3xl max-w-4xl mx-auto p-8 md:p-12 glass-dark">
+          <div className="max-w-4xl mx-auto text-center">
+            <BackgroundGradient className="rounded-3xl max-w-4xl mx-auto p-8 md:p-12 glass-dark backdrop-blur-xl bg-slate-900/50">
               <div className="space-y-8">
                 <div className="space-y-6">
                   <AnimatedText>
@@ -418,44 +522,27 @@ export default function LandingPage() {
                   viewport={{ once: true }}
                 >
                   <Link href="/assessment">
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto px-8 py-4 text-lg bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white border-0 rounded-2xl shadow-lg shadow-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/50 transition-all duration-300"
                     >
-                      <Button
-                        size="lg"
-                        className="w-full sm:w-auto px-8 py-4 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 group text-white border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
-                      >
-                        Start Free Assessment
-                        <motion.div
-                          animate={{ x: [0, 5, 0] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        >
-                          <ArrowRight className="ml-2 h-5 w-5" />
-                        </motion.div>
-                      </Button>
-                    </motion.div>
+                      Start Free Assessment
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
                   </Link>
                   <Link href="/features">
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto px-8 py-4 text-lg glass-dark border-orange-500/20 hover:bg-orange-500/10 rounded-2xl hover:border-orange-500/40 transition-all duration-300 backdrop-blur-xl"
                     >
-                      <Button
-                        size="lg"
-                        variant="outline"
-                        className="w-full sm:w-auto px-8 py-4 text-lg glass-dark border-white/20 hover:bg-white/10 rounded-2xl hover:border-white/40 transition-all duration-300"
-                      >
-                        Learn More
-                      </Button>
-                    </motion.div>
+                      Learn More
+                    </Button>
                   </Link>
                 </motion.div>
               </div>
             </BackgroundGradient>
-          </motion.div>
+          </div>
         </AnimatedSection>
       </section>
 
