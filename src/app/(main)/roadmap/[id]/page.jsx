@@ -16,9 +16,5 @@ export default async function RoadmapDetailPage({ params }) {
     notFound();
   }
 
-  return (
-    <div className="container mx-auto">
-      <RoadmapDetailView roadmap={roadmap} />
-    </div>
-  );
+  return <RoadmapDetailView roadmap={roadmap} />;
 }

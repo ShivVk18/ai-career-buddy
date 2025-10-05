@@ -9,14 +9,14 @@ import {
   Target,
   BookOpen,
   TrendingUp,
-  Calendar,
   Sparkles,
   ChevronRight,
   ExternalLink,
   Award,
+  Brain,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,6 +26,7 @@ import { toast } from "sonner";
 
 const RoadmapDetailView = ({ roadmap }) => {
   const [completingStep, setCompletingStep] = useState(null);
+  const [activeTab, setActiveTab] = useState("steps");
   const router = useRouter();
 
   const completedSteps = roadmap.steps.filter((step) => step.completed).length;
@@ -47,13 +48,13 @@ const RoadmapDetailView = ({ roadmap }) => {
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
-        return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300";
+        return "bg-rose-500/20 text-rose-300 border-rose-500/30";
       case "medium":
-        return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300";
+        return "bg-amber-500/20 text-amber-300 border-amber-500/30";
       case "low":
-        return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300";
+        return "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
       default:
-        return "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300";
+        return "bg-gray-500/20 text-gray-300 border-gray-500/30";
     }
   };
 
@@ -74,113 +75,129 @@ const RoadmapDetailView = ({ roadmap }) => {
     }
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex items-center gap-4"
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.back()}
-          className="rounded-xl"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            {roadmap.currentRole} → {roadmap.targetRole}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            {roadmap.industry} • {roadmap.timeline} month timeline
-          </p>
-        </div>
-      </motion.div>
+  const getProgressColor = (progress) => {
+    if (progress >= 70) return "from-emerald-500 to-green-500";
+    if (progress >= 50) return "from-blue-500 to-cyan-500";
+    if (progress >= 30) return "from-amber-500 to-yellow-500";
+    return "from-rose-500 to-red-500";
+  };
 
-      {/* Progress Overview */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-pink-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <motion.div
-                animate={{ rotate: [0, 360] }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              >
-                <Sparkles className="h-5 w-5 text-yellow-500" />
-              </motion.div>
-              Overall Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20 text-white py-12 px-4 sm:px-6 lg:px-8">
+      {/* Animated Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl animate-pulse"></div>
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4"
+        >
+          <button
+            onClick={() => router.back()}
+            className="p-3 backdrop-blur-xl bg-slate-800/50 border border-orange-500/30 hover:border-orange-500/50 rounded-2xl transition-all duration-300"
+          >
+            <ArrowLeft className="h-5 w-5 text-orange-400" />
+          </button>
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-amber-400 bg-clip-text text-transparent">
+              {roadmap.currentRole} → {roadmap.targetRole}
+            </h1>
+            <p className="text-gray-400 mt-1">
+              {roadmap.industry} • {roadmap.timeline} month timeline
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Progress Overview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-slate-900/50 to-slate-800/50 border border-orange-500/20 rounded-3xl p-8 shadow-2xl"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <motion.div
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            >
+              <Sparkles className="h-6 w-6 text-orange-400" />
+            </motion.div>
+            <h2 className="text-2xl font-semibold text-white">Overall Progress</h2>
+          </div>
+
+          <div className="space-y-4 mb-6">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-300">
+              <span className="text-gray-300">
                 {completedSteps} of {totalSteps} steps completed
               </span>
-              <span className="text-lg font-bold">
+              <span className="text-2xl font-bold text-orange-400">
                 {Math.round(roadmap.progress)}%
               </span>
             </div>
-            <Progress value={roadmap.progress} className="h-3" />
-            
-            <div className="grid grid-cols-3 gap-4 pt-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {roadmap.steps?.length || 0}
-                </div>
-                <div className="text-xs text-gray-500">Total Steps</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {roadmap.milestones?.length || 0}
-                </div>
-                <div className="text-xs text-gray-500">Milestones</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {roadmap.resources?.length || 0}
-                </div>
-                <div className="text-xs text-gray-500">Resources</div>
-              </div>
+            <div className="relative h-4 bg-slate-800/50 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${roadmap.progress}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className={`h-full bg-gradient-to-r ${getProgressColor(roadmap.progress)}`}
+              />
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
 
-      {/* Detailed View */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <Tabs defaultValue="steps" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-800 rounded-2xl p-1">
-            <TabsTrigger
-              value="steps"
-              className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md"
-            >
-              Steps
-            </TabsTrigger>
-            <TabsTrigger
-              value="milestones"
-              className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md"
-            >
-              Milestones
-            </TabsTrigger>
-            <TabsTrigger
-              value="resources"
-              className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md"
-            >
-              Resources
-            </TabsTrigger>
-          </TabsList>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="backdrop-blur-xl bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold text-blue-300">
+                {roadmap.steps?.length || 0}
+              </div>
+              <div className="text-sm text-blue-400">Total Steps</div>
+            </div>
+            <div className="backdrop-blur-xl bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold text-emerald-300">
+                {roadmap.milestones?.length || 0}
+              </div>
+              <div className="text-sm text-emerald-400">Milestones</div>
+            </div>
+            <div className="backdrop-blur-xl bg-purple-500/10 border border-purple-500/30 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold text-purple-300">
+                {roadmap.resources?.length || 0}
+              </div>
+              <div className="text-sm text-purple-400">Resources</div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="backdrop-blur-xl bg-slate-800/50 border border-orange-500/20 rounded-2xl p-2">
+            <TabsList className="grid w-full grid-cols-3 bg-transparent gap-2">
+              <TabsTrigger
+                value="steps"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-rose-600 data-[state=active]:text-white rounded-xl transition-all duration-300"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Steps
+              </TabsTrigger>
+              <TabsTrigger
+                value="milestones"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-rose-600 data-[state=active]:text-white rounded-xl transition-all duration-300"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Milestones
+              </TabsTrigger>
+              <TabsTrigger
+                value="resources"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-rose-600 data-[state=active]:text-white rounded-xl transition-all duration-300"
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                Resources
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Steps Tab */}
           <TabsContent value="steps" className="space-y-4">
@@ -192,98 +209,91 @@ const RoadmapDetailView = ({ roadmap }) => {
                     key={step.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`backdrop-blur-xl border-2 rounded-3xl p-6 transition-all duration-300 ${
+                      step.completed
+                        ? "bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/30"
+                        : "bg-gradient-to-br from-slate-900/50 to-slate-800/50 border-orange-500/20 hover:border-orange-500/40"
+                    }`}
                   >
-                    <Card
-                      className={`border-0 shadow-md hover:shadow-lg transition-all duration-300 ${
-                        step.completed
-                          ? "bg-green-50 dark:bg-green-900/20 border-green-200"
-                          : "bg-white dark:bg-gray-900"
-                      }`}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div
-                              className={`p-3 rounded-xl ${
-                                step.completed
-                                  ? "bg-green-200 text-green-700"
-                                  : "bg-blue-100 text-blue-600"
-                              }`}
-                            >
-                              {step.completed ? (
-                                <CheckCircle className="h-5 w-5" />
-                              ) : (
-                                <IconComponent className="h-5 w-5" />
-                              )}
-                            </div>
-
-                            <div className="space-y-3 flex-1">
-                              <div className="flex items-start justify-between">
-                                <h3 className="font-semibold text-lg">
-                                  {step.title}
-                                </h3>
-                                <Badge
-                                  variant="outline"
-                                  className={getPriorityColor(step.priority)}
-                                >
-                                  {step.priority}
-                                </Badge>
-                              </div>
-
-                              <p className="text-gray-600 dark:text-gray-300">
-                                {step.description}
-                              </p>
-
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-4 w-4" />
-                                  {step.duration}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Target className="h-4 w-4" />
-                                  {step.estimatedHours}h
-                                </div>
-                              </div>
-
-                              {step.resources && step.resources.length > 0 && (
-                                <div className="space-y-2">
-                                  <h4 className="font-medium text-sm">
-                                    Resources:
-                                  </h4>
-                                  <ul className="space-y-1">
-                                    {step.resources.map((resource, i) => (
-                                      <li
-                                        key={i}
-                                        className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2"
-                                      >
-                                        <ChevronRight className="h-3 w-3" />
-                                        {resource}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="ml-4">
-                            {!step.completed && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleCompleteStep(step.id)}
-                                disabled={completingStep === step.id}
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl"
-                              >
-                                {completingStep === step.id
-                                  ? "Completing..."
-                                  : "Complete"}
-                              </Button>
-                            )}
-                          </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div
+                          className={`p-3 rounded-2xl ${
+                            step.completed
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : "bg-orange-500/20 text-orange-400"
+                          }`}
+                        >
+                          {step.completed ? (
+                            <CheckCircle className="h-6 w-6" />
+                          ) : (
+                            <IconComponent className="h-6 w-6" />
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
+
+                        <div className="space-y-3 flex-1">
+                          <div className="flex items-start justify-between gap-4">
+                            <h3 className="font-semibold text-lg text-white">
+                              {step.title}
+                            </h3>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs border capitalize ${getPriorityColor(step.priority)}`}
+                            >
+                              {step.priority}
+                            </span>
+                          </div>
+
+                          <p className="text-gray-400 leading-relaxed">
+                            {step.description}
+                          </p>
+
+                          <div className="flex items-center gap-4 text-sm text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {step.duration}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Target className="h-4 w-4" />
+                              {step.estimatedHours}h
+                            </div>
+                          </div>
+
+                          {step.resources && step.resources.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="font-medium text-sm text-gray-300">
+                                Resources:
+                              </h4>
+                              <ul className="space-y-1">
+                                {step.resources.map((resource, i) => (
+                                  <li
+                                    key={i}
+                                    className="text-sm text-gray-400 flex items-center gap-2"
+                                  >
+                                    <ChevronRight className="h-3 w-3" />
+                                    {resource}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        {!step.completed && (
+                          <button
+                            onClick={() => handleCompleteStep(step.id)}
+                            disabled={completingStep === step.id}
+                            className="px-4 py-2 bg-gradient-to-r from-orange-600 to-rose-600 hover:from-orange-500 hover:to-rose-500 rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50"
+                          >
+                            {completingStep === step.id
+                              ? "Completing..."
+                              : "Complete"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -298,53 +308,50 @@ const RoadmapDetailView = ({ roadmap }) => {
                   key={milestone.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="backdrop-blur-xl bg-gradient-to-br from-slate-900/50 to-slate-800/50 border-2 border-amber-500/20 rounded-3xl p-6"
                 >
-                  <Card className="border-0 shadow-md">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-yellow-100 text-yellow-600 rounded-xl">
-                          <Target className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-3 flex-1">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-semibold text-lg">
-                              {milestone.title}
-                            </h3>
-                            <Badge variant="outline">
-                              Month {milestone.targetMonth}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600 dark:text-gray-300">
-                            {milestone.description}
-                          </p>
-                          {milestone.criteria && milestone.criteria.length > 0 && (
-                            <div className="space-y-2">
-                              <h4 className="font-medium text-sm">Criteria:</h4>
-                              <ul className="space-y-1">
-                                {milestone.criteria.map((criteria, i) => (
-                                  <li
-                                    key={i}
-                                    className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2"
-                                  >
-                                    <CheckCircle className="h-3 w-3 text-green-500" />
-                                    {criteria}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {milestone.reward && (
-                            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                              <p className="text-sm text-green-700 dark:text-green-300">
-                                <strong>Reward:</strong> {milestone.reward}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl">
+                      <Target className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-semibold text-lg text-white">
+                          {milestone.title}
+                        </h3>
+                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs">
+                          Month {milestone.targetMonth}
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <p className="text-gray-400 leading-relaxed">
+                        {milestone.description}
+                      </p>
+                      {milestone.criteria && milestone.criteria.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-300">Criteria:</h4>
+                          <ul className="space-y-1">
+                            {milestone.criteria.map((criteria, i) => (
+                              <li
+                                key={i}
+                                className="text-sm text-gray-400 flex items-center gap-2"
+                              >
+                                <CheckCircle className="h-3 w-3 text-emerald-400" />
+                                {criteria}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {milestone.reward && (
+                        <div className="p-3 backdrop-blur-xl bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+                          <p className="text-sm text-emerald-300">
+                            <strong>Reward:</strong> {milestone.reward}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -358,62 +365,52 @@ const RoadmapDetailView = ({ roadmap }) => {
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="backdrop-blur-xl bg-gradient-to-br from-slate-900/50 to-slate-800/50 border-2 border-purple-500/20 hover:border-purple-500/40 rounded-3xl p-6 transition-all duration-300"
                 >
-                  <Card className="border-0 shadow-md hover:shadow-lg transition-all duration-300">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
-                          <BookOpen className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-3 flex-1">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-semibold text-lg">
-                              {resource.title}
-                            </h3>
-                            <Badge variant="outline" className="capitalize">
-                              {resource.type}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600 dark:text-gray-300">
-                            {resource.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            {resource.estimatedCost && (
-                              <div>Cost: {resource.estimatedCost}</div>
-                            )}
-                            {resource.timeCommitment && (
-                              <div>Time: {resource.timeCommitment}</div>
-                            )}
-                          </div>
-                          {resource.url && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
-                              className="rounded-xl"
-                            >
-                              <a
-                                href={resource.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                View Resource
-                              </a>
-                            </Button>
-                          )}
-                        </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-purple-500/20 text-purple-400 rounded-2xl">
+                      <BookOpen className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-semibold text-lg text-white">
+                          {resource.title}
+                        </h3>
+                        <span className="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-xs capitalize">
+                          {resource.type}
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <p className="text-gray-400 leading-relaxed">
+                        {resource.description}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-400">
+                        {resource.estimatedCost && (
+                          <div>Cost: {resource.estimatedCost}</div>
+                        )}
+                        {resource.timeCommitment && (
+                          <div>Time: {resource.timeCommitment}</div>
+                        )}
+                      </div>
+                      {resource.url && (
+                        <a
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 backdrop-blur-xl bg-slate-800/50 border border-purple-500/30 hover:border-purple-500/50 rounded-xl text-purple-300 hover:text-purple-200 transition-all duration-300"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          View Resource
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </TabsContent>
         </Tabs>
-      </motion.div>
+      </div>
     </div>
   );
 };

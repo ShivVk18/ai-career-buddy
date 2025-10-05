@@ -12,9 +12,5 @@ export default async function RoadmapPage() {
 
   const roadmaps = await getCareerRoadmaps();
 
-  return (
-    <div className="container mx-auto">
-      <RoadmapDashboard roadmaps={roadmaps} />
-    </div>
-  );
+  return <RoadmapDashboard roadmaps={roadmaps} />;
 }

@@ -550,7 +550,7 @@ export default function LandingPage() {
                 <p>Made with Efforts</p>
               </div>
             </footer>
-      <div className="py-12"></div>
+    
     </div>
   );
 }

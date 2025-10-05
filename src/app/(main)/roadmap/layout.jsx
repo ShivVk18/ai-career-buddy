@@ -1,16 +1,18 @@
-import { BarLoader } from "react-spinners";
 import { Suspense } from "react";
+import { Loader } from "lucide-react";
 
 export default function Layout({ children }) {
   return (
-    <div className="px-5">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Career Roadmap
-        </h1>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20">
       <Suspense
-        fallback={<BarLoader className="mt-4" width={"100%"} color="#3B82F6" />}
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center space-y-4">
+              <Loader className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
+              <p className="text-gray-400 text-sm">Loading your roadmap...</p>
+            </div>
+          </div>
+        }
       >
         {children}
       </Suspense>
