@@ -1,7 +1,7 @@
 
 import { getCoverLetters } from "@/actions/CoverLetter";
 import Link from "next/link";
-import { Plus, Sparkles, FileText, TrendingUp } from "lucide-react";
+import { Plus, Sparkles, FileText, TrendingUp, Brain, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CoverLetterList from "./_components/CoverLetterList";
 
@@ -9,76 +9,72 @@ export default async function CoverLetterPage() {
   const coverLetters = await getCoverLetters();
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+   <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20 text-white">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/6 w-2 h-2 bg-blue-400/10 rounded-full blur-sm animate-pulse"></div>
-        <div className="absolute top-1/2 right-1/4 w-3 h-3 bg-purple-400/10 rounded-full blur-sm animate-bounce"></div>
-        <div className="absolute bottom-1/3 left-1/2 w-1 h-1 bg-pink-400/10 rounded-full blur-sm animate-pulse"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      <div className="container mx-auto py-8 px-4 relative z-10">
+      <div className="container mx-auto py-12 px-4 relative z-10">
         {/* Header Section */}
         <div className="relative mb-12">
           <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
             <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-white/10">
-                  <FileText className="h-8 w-8 text-blue-400" />
-                </div>
-                <div>
-                  <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-300 bg-clip-text text-transparent">
-                    My Cover Letters
-                  </h1>
-                  <p className="text-gray-400 text-lg mt-2">
-                    AI-powered cover letters tailored for your success
-                  </p>
-                </div>
+              <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-orange-500/10 to-rose-500/10 border border-orange-500/20 backdrop-blur-xl mb-4">
+                <Brain className="h-4 w-4 text-orange-400 mr-2" />
+                <span className="text-sm font-medium text-orange-300">AI-Powered Writing</span>
+                <Sparkles className="h-4 w-4 text-rose-400 ml-2" />
               </div>
+              
+              <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-amber-400 bg-clip-text text-transparent">
+                My Cover Letters
+              </h1>
+              <p className="text-gray-400 text-lg max-w-2xl">
+                AI-powered cover letters tailored for your success
+              </p>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <Link href="/cover-letter/new">
-                <Button className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-                  <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                  Create New Letter
-                  <Sparkles className="h-4 w-4 ml-2 group-hover:animate-spin" />
-                </Button>
-              </Link>
-            </div>
+            <Link href="/cover-letter/new">
+              <Button className="px-8 py-4 text-base font-semibold bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white border-0 rounded-2xl shadow-lg shadow-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/50 transition-all duration-300 hover:scale-105 group">
+                <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                Create New Letter
+                <Sparkles className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
           </div>
         </div>
 
         {/* Feature Highlights */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="glass-dark p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all duration-300 group">
+          <div className="backdrop-blur-xl bg-slate-900/50 p-6 rounded-2xl border border-orange-500/10 hover:border-orange-500/20 transition-all duration-300 group">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 rounded-lg bg-blue-600/20">
-                <Sparkles className="h-5 w-5 text-blue-400" />
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500/20 to-rose-500/20 flex items-center justify-center border border-orange-500/30">
+                <Sparkles className="h-6 w-6 text-orange-400" />
               </div>
-              <h3 className="text-white font-semibold">AI-Powered</h3>
+              <h3 className="text-white font-semibold text-lg">AI-Powered</h3>
             </div>
-            <p className="text-gray-400 text-sm">Generate personalized cover letters using advanced AI technology</p>
+            <p className="text-gray-400 text-sm leading-relaxed">Generate personalized cover letters using advanced AI technology</p>
           </div>
           
-          <div className="glass-dark p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all duration-300 group">
+          <div className="backdrop-blur-xl bg-slate-900/50 p-6 rounded-2xl border border-rose-500/10 hover:border-rose-500/20 transition-all duration-300 group">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 rounded-lg bg-purple-600/20">
-                <FileText className="h-5 w-5 text-purple-400" />
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-rose-500/20 to-pink-500/20 flex items-center justify-center border border-rose-500/30">
+                <FileText className="h-6 w-6 text-rose-400" />
               </div>
-              <h3 className="text-white font-semibold">Professional Format</h3>
+              <h3 className="text-white font-semibold text-lg">Professional Format</h3>
             </div>
-            <p className="text-gray-400 text-sm">ATS-friendly templates designed to pass applicant tracking systems</p>
+            <p className="text-gray-400 text-sm leading-relaxed">ATS-friendly templates designed to pass applicant tracking systems</p>
           </div>
           
-          <div className="glass-dark p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all duration-300 group">
+          <div className="backdrop-blur-xl bg-slate-900/50 p-6 rounded-2xl border border-amber-500/10 hover:border-amber-500/20 transition-all duration-300 group">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 rounded-lg bg-green-600/20">
-                <TrendingUp className="h-5 w-5 text-green-400" />
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 flex items-center justify-center border border-amber-500/30">
+                <TrendingUp className="h-6 w-6 text-amber-400" />
               </div>
-              <h3 className="text-white font-semibold">Instant Results</h3>
+              <h3 className="text-white font-semibold text-lg">Instant Results</h3>
             </div>
-            <p className="text-gray-400 text-sm">Get professionally written cover letters in seconds</p>
+            <p className="text-gray-400 text-sm leading-relaxed">Get professionally written cover letters in seconds</p>
           </div>
         </div>
 

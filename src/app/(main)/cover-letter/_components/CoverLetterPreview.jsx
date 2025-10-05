@@ -45,190 +45,184 @@ const CoverLetterPreview = ({ content }) => {
   };
 
   return (
-    <div className="relative">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/5 left-1/6 w-2 h-2 bg-blue-400/10 rounded-full blur-sm animate-pulse"></div>
-        <div className="absolute top-2/3 right-1/4 w-3 h-3 bg-purple-400/10 rounded-full blur-sm animate-bounce"></div>
-        <div className="absolute bottom-1/4 left-1/2 w-1 h-1 bg-pink-400/10 rounded-full blur-sm animate-pulse"></div>
+   <div className="space-y-8">
+      {/* Header Section */}
+      <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-orange-500/20 to-rose-500/20 flex items-center justify-center border border-orange-500/30">
+              <FileText className="h-8 w-8 text-orange-400" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Your Cover Letter</h2>
+              <p className="text-gray-400 text-sm">AI-generated and ready for customization</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 p-1 rounded-xl bg-slate-800/50 border border-orange-500/20">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPreviewMode("edit")}
+                className={`h-9 px-4 text-sm rounded-lg transition-all duration-300 ${
+                  previewMode === "edit" 
+                    ? "bg-gradient-to-r from-orange-500/20 to-rose-500/20 text-orange-400 border border-orange-500/30" 
+                    : "text-gray-400 hover:text-white hover:bg-slate-700/50"
+                }`}
+              >
+                <Edit3 className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPreviewMode("preview")}
+                className={`h-9 px-4 text-sm rounded-lg transition-all duration-300 ${
+                  previewMode === "preview" 
+                    ? "bg-gradient-to-r from-orange-500/20 to-rose-500/20 text-rose-400 border border-rose-500/30" 
+                    : "text-gray-400 hover:text-white hover:bg-slate-700/50"
+                }`}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="h-10 px-5 bg-slate-800/50 border border-orange-500/20 hover:border-orange-500/50 hover:bg-orange-600/20 text-gray-300 hover:text-orange-400 transition-all duration-300 rounded-xl"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDownload}
+              className="h-10 px-5 bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white border-0 transition-all duration-300 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-6 relative z-10">
-        {/* Header Section */}
-        <div className="glass-dark p-6 rounded-2xl border border-white/10 backdrop-blur-xl">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
+      {/* Editor/Preview Section */}
+      <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 overflow-hidden shadow-2xl">
+        <div className="border-b border-orange-500/10 p-5 bg-slate-800/30">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-3 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-white/10">
-                <FileText className="h-6 w-6 text-blue-400" />
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-rose-500/60 rounded-full"></div>
+                <div className="w-3 h-3 bg-amber-500/60 rounded-full"></div>
+                <div className="w-3 h-3 bg-emerald-500/60 rounded-full"></div>
+              </div>
+              <span className="text-sm text-gray-400 font-mono">cover-letter.md</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative">
+          <MDEditor
+            value={editedContent || content}
+            onChange={setEditedContent}
+            preview={previewMode}
+            hideToolbar={previewMode === "preview"}
+            visibleDragBar={false}
+            height={700}
+            data-color-mode="dark"
+            className="custom-md-editor"
+            style={{
+              backgroundColor: 'transparent',
+            }}
+            textareaProps={{
+              className: "bg-transparent text-white placeholder:text-gray-500 border-none outline-none resize-none",
+              style: {
+                fontSize: '14px',
+                lineHeight: '1.6',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                backgroundColor: 'transparent',
+                color: '#ffffff',
+              }
+            }}
+            previewOptions={{
+              className: "prose prose-invert max-w-none p-8",
+              style: {
+                backgroundColor: 'transparent',
+                color: '#ffffff',
+              }
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Tips Section */}
+      <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl">
+        <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30 mr-4">
+            <Sparkles className="h-6 w-6 text-amber-400" />
+          </div>
+          Customization Tips
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="backdrop-blur-xl bg-slate-800/30 p-5 rounded-2xl border border-orange-500/10 hover:border-orange-500/20 transition-all duration-300">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-orange-500/20 to-rose-500/20 flex items-center justify-center border border-orange-500/30 flex-shrink-0 mt-1">
+                <Zap className="h-4 w-4 text-orange-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Your Cover Letter</h2>
-                <p className="text-gray-400 text-sm">AI-generated and ready for customization</p>
+                <h4 className="text-sm font-semibold text-orange-300 mb-2">Personalize Your Letter</h4>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Add specific examples from your experience that match the job requirements
+                </p>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-3">
-              {/* Preview Mode Toggle */}
-              <div className="flex items-center space-x-1 p-1 rounded-xl glass-dark border border-white/10">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPreviewMode("edit")}
-                  className={`h-8 px-3 text-xs rounded-lg transition-all duration-300 ${
-                    previewMode === "edit" 
-                      ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
-                      : "text-gray-400 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Edit3 className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPreviewMode("preview")}
-                  className={`h-8 px-3 text-xs rounded-lg transition-all duration-300 ${
-                    previewMode === "preview" 
-                      ? "bg-purple-600/20 text-purple-400 border border-purple-500/30" 
-                      : "text-gray-400 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  Preview
-                </Button>
-              </div>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopy}
-                className="h-10 px-4 glass-dark border border-white/20 hover:border-blue-400/50 hover:bg-blue-600/20 text-gray-300 hover:text-blue-400 transition-all duration-300 rounded-xl"
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDownload}
-                className="h-10 px-4 glass-dark border border-white/20 hover:border-green-400/50 hover:bg-green-600/20 text-gray-300 hover:text-green-400 transition-all duration-300 rounded-xl"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Editor/Preview Section */}
-        <div className="glass-dark rounded-2xl border border-white/10 overflow-hidden backdrop-blur-xl">
-          <div className="border-b border-white/10 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500/60 rounded-full"></div>
-                  <div className="w-3 h-3 bg-yellow-500/60 rounded-full"></div>
-                  <div className="w-3 h-3 bg-green-500/60 rounded-full"></div>
-                </div>
-                <span className="text-sm text-gray-400 font-mono">cover-letter.md</span>
-              </div>
-              
-              {isEditing && (
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsEditing(false)}
-                    className="h-8 px-3 text-xs text-gray-400 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSave}
-                    className="h-8 px-3 text-xs bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white border-0 rounded-lg"
-                  >
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Save
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="relative">
-            {/* Loading overlay for better UX */}
-            <div className="absolute inset-0 bg-gradient-to-br from-black/50 via-transparent to-black/30 pointer-events-none opacity-20"></div>
-            
-            <div className="relative z-10">
-              <MDEditor
-                value={editedContent || content}
-                onChange={setEditedContent}
-                preview={previewMode}
-                hideToolbar={previewMode === "preview"}
-                visibleDragBar={false}
-                height={700}
-                data-color-mode="dark"
-                className="custom-md-editor"
-                style={{
-                  backgroundColor: 'transparent',
-                }}
-                textareaProps={{
-                  className: "bg-transparent text-white placeholder:text-gray-500 border-none outline-none resize-none",
-                  style: {
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    backgroundColor: 'transparent',
-                    color: '#ffffff',
-                  }
-                }}
-                previewOptions={{
-                  className: "prose prose-invert max-w-none p-8",
-                  style: {
-                    backgroundColor: 'transparent',
-                    color: '#ffffff',
-                  }
-                }}
-              />
+          <div className="backdrop-blur-xl bg-slate-800/30 p-5 rounded-2xl border border-rose-500/10 hover:border-rose-500/20 transition-all duration-300">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-rose-500/20 to-pink-500/20 flex items-center justify-center border border-rose-500/30 flex-shrink-0 mt-1">
+                <FileText className="h-4 w-4 text-rose-400" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-rose-300 mb-2">Tailor the Content</h4>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Adjust the tone and emphasis based on the company culture and role level
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Tips Section */}
-        <div className="glass-dark p-6 rounded-2xl border border-white/10 backdrop-blur-xl">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-            <div className="p-2 rounded-lg bg-gradient-to-r from-yellow-600/20 to-orange-600/20 mr-3">
-              <FileText className="h-4 w-4 text-yellow-400" />
+          <div className="backdrop-blur-xl bg-slate-800/30 p-5 rounded-2xl border border-amber-500/10 hover:border-amber-500/20 transition-all duration-300">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-amber-500/20 to-yellow-500/20 flex items-center justify-center border border-amber-500/30 flex-shrink-0 mt-1">
+                <Edit3 className="h-4 w-4 text-amber-400" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-amber-300 mb-2">Review and Edit</h4>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Check for any placeholder text and ensure all details are accurate
+                </p>
+              </div>
             </div>
-            Customization Tips
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-300">✨ Personalize Your Letter</h4>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Add specific examples from your experience that match the job requirements
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-300">🎯 Tailor the Content</h4>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Adjust the tone and emphasis based on the company culture and role level
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-300">📝 Review and Edit</h4>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Check for any placeholder text and ensure all details are accurate
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-300">🚀 Final Check</h4>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Proofread for grammar and ensure the letter flows naturally
-              </p>
+          </div>
+
+          <div className="backdrop-blur-xl bg-slate-800/30 p-5 rounded-2xl border border-emerald-500/10 hover:border-emerald-500/20 transition-all duration-300">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-emerald-500/20 to-green-500/20 flex items-center justify-center border border-emerald-500/30 flex-shrink-0 mt-1">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-emerald-300 mb-2">Final Check</h4>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Proofread for grammar and ensure the letter flows naturally
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -247,7 +241,7 @@ const CoverLetterPreview = ({ content }) => {
         
         .custom-md-editor .w-md-editor-text {
           background: rgba(0, 0, 0, 0.2) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border: 1px solid rgba(251, 146, 60, 0.1) !important;
         }
         
         .custom-md-editor .wmde-markdown {
@@ -277,12 +271,6 @@ const CoverLetterPreview = ({ content }) => {
         
         .custom-md-editor .w-md-editor-preview {
           background: transparent !important;
-        }
-        
-        .glass-dark {
-          background: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
         }
       `}</style>
     </div>
