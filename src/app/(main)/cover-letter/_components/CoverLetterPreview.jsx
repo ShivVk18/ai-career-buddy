@@ -10,7 +10,8 @@ import {
   FileText, 
   CheckCircle2, 
   Eye,
-  EyeOff 
+  Sparkles,
+  Zap
 } from "lucide-react";
 import { toast } from "sonner";
 

@@ -6,16 +6,8 @@ import { parse, format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { entrySchema } from "@/app/lib/schema";
-import { Sparkles, PlusCircle, X, Pencil, Save, Loader2, Calendar, MapPin } from "lucide-react";
+import { Sparkles, PlusCircle, X, Pencil, Save, Loader2, Calendar, MapPin, CheckCircle } from "lucide-react";
 import { improveWithAI } from "@/actions/Resume";
 import { toast } from "sonner";
 import useFetch from "@/hooks/use-fetch";
@@ -58,6 +50,7 @@ export function EntryForm({ type, entries, onChange }) {
     };
 
     onChange([...entries, formattedEntry]);
+
     reset();
     setIsAdding(false);
   });
@@ -74,7 +67,6 @@ export function EntryForm({ type, entries, onChange }) {
     error: improveError,
   } = useFetch(improveWithAI);
 
-  // Add this effect to handle the improvement result
   useEffect(() => {
     if (improvedContent && !isImproving) {
       setValue("description", improvedContent);
@@ -85,7 +77,6 @@ export function EntryForm({ type, entries, onChange }) {
     }
   }, [improvedContent, improveError, isImproving, setValue]);
 
-  // Replace handleImproveDescription with this
   const handleImproveDescription = async () => {
     const description = watch("description");
     if (!description) {
@@ -95,125 +86,91 @@ export function EntryForm({ type, entries, onChange }) {
 
     await improveWithAIFn({
       current: description,
-      type: type.toLowerCase(), // 'experience', 'education', or 'project'
+      type: type.toLowerCase(),
     });
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.4,
-        ease: [0.25, 0.25, 0.25, 0.75],
-      },
-    },
-    exit: {
-      y: -20,
-      opacity: 0,
-      transition: { duration: 0.3 },
-    },
   };
 
   return (
     <div className="space-y-6">
-      <AnimatePresence>
+      <div className="space-y-4">
         {entries.map((item, index) => (
           <motion.div
             key={index}
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="backdrop-blur-xl bg-slate-800/50 border border-orange-500/20 rounded-2xl p-6 hover:border-orange-500/40 transition-all duration-300 group"
           >
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl hover:shadow-xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                <div className="space-y-2">
-                  <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    {item.title}
-                  </CardTitle>
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {item.organization}
-                  </div>
-                </div>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    type="button"
-                    onClick={() => handleDelete(index)}
-                    className="border-0 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 rounded-xl shadow-sm"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </motion.div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-white mb-1">
+                  {item.title}
+                </h4>
+                <p className="text-orange-300 font-medium mb-2">
+                  {item.organization}
+                </p>
+                <div className="flex items-center text-sm text-gray-400">
                   <Calendar className="h-4 w-4 mr-2" />
                   {item.current
                     ? `${item.startDate} - Present`
                     : `${item.startDate} - ${item.endDate}`}
                 </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap bg-gray-50/50 dark:bg-gray-700/50 p-4 rounded-xl">
-                  {item.description}
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(index)}
+                className="backdrop-blur-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 hover:border-rose-500/50 text-rose-300 p-2 rounded-xl transition-all duration-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {item.description}
+            </p>
           </motion.div>
         ))}
-      </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {isAdding && (
           <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            layout
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="backdrop-blur-xl bg-slate-800/50 border border-orange-500/20 rounded-3xl overflow-hidden shadow-2xl"
           >
-            <Card className="border-0 shadow-2xl bg-gradient-to-br from-white/95 to-gray-50/95 dark:from-gray-800/95 dark:to-gray-900/95 backdrop-blur-sm rounded-3xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20">
-                <CardTitle className="flex items-center text-xl font-semibold text-gray-800 dark:text-gray-200">
-                  <PlusCircle className="h-6 w-6 mr-3 text-blue-600" />
-                  Add New {type}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-6">
+            <div className="p-8">
+              <h4 className="text-2xl font-semibold text-white mb-6 flex items-center">
+                <PlusCircle className="h-6 w-6 text-orange-400 mr-3" />
+                Add {type}
+              </h4>
+              
+              <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">
                       Title/Position
                     </label>
                     <Input
-                      placeholder={`${type} title or position`}
+                      placeholder="e.g., Software Engineer"
                       {...register("title")}
-                      error={errors.title}
-                      className="border-0 bg-white/80 dark:bg-gray-700/80 shadow-sm rounded-xl h-12"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white placeholder-gray-500"
                     />
                     {errors.title && (
-                      <p className="text-sm text-red-500">{errors.title.message}</p>
+                      <p className="text-sm text-rose-400">{errors.title.message}</p>
                     )}
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">
                       Organization/Company
                     </label>
                     <Input
-                      placeholder="Organization or company name"
+                      placeholder="e.g., Tech Company Inc."
                       {...register("organization")}
-                      error={errors.organization}
-                      className="border-0 bg-white/80 dark:bg-gray-700/80 shadow-sm rounded-xl h-12"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white placeholder-gray-500"
                     />
                     {errors.organization && (
-                      <p className="text-sm text-red-500">
+                      <p className="text-sm text-rose-400">
                         {errors.organization.message}
                       </p>
                     )}
@@ -221,42 +178,40 @@ export function EntryForm({ type, entries, onChange }) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">
                       Start Date
                     </label>
                     <Input
                       type="month"
                       {...register("startDate")}
-                      error={errors.startDate}
-                      className="border-0 bg-white/80 dark:bg-gray-700/80 shadow-sm rounded-xl h-12"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white"
                     />
                     {errors.startDate && (
-                      <p className="text-sm text-red-500">
+                      <p className="text-sm text-rose-400">
                         {errors.startDate.message}
                       </p>
                     )}
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">
                       End Date
                     </label>
                     <Input
                       type="month"
                       {...register("endDate")}
                       disabled={current}
-                      error={errors.endDate}
-                      className="border-0 bg-white/80 dark:bg-gray-700/80 shadow-sm rounded-xl h-12 disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     {errors.endDate && (
-                      <p className="text-sm text-red-500">
+                      <p className="text-sm text-rose-400">
                         {errors.endDate.message}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl">
+                <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     id="current"
@@ -267,108 +222,82 @@ export function EntryForm({ type, entries, onChange }) {
                         setValue("endDate", "");
                       }
                     }}
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="w-4 h-4 rounded border-orange-500/30 bg-slate-900/50 text-orange-500 focus:ring-orange-500/50 focus:ring-offset-slate-900 cursor-pointer"
                   />
-                  <label htmlFor="current" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    This is my current {type.toLowerCase()}
+                  <label htmlFor="current" className="text-gray-300 font-medium cursor-pointer">
+                    Current {type}
                   </label>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">
                     Description
                   </label>
                   <Textarea
-                    placeholder={`Describe your ${type.toLowerCase()}, key achievements, and responsibilities...`}
-                    className="h-32 border-0 bg-white/80 dark:bg-gray-700/80 shadow-sm rounded-xl resize-none"
+                    placeholder={`Describe your ${type.toLowerCase()} responsibilities and achievements...`}
+                    className="h-32 w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white placeholder-gray-500 resize-none"
                     {...register("description")}
-                    error={errors.description}
                   />
                   {errors.description && (
-                    <p className="text-sm text-red-500">
+                    <p className="text-sm text-rose-400">
                       {errors.description.message}
                     </p>
                   )}
                 </div>
-
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                
+                <button
+                  type="button"
+                  onClick={handleImproveDescription}
+                  disabled={isImproving || !watch("description")}
+                  className="backdrop-blur-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border border-purple-500/30 hover:border-purple-500/50 text-purple-300 hover:text-purple-200 py-2 px-6 rounded-xl transition-all duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleImproveDescription}
-                    disabled={isImproving || !watch("description")}
-                    className="w-full border-0 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 dark:hover:from-purple-900/30 dark:hover:to-pink-900/30 text-purple-700 dark:text-purple-300 rounded-2xl py-3 shadow-lg"
-                  >
-                    {isImproving ? (
-                      <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Enhancing with AI...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-5 w-5 mr-2" />
-                        Improve with AI ✨
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
-              </CardContent>
-              <CardFooter className="bg-gray-50/50 dark:bg-gray-800/50 flex justify-end space-x-4 p-6">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  {isImproving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Improving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      <span>Improve with AI</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-orange-500/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    reset();
+                    setIsAdding(false);
+                  }}
+                  className="backdrop-blur-xl bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 hover:border-slate-500/50 text-gray-300 hover:text-white py-2 px-6 rounded-xl transition-all duration-300 font-medium"
                 >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      reset();
-                      setIsAdding(false);
-                    }}
-                    className="px-6 py-3 border-gray-200 dark:border-gray-600 rounded-2xl"
-                  >
-                    Cancel
-                  </Button>
-                </motion.div>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  className="bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white py-2 px-6 rounded-xl transition-all duration-300 flex items-center space-x-2 font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40"
                 >
-                  <Button
-                    type="button"
-                    onClick={handleAdd}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-2xl shadow-lg"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add {type}
-                  </Button>
-                </motion.div>
-              </CardFooter>
-            </Card>
+                  <PlusCircle className="h-4 w-4" />
+                  <span>Add Entry</span>
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {!isAdding && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.3 }}
+        <button
+          onClick={() => setIsAdding(true)}
+          className="w-full backdrop-blur-xl bg-slate-800/50 hover:bg-slate-800/70 border-2 border-dashed border-orange-500/30 hover:border-orange-500/50 text-orange-300 hover:text-orange-200 py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 font-medium group"
         >
-          <Button
-            className="w-full py-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 dark:from-gray-800 dark:to-gray-700 dark:hover:from-gray-700 dark:hover:to-gray-600 text-gray-700 dark:text-gray-300 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300"
-            variant="outline"
-            onClick={() => setIsAdding(true)}
-          >
-            <PlusCircle className="h-5 w-5 mr-2" />
-            Add New {type}
-          </Button>
-        </motion.div>
+          <PlusCircle className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+          <span>Add {type}</span>
+        </button>
       )}
     </div>
   );

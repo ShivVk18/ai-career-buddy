@@ -1,7 +1,11 @@
 import React from "react";
 
 const MainLayout = async ({ children }) => {
-  return <div className="container mx-auto ">{children}</div>;
+  return (
+    <div className="w-full h-screen">
+      {children}
+    </div>
+  );
 };
 
 export default MainLayout;
