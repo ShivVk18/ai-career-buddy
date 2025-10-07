@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
-import { Spotlight } from "@/components/ui/spotlight";
+
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
 import { SparklesCore } from "@/components/ui/sparkles";
@@ -31,6 +31,7 @@ import {
 import { howItWorks } from "@/data/howitWorks";
 import { AnimatedSection, AnimatedCard, AnimatedText } from "@/components/AnimatedSection";
 import { GradientText } from "@/components/GradientText";
+import Header from "@/components/Header";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -159,11 +160,9 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20 text-white overflow-hidden">
-      {/* Hero Section */}
+      <Header/>
       <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="orange" />
-        <Spotlight className="top-10 left-full h-[80vh] w-[50vw]" fill="amber" />
-        <Spotlight className="top-28 left-80 h-[80vh] w-[50vw]" fill="rose" />
+        
         
         <SparklesCore
           id="hero-sparkles"
