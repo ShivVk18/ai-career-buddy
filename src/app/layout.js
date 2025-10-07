@@ -19,6 +19,7 @@ export default function RootLayout({ children }) {
       appearance={{
         baseTheme: dark,
       }}
+      afterSignOutUrl="/"
     >
       <html lang="en" suppressHydrationWarning>
         <head>

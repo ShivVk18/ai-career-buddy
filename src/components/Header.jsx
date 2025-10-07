@@ -72,10 +72,10 @@ export default async function Header() {
                 className="hidden lg:inline-flex items-center gap-3 px-4 py-2 h-11 bg-orange-500/5 hover:bg-orange-500/10 border border-orange-500/10 hover:border-orange-400/30 text-gray-200 hover:text-orange-300 transition-all duration-500 rounded-2xl group-hover:shadow-lg group-hover:shadow-orange-500/20 backdrop-blur-sm"
               >
                 <TrendingUp className="h-4 w-4 text-orange-400 group-hover:text-orange-300 transition-colors duration-300" />
-                <span className="font-medium">Industry Insights</span>
+                <span className="font-medium">Dashboard</span>
               </Button>
               
-              {/* Mobile version */}
+              
               <Button 
                 variant="ghost" 
                 className="lg:hidden w-11 h-11 p-0 bg-orange-500/5 hover:bg-orange-500/10 border border-orange-500/10 hover:border-orange-400/30 rounded-2xl backdrop-blur-sm transition-all duration-300"
@@ -223,7 +223,7 @@ export default async function Header() {
                     userButtonPopoverFooter: "bg-orange-500/5 rounded-b-2xl",
                   },
                 }}
-                afterSignOutUrl="/"
+                
               />
               
               {/* Enhanced status indicator with orange theme */}

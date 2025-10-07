@@ -1,247 +1,267 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  BriefcaseIcon,
+  ScrollText,
+  Briefcase,
+  FileText,
+  BrainCircuit,
+  ClipboardList,
   LineChart,
-  TrendingUp,
-  TrendingDown,
-  Brain,
-  Calendar,
-  Sparkles,
-  Award,
+  LayoutDashboard,
+  CreditCard,
+  User,
+  LogOut,
+  Menu,
+  X,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
 
-const DashboardView = ({ insights }) => {
-  // Transform salary data for the chart
-  const salaryData = insights.salaryRanges.map((range) => ({
-    name: range.role,
-    min: range.min / 1000,
-    max: range.max / 1000,
-    median: range.median / 1000,
-  }));
+const featuresCard = [
+  {
+    icon: <ScrollText className="w-10 h-10 mb-4 text-orange-500" />,
+    title: "Smart Resume Creation",
+    description: "Generate ATS-optimized resumes with AI assistance.",
+    link: "/resume",
+  },
+  {
+    icon: <Briefcase className="w-10 h-10 mb-4 text-orange-500" />,
+    title: "Interview Preparation",
+    description:
+      "Practice with role-specific questions and get instant feedback to improve your performance.",
+    link: "/interview",
+  },
+  {
+    icon: <FileText className="w-10 h-10 mb-4 text-orange-500" />,
+    title: "Cover Letter Generator",
+    description:
+      "Craft professional, job-specific cover letters in seconds using AI suggestions.",
+    link: "/cover-letter",
+  },
+  {
+    icon: <BrainCircuit className="w-10 h-10 mb-4 text-orange-500" />,
+    title: "AI-Powered Career Guidance",
+    description:
+      "Get personalized career advice and step-by-step roadmaps for your dream role.",
+    link: "/roadmap",
+  },
+  {
+    icon: <ClipboardList className="w-10 h-10 mb-4 text-orange-500" />,
+    title: "Resume Parser",
+    description:
+      "Upload your resume and let AI extract key details to enhance your job profile.",
+    link: "/resume-parser",
+  },
+  {
+    icon: <LineChart className="w-10 h-10 mb-4 text-orange-500" />,
+    title: "Industry Insights",
+    description:
+      "Stay ahead with real-time industry trends, salary data, and market analysis.",
+    link: "/industry-insights",
+  },
+];
 
-  const getDemandLevelColor = (level) => {
-    switch (level.toLowerCase()) {
-      case "high":
-        return "bg-gradient-to-r from-green-500 to-emerald-500";
-      case "medium":
-        return "bg-gradient-to-r from-yellow-500 to-amber-500";
-      case "low":
-        return "bg-gradient-to-r from-red-500 to-rose-500";
-      default:
-        return "bg-gradient-to-r from-gray-500 to-slate-500";
-    }
-  };
+const DashboardView = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Mock user data - replace with actual Clerk data
+  const userName = "John Doe";
+  const userEmail = "john@example.com";
+  const creditsRemaining = 150;
 
-  const getMarketOutlookInfo = (outlook) => {
-    switch (outlook.toLowerCase()) {
-      case "positive":
-        return { icon: TrendingUp, color: "text-green-400" };
-      case "neutral":
-        return { icon: LineChart, color: "text-yellow-400" };
-      case "negative":
-        return { icon: TrendingDown, color: "text-red-400" };
-      default:
-        return { icon: LineChart, color: "text-gray-400" };
-    }
-  };
-
-  const OutlookIcon = getMarketOutlookInfo(insights.marketOutlook).icon;
-  const outlookColor = getMarketOutlookInfo(insights.marketOutlook).color;
-
-  // Format dates using date-fns
-  const lastUpdatedDate = format(new Date(insights.lastUpdated), "dd/MM/yyyy");
-  const nextUpdateDistance = formatDistanceToNow(
-    new Date(insights.nextUpdate),
-    { addSuffix: true }
+  const Logo = () => (
+    <div className="flex items-center gap-2 px-4 py-3">
+      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-rose-500"></div>
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-lg font-bold text-white"
+      >
+        CareerAI
+      </motion.span>
+    </div>
   );
 
   return (
-    <div className="space-y-8">
-      {/* Last Updated Badge */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 backdrop-blur-xl">
-          <Calendar className="h-4 w-4 text-blue-400 mr-2" />
-          <span className="text-sm font-medium text-blue-300">
-            Last updated: {lastUpdatedDate}
-          </span>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl animate-pulse"></div>
       </div>
 
-      {/* Market Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="backdrop-blur-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-3xl p-6 hover:scale-105 transition-transform duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-green-300">Market Outlook</h3>
-            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
-              <OutlookIcon className={`h-5 w-5 ${outlookColor}`} />
-            </div>
+      <div className="relative z-10 flex h-screen">
+        {/* Sidebar */}
+        <motion.aside
+          initial={false}
+          animate={{
+            width: sidebarOpen ? 280 : 80,
+          }}
+          className="bg-slate-900/80 backdrop-blur-xl border-r border-slate-800 flex flex-col"
+        >
+          {/* Logo */}
+          <div className="border-b border-slate-800">
+            {sidebarOpen ? (
+              <Logo />
+            ) : (
+              <div className="flex items-center justify-center py-3">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-rose-500"></div>
+              </div>
+            )}
           </div>
-          <div className="text-3xl font-bold text-white mb-2">
-            {insights.marketOutlook}
-          </div>
-          <p className="text-xs text-green-200">
-            Next update {nextUpdateDistance}
-          </p>
-        </div>
 
-        <div className="backdrop-blur-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-3xl p-6 hover:scale-105 transition-transform duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-blue-300">Industry Growth</h3>
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-              <TrendingUp className="h-5 w-5 text-blue-400" />
+          {/* Toggle Button */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="absolute -right-3 top-9 bg-slate-800 text-slate-300 p-1 rounded-full border border-slate-700 hover:bg-slate-700 transition-colors"
+          >
+            {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
+
+          {/* Navigation */}
+          <nav className="flex-1 py-6">
+            <div className="space-y-1 px-3">
+              <SidebarLink
+                icon={<LayoutDashboard size={20} />}
+                label="Dashboard"
+                href="#"
+                open={sidebarOpen}
+              />
+            </div>
+          </nav>
+
+          {/* Credits Display */}
+          <div className="border-t border-slate-800 p-4">
+            <div className="bg-gradient-to-br from-orange-500/10 to-rose-500/10 rounded-lg p-3 border border-orange-500/20">
+              <div className="flex items-center gap-3">
+                <CreditCard className="text-orange-500 shrink-0" size={20} />
+                {sidebarOpen && (
+                  <div>
+                    <p className="text-xs text-slate-400">Credits</p>
+                    <p className="text-lg font-bold text-white">
+                      {creditsRemaining}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mb-3">
-            {insights.growthRate.toFixed(1)}%
+
+          {/* User Profile */}
+          <div className="border-t border-slate-800 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-semibold shrink-0">
+                {userName.charAt(0)}
+              </div>
+              {sidebarOpen && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {userName}
+                  </p>
+                  <p className="text-xs text-slate-400 truncate">{userEmail}</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="h-2 bg-slate-800/50 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500"
-              style={{ width: `${Math.min(insights.growthRate, 100)}%` }}
+
+          {/* Logout */}
+          <div className="border-t border-slate-800 p-3">
+            <SidebarLink
+              icon={<LogOut size={20} />}
+              label="Logout"
+              href="#"
+              open={sidebarOpen}
             />
           </div>
-        </div>
+        </motion.aside>
 
-        <div className="backdrop-blur-xl bg-gradient-to-br from-orange-500/10 to-rose-500/10 border border-orange-500/30 rounded-3xl p-6 hover:scale-105 transition-transform duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-orange-300">Demand Level</h3>
-            <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center border border-orange-500/30">
-              <BriefcaseIcon className="h-5 w-5 text-orange-400" />
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto">
+          <div className="container mx-auto px-6 py-8">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Welcome back, {userName.split(" ")[0]}!
+              </h1>
+              <p className="text-slate-400">
+                Choose a feature to get started with your career journey
+              </p>
+            </div>
+
+            {/* Feature Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuresCard.map((feature, idx) => (
+                <FeatureCard key={idx} feature={feature} index={idx} />
+              ))}
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mb-3">
-            {insights.demandLevel}
-          </div>
-          <div
-            className={`h-2 rounded-full ${getDemandLevelColor(
-              insights.demandLevel
-            )}`}
-          />
-        </div>
-
-        <div className="backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-3xl p-6 hover:scale-105 transition-transform duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-purple-300">Top Skills</h3>
-            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-              <Brain className="h-5 w-5 text-purple-400" />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {insights.topSkills.slice(0, 3).map((skill) => (
-              <span
-                key={skill}
-                className="px-3 py-1 bg-purple-500/20 text-purple-200 rounded-full text-xs border border-purple-500/30"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Salary Ranges Chart */}
-      <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-white mb-2 flex items-center">
-            <Award className="h-6 w-6 text-orange-400 mr-3" />
-            Salary Ranges by Role
-          </h2>
-          <p className="text-gray-400">
-            Displaying minimum, median, and maximum salaries (in thousands)
-          </p>
-        </div>
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={salaryData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis 
-                dataKey="name" 
-                stroke="#94a3b8"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis 
-                stroke="#94a3b8"
-                style={{ fontSize: '12px' }}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="backdrop-blur-xl bg-slate-900/90 border border-orange-500/30 rounded-xl p-4 shadow-2xl">
-                        <p className="font-semibold text-white mb-2">{label}</p>
-                        {payload.map((item) => (
-                          <p key={item.name} className="text-sm text-gray-300">
-                            {item.name}: ${item.value}K
-                          </p>
-                        ))}
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Bar dataKey="min" fill="#f97316" name="Min Salary (K)" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="median" fill="#fb923c" name="Median Salary (K)" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="max" fill="#fdba74" name="Max Salary (K)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Industry Trends */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-white mb-2 flex items-center">
-              <TrendingUp className="h-6 w-6 text-orange-400 mr-3" />
-              Key Industry Trends
-            </h2>
-            <p className="text-gray-400">Current trends shaping the industry</p>
-          </div>
-          <ul className="space-y-4">
-            {insights.keyTrends.map((trend, index) => (
-              <li key={index} className="flex items-start space-x-3 group">
-                <div className="h-2 w-2 mt-2 rounded-full bg-orange-400 group-hover:scale-150 transition-transform duration-300" />
-                <span className="text-gray-300 leading-relaxed">{trend}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-white mb-2 flex items-center">
-              <Sparkles className="h-6 w-6 text-orange-400 mr-3" />
-              Recommended Skills
-            </h2>
-            <p className="text-gray-400">Skills to consider developing</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {insights.recommendedSkills.map((skill) => (
-              <span
-                key={skill}
-                className="px-4 py-2 bg-gradient-to-r from-orange-500/20 to-rose-500/20 text-orange-200 rounded-full text-sm border border-orange-500/30 hover:scale-110 transition-transform duration-300 cursor-default"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
+        </main>
       </div>
     </div>
   );
 };
+
+const SidebarLink = ({ icon, label, href, open }) => (
+  <a
+    href={href}
+    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition-all group"
+  >
+    <span className="shrink-0 group-hover:text-orange-500 transition-colors">
+      {icon}
+    </span>
+    {open && (
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-sm font-medium"
+      >
+        {label}
+      </motion.span>
+    )}
+  </a>
+);
+
+const FeatureCard = ({ feature, index }) => (
+  <motion.a
+    href={feature.link}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: index * 0.1 }}
+    whileHover={{ scale: 1.02 }}
+    className="group relative bg-slate-900/60 backdrop-blur-sm border border-slate-800 rounded-xl p-6 hover:border-orange-500/50 transition-all duration-300 overflow-hidden"
+  >
+    {/* Gradient Overlay on Hover */}
+    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/0 to-rose-500/0 group-hover:from-orange-500/5 group-hover:to-rose-500/5 transition-all duration-300"></div>
+    
+    <div className="relative z-10">
+      <div className="group-hover:scale-110 transition-transform duration-300">
+        {feature.icon}
+      </div>
+      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-orange-500 transition-colors">
+        {feature.title}
+      </h3>
+      <p className="text-slate-400 text-sm leading-relaxed">
+        {feature.description}
+      </p>
+    </div>
+
+    {/* Arrow indicator */}
+    <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+      <svg
+        className="w-5 h-5 text-orange-500"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 8l4 4m0 0l-4 4m4-4H3"
+        />
+      </svg>
+    </div>
+  </motion.a>
+);
 
 export default DashboardView;
