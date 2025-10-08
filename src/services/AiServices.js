@@ -1,9 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
-  apiKey:
-    process.env.GEMINI_API_KEY ,
-  
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 class aiServices {
@@ -36,15 +34,15 @@ class aiServices {
   cleanJsonResponse(response) {
     // Remove markdown code blocks
     let cleaned = response.replace(/```(?:json)?\n?/g, "").trim();
-    
+
     // Remove any trailing text after the JSON
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}') + 1;
-    
+    const jsonStart = cleaned.indexOf("{");
+    const jsonEnd = cleaned.lastIndexOf("}") + 1;
+
     if (jsonStart !== -1 && jsonEnd > jsonStart) {
       cleaned = cleaned.substring(jsonStart, jsonEnd);
     }
-    
+
     return cleaned;
   }
 
@@ -55,11 +53,11 @@ class aiServices {
     } catch (error) {
       console.error("JSON Parse Error:", error.message);
       console.error("Problematic JSON:", jsonString.substring(0, 500) + "...");
-      
+
       if (fallbackData) {
         return fallbackData;
       }
-      
+
       throw new Error(`Invalid JSON response: ${error.message}`);
     }
   }
@@ -96,7 +94,9 @@ class aiServices {
 
       // Handle truncated responses more gracefully
       if (candidate.finishReason === "MAX_TOKENS") {
-        console.warn("Response truncated due to token limit - using partial response");
+        console.warn(
+          "Response truncated due to token limit - using partial response"
+        );
         // Don't throw error for MAX_TOKENS, try to parse what we have
       }
 
@@ -117,8 +117,8 @@ class aiServices {
 You are an AI that outputs ONLY valid JSON.
 
 Generate exactly 10 multiple-choice interview questions for a ${industry} professional${
-  skills?.length ? ` with expertise in ${skills.join(", ")}` : ""
-}.
+      skills?.length ? ` with expertise in ${skills.join(", ")}` : ""
+    }.
 
 Each question must follow this schema:
 {
@@ -146,7 +146,7 @@ Rules:
         maxOutputTokens: 3500,
         temperature: 0.3,
       });
-       
+
       const cleanedText = this.cleanJsonResponse(response);
       const quiz = this.safeJsonParse(cleanedText);
       return quiz.questions;
@@ -292,7 +292,9 @@ Rules:
   // Optimized career roadmap generation - much smaller and focused
   async generateCareerRoadmap(data, user) {
     // Super minimal prompt to avoid token limits
-    const prompt = `Generate career roadmap JSON for ${data.currentRole} to ${data.targetRole} in ${data.industry}.
+    const prompt = `Generate career roadmap JSON for ${data.currentRole} to ${
+      data.targetRole
+    } in ${data.industry}.
 
 Skills: ${user.skills?.join(", ") || "Basic"}
 Experience: ${user.experience} years
@@ -320,43 +322,51 @@ Customize for specific role transition. Keep JSON compact.`;
 
     try {
       const response = await this.generateContent(prompt, {
-        maxOutputTokens: 2500,  // Reduced from 4000
-        temperature: 0.2,       // Lower temperature for more consistent output
+        maxOutputTokens: 2500, // Reduced from 4000
+        temperature: 0.2, // Lower temperature for more consistent output
       });
 
       this.debugLog("Raw AI Response", response.substring(0, 200) + "...");
 
       let cleanedText = this.cleanJsonResponse(response);
-      
+
       // Additional cleaning for partial responses
       if (cleanedText.includes('"timeline"')) {
         // Find the last complete field
         const timelineIndex = cleanedText.lastIndexOf('"timeline"');
         if (timelineIndex !== -1) {
           const afterTimeline = cleanedText.substring(timelineIndex);
-          const nextComma = afterTimeline.indexOf(',');
-          const nextBrace = afterTimeline.indexOf('}');
-          
+          const nextComma = afterTimeline.indexOf(",");
+          const nextBrace = afterTimeline.indexOf("}");
+
           if (nextBrace !== -1 && (nextComma === -1 || nextBrace < nextComma)) {
             // Timeline is the last field, this is likely complete
-            cleanedText = cleanedText.substring(0, timelineIndex + afterTimeline.substring(0, nextBrace + 1).length);
+            cleanedText = cleanedText.substring(
+              0,
+              timelineIndex + afterTimeline.substring(0, nextBrace + 1).length
+            );
           }
         }
       }
-      
+
       // Create comprehensive fallback data
       const fallbackData = {
         steps: [
           {
             id: 1,
             title: "Skills Assessment & Gap Analysis",
-            description: "Evaluate current skills against target role requirements",
+            description:
+              "Evaluate current skills against target role requirements",
             duration: "2 weeks",
             priority: "High",
             category: "skill",
             estimatedHours: 15,
             dependencies: [],
-            resources: ["Industry skill frameworks", "Online assessment tools", "Job posting analysis"]
+            resources: [
+              "Industry skill frameworks",
+              "Online assessment tools",
+              "Job posting analysis",
+            ],
           },
           {
             id: 2,
@@ -367,7 +377,11 @@ Customize for specific role transition. Keep JSON compact.`;
             category: "education",
             estimatedHours: 100,
             dependencies: [1],
-            resources: ["Online courses", "Technical documentation", "Practice projects"]
+            resources: [
+              "Online courses",
+              "Technical documentation",
+              "Practice projects",
+            ],
           },
           {
             id: 3,
@@ -378,7 +392,11 @@ Customize for specific role transition. Keep JSON compact.`;
             category: "experience",
             estimatedHours: 80,
             dependencies: [2],
-            resources: ["Personal projects", "Open source contributions", "Portfolio development"]
+            resources: [
+              "Personal projects",
+              "Open source contributions",
+              "Portfolio development",
+            ],
           },
           {
             id: 4,
@@ -389,8 +407,12 @@ Customize for specific role transition. Keep JSON compact.`;
             category: "networking",
             estimatedHours: 20,
             dependencies: [],
-            resources: ["LinkedIn networking", "Industry meetups", "Professional associations"]
-          }
+            resources: [
+              "LinkedIn networking",
+              "Industry meetups",
+              "Professional associations",
+            ],
+          },
         ],
         milestones: [
           {
@@ -398,25 +420,38 @@ Customize for specific role transition. Keep JSON compact.`;
             title: "Skills Gap Identified",
             description: "Clear understanding of what skills need development",
             targetMonth: 1,
-            criteria: ["Skills assessment completed", "Learning plan created", "Resources identified"],
-            reward: "Focused learning direction"
+            criteria: [
+              "Skills assessment completed",
+              "Learning plan created",
+              "Resources identified",
+            ],
+            reward: "Focused learning direction",
           },
           {
             id: 2,
             title: "Portfolio Established",
-            description: "Demonstrable projects showing target role competencies",
+            description:
+              "Demonstrable projects showing target role competencies",
             targetMonth: 4,
-            criteria: ["2-3 projects completed", "Portfolio website live", "Case studies written"],
-            reward: "Interview-ready portfolio"
+            criteria: [
+              "2-3 projects completed",
+              "Portfolio website live",
+              "Case studies written",
+            ],
+            reward: "Interview-ready portfolio",
           },
           {
             id: 3,
             title: "Network Established",
             description: "Meaningful connections in target industry",
             targetMonth: 6,
-            criteria: ["10+ relevant connections", "Informational interviews conducted", "Industry knowledge current"],
-            reward: "Insider job opportunities"
-          }
+            criteria: [
+              "10+ relevant connections",
+              "Informational interviews conducted",
+              "Industry knowledge current",
+            ],
+            reward: "Insider job opportunities",
+          },
         ],
         resources: [
           {
@@ -425,7 +460,7 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://coursera.org",
             description: "Comprehensive courses for skill development",
             estimatedCost: "$49/month",
-            timeCommitment: "5-10 hours/week"
+            timeCommitment: "5-10 hours/week",
           },
           {
             title: "GitHub Portfolio",
@@ -433,7 +468,7 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://github.com",
             description: "Showcase projects and code samples",
             estimatedCost: "Free",
-            timeCommitment: "2-5 hours/week"
+            timeCommitment: "2-5 hours/week",
           },
           {
             title: "LinkedIn Learning",
@@ -441,7 +476,7 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://linkedin.com/learning",
             description: "Professional development courses",
             estimatedCost: "$29.99/month",
-            timeCommitment: "3-5 hours/week"
+            timeCommitment: "3-5 hours/week",
           },
           {
             title: "Industry Certifications",
@@ -449,28 +484,40 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://example.com",
             description: "Relevant professional certifications",
             estimatedCost: "$100-500",
-            timeCommitment: "20-40 hours prep"
-          }
+            timeCommitment: "20-40 hours prep",
+          },
         ],
-        timeline: 6
+        timeline: 6,
       };
 
       this.debugLog("Cleaned JSON", cleanedText.substring(0, 200) + "...");
-      
+
       const result = this.safeJsonParse(cleanedText, fallbackData);
-      
+
       // Validate the structure
-      if (!result.steps || !Array.isArray(result.steps) || result.steps.length === 0) {
+      if (
+        !result.steps ||
+        !Array.isArray(result.steps) ||
+        result.steps.length === 0
+      ) {
         console.warn("Invalid or missing steps, using fallback");
         result.steps = fallbackData.steps;
       }
-      
-      if (!result.milestones || !Array.isArray(result.milestones) || result.milestones.length === 0) {
+
+      if (
+        !result.milestones ||
+        !Array.isArray(result.milestones) ||
+        result.milestones.length === 0
+      ) {
         console.warn("Invalid or missing milestones, using fallback");
         result.milestones = fallbackData.milestones;
       }
-      
-      if (!result.resources || !Array.isArray(result.resources) || result.resources.length === 0) {
+
+      if (
+        !result.resources ||
+        !Array.isArray(result.resources) ||
+        result.resources.length === 0
+      ) {
         console.warn("Invalid or missing resources, using fallback");
         result.resources = fallbackData.resources;
       }
@@ -478,20 +525,25 @@ Customize for specific role transition. Keep JSON compact.`;
       return result;
     } catch (error) {
       console.error("Error generating career roadmap:", error);
-      
+
       // Return comprehensive fallback roadmap
       return {
         steps: [
           {
             id: 1,
             title: "Skills Assessment",
-            description: "Evaluate current skills against target role requirements",
+            description:
+              "Evaluate current skills against target role requirements",
             duration: "2 weeks",
             priority: "High",
             category: "skill",
             estimatedHours: 20,
             dependencies: [],
-            resources: ["Skills assessment tools", "Job requirement analysis", "Industry research"]
+            resources: [
+              "Skills assessment tools",
+              "Job requirement analysis",
+              "Industry research",
+            ],
           },
           {
             id: 2,
@@ -502,7 +554,7 @@ Customize for specific role transition. Keep JSON compact.`;
             category: "education",
             estimatedHours: 120,
             dependencies: [1],
-            resources: ["Online courses", "Books", "Practice exercises"]
+            resources: ["Online courses", "Books", "Practice exercises"],
           },
           {
             id: 3,
@@ -513,7 +565,7 @@ Customize for specific role transition. Keep JSON compact.`;
             category: "experience",
             estimatedHours: 80,
             dependencies: [2],
-            resources: ["Project templates", "Portfolio guides", "GitHub"]
+            resources: ["Project templates", "Portfolio guides", "GitHub"],
           },
           {
             id: 4,
@@ -524,8 +576,12 @@ Customize for specific role transition. Keep JSON compact.`;
             category: "networking",
             estimatedHours: 30,
             dependencies: [],
-            resources: ["LinkedIn", "Professional associations", "Industry events"]
-          }
+            resources: [
+              "LinkedIn",
+              "Professional associations",
+              "Industry events",
+            ],
+          },
         ],
         milestones: [
           {
@@ -533,17 +589,25 @@ Customize for specific role transition. Keep JSON compact.`;
             title: "Learning Plan Complete",
             description: "Skills gap identified and learning plan established",
             targetMonth: 1,
-            criteria: ["Skills assessment done", "Gap analysis complete", "Learning resources identified"],
-            reward: "Clear development roadmap"
+            criteria: [
+              "Skills assessment done",
+              "Gap analysis complete",
+              "Learning resources identified",
+            ],
+            reward: "Clear development roadmap",
           },
           {
             id: 2,
             title: "Portfolio Ready",
             description: "Demonstrable projects showcasing target role skills",
             targetMonth: 4,
-            criteria: ["3+ projects completed", "Portfolio website live", "Work samples documented"],
-            reward: "Interview-ready demonstration of abilities"
-          }
+            criteria: [
+              "3+ projects completed",
+              "Portfolio website live",
+              "Work samples documented",
+            ],
+            reward: "Interview-ready demonstration of abilities",
+          },
         ],
         resources: [
           {
@@ -552,7 +616,7 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://coursera.org",
             description: "Professional development courses",
             estimatedCost: "$49/month",
-            timeCommitment: "5-10 hours/week"
+            timeCommitment: "5-10 hours/week",
           },
           {
             title: "GitHub",
@@ -560,7 +624,7 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://github.com",
             description: "Code repository and portfolio hosting",
             estimatedCost: "Free",
-            timeCommitment: "2-3 hours/week"
+            timeCommitment: "2-3 hours/week",
           },
           {
             title: "Professional Network",
@@ -568,10 +632,10 @@ Customize for specific role transition. Keep JSON compact.`;
             url: "https://linkedin.com",
             description: "Industry connections and job opportunities",
             estimatedCost: "Free (Premium $29.99/month)",
-            timeCommitment: "1-2 hours/week"
-          }
+            timeCommitment: "1-2 hours/week",
+          },
         ],
-        timeline: 6
+        timeline: 6,
       };
     }
   }
@@ -607,7 +671,12 @@ Maximum 200 words.
   }
 
   // Generate skill recommendations based on roadmap
-  async generateSkillRecommendations(currentRole, targetRole, industry, currentSkills) {
+  async generateSkillRecommendations(
+    currentRole,
+    targetRole,
+    industry,
+    currentSkills
+  ) {
     const prompt = `
 As a career advisor, analyze the skill gap between "${currentRole}" and "${targetRole}" in ${industry}.
 
@@ -633,10 +702,10 @@ Format as plain text, not JSON. Be concise but specific.
     }
   }
 
-  async resumeParser(companyName,jobTitle,jobDescription,resumePdf){   
-
+  async resumeParser(companyName, jobTitle, jobDescription, resumePdf) {
     const contents = [
-        { text: `You are an expert in ATS (Applicant Tracking Systems), resume writing, and job market analysis.  
+      {
+        text: `You are an expert in ATS (Applicant Tracking Systems), resume writing, and job market analysis.  
 Your task is to evaluate the resume thoroughly and provide constructive feedback.  
 
 ### Instructions:
@@ -654,31 +723,64 @@ Your task is to evaluate the resume thoroughly and provide constructive feedback
 - Job Description: ${jobDescription}  
 
 ### Response Format:
-Respond ONLY in **valid JSON** with the following schema (no markdown, no extra text).`},
-        {
-            inlineData: {
-                mimeType: 'application/pdf',
-                data: Buffer.from(fs.readFileSync(resumePdf)).toString("base64")
-            }
-        }
-    ]; 
+Respond ONLY in **valid JSON** with the following schema (no markdown, no extra text).`,
+      },
+      {
+        inlineData: {
+          mimeType: "application/pdf",
+          data: Buffer.from(fs.readFileSync(resumePdf)).toString("base64"),
+        },
+      },
+    ];
 
-     try {
-      return await this.generateContent(
-        {
-          model: "gemini-2.5-flash",
-          contents,
-          config: {
-            maxOutputTokens: 4000,
-            temperature: 0.2,
-          },
-        }
-      );
+    try {
+      return await this.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          maxOutputTokens: 4000,
+          temperature: 0.2,
+        },
+      });
     } catch (error) {
       console.error("Error generating resume ats score:", error);
       return "Focus on developing technical skills, leadership abilities, and industry-specific knowledge relevant to your target role.";
     }
-   
+  }
+
+  async generateColdEmail(data, user) {
+   const safeJoin = (arr) => (arr && arr.length ? arr.join(", ") : "N/A");
+
+const prompt = `
+Write a professional and compelling cold email for a ${
+  data.jobTitle || "position"
+} position at ${data.companyName || "the company"}.
+
+About the candidate:
+- Industry: ${user.industry || "N/A"}
+- Years of Experience: ${user.experience || "N/A"}
+- Skills: ${safeJoin(user.skills)}
+- Professional Background: ${user.bio || "N/A"}
+
+Job Description:
+${data.jobDescription || "N/A"}
+
+Requirements for the email:
+1. Keep it concise (max 100-150 words)
+2. Use a confident, professional, and approachable tone
+3. Grab attention in the first line
+4. Highlight key achievements and relevant skills
+5. Show understanding of the company's needs
+6. Include a call-to-action (e.g., request a meeting, interview, or call)
+7. Avoid generic phrases; personalize based on the job description
+8. Format in a professional email structure (greeting, body, closing, signature)
+
+Output ONLY the email text (no extra commentary, JSON not required).
+`;
+
+    return await this.generateContent(prompt, {
+      temperature: 0.7,
+    });
   }
 }
 

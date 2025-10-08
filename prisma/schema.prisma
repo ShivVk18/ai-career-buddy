@@ -40,6 +40,7 @@ model User {
   skillAnalyses SkillGapAnalysis[]
   mockInterviews MockInterview[]
   atsScores      ATSScore[]
+  coldEmail     ColdEmail[]
 }
 
 model Assessment {
@@ -141,6 +142,7 @@ model CoverLetter {
 
   @@index([userId])
 }
+
 
 // Career Roadmap System
 model CareerPath {
@@ -406,4 +408,19 @@ model ATSScore {
 
   @@index([userId])
  
+}
+
+model ColdEmail {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  content         String    
+  jobDescription  String?
+  companyName     String    
+  jobTitle        String    
+  status          String    @default("draft") 
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
 }

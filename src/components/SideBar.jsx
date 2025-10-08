@@ -39,6 +39,11 @@ const navigationItems = [
     label: "Cover Letter",
     href: "/cover-letter",
   },
+   {
+    icon: <FileText size={20} />,
+    label: "Cold Email",
+    href: "/cold-email",
+  },
   {
     icon: <BrainCircuit size={20} />,
     label: "Career Roadmap",
