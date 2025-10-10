@@ -6,7 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenAI } from "@google/genai";
 
 
-const client = new GoogleGenAI({ apiKey: 'AIzaSyAMjXbGRCMAywCkc4eZ0jCrKk0AAz_NGRs' });  
+const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });  
 
 export async function generateColdEmail(data) {
   const { userId } = await auth();
