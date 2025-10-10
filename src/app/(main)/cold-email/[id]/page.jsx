@@ -23,7 +23,7 @@ export default async function EditColdEmailPage({ params }) {
       <div className="container mx-auto py-8 px-4 relative z-10">
         {/* Navigation */}
         <div className="flex flex-col space-y-6 mb-8">
-          <Link href="/cover-letter">
+          <Link href="/cold-email">
             <Button
               variant="ghost"
               className="gap-2 pl-0 text-gray-400 hover:text-white transition-colors duration-300 group w-fit"

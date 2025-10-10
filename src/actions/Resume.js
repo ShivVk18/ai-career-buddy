@@ -3,7 +3,12 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import AiServices from "@/services/AiServices";
+import AiServices from "@/services/AiServices"; 
+import { GoogleGenAI } from "@google/genai";
+
+
+const client = GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); 
+
 
 export async function saveResume(content) {
   const { userId } = await auth();

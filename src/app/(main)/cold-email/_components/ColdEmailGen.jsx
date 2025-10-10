@@ -37,7 +37,7 @@ export default function ColdEmailGenerator() {
   useEffect(() => {
     if (generatedLetter) {
       toast.success("Cold email generated successfully!");
-      router.push(`/cover-letter/${generatedLetter.id}`);
+      router.push(`/cold-email/${generatedLetter.id}`);
       reset();
     }
   }, [generatedLetter]);

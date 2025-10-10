@@ -20,7 +20,10 @@ import {
 
 import { deleteColdEmail } from "@/actions/ColdEmail"
 
-export default function ColdEmailList({ coldEmail }) {
+export default function ColdEmailList({ coldEmails }) {
+
+
+  
   const router = useRouter()
 
   const handleDelete = async (id) => {
@@ -33,7 +36,7 @@ export default function ColdEmailList({ coldEmail }) {
     }
   }
 
-  if (!coldEmail?.length) {
+  if (!coldEmails?.length) {
     return (
       <div className="relative">
         {/* Animated background */}
@@ -55,7 +58,7 @@ export default function ColdEmailList({ coldEmail }) {
             </CardDescription>
             <div className="mt-8">
               <Button
-                onClick={() => router.push("/cover-letter/new")}
+                onClick={() => router.push("/cold-email/new")}
                 className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105"
               >
                 Create Your First Cold Email
@@ -75,7 +78,7 @@ export default function ColdEmailList({ coldEmail }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-orange-300 text-sm font-medium mb-1">Total Emails</p>
-              <p className="text-3xl font-bold text-white">{coldEmail.length}</p>
+              <p className="text-3xl font-bold text-white">{coldEmails.length}</p>
             </div>
             <div className="w-14 h-14 rounded-full bg-orange-500/20 flex items-center justify-center border border-orange-500/30">
               <FileText className="h-7 w-7 text-orange-400" />
@@ -89,7 +92,7 @@ export default function ColdEmailList({ coldEmail }) {
               <p className="text-emerald-300 text-sm font-medium mb-1">This Month</p>
               <p className="text-3xl font-bold text-white">
                 {
-                  coldEmail.filter((letter) => {
+                  coldEmails.filter((letter) => {
                     const letterDate = new Date(letter.createdAt)
                     const now = new Date()
                     return letterDate.getMonth() === now.getMonth() && letterDate.getFullYear() === now.getFullYear()
@@ -108,7 +111,7 @@ export default function ColdEmailList({ coldEmail }) {
             <div>
               <p className="text-rose-300 text-sm font-medium mb-1">Companies</p>
               <p className="text-3xl font-bold text-white">
-                {new Set(coldEmail.map((letter) => letter.companyName)).size}
+                {new Set(coldEmails.map((letter) => letter.companyName)).size}
               </p>
             </div>
             <div className="w-14 h-14 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
@@ -120,11 +123,11 @@ export default function ColdEmailList({ coldEmail }) {
 
       {/* Cover Letters Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {coldEmail.map((letter, index) => (
+        {coldEmails.map((letter, index) => (
           <div
             key={letter.id}
             className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 hover:border-orange-500/30 p-8 shadow-2xl transition-all duration-500 group hover:scale-[1.02] cursor-pointer"
-            onClick={() => router.push(`/cover-letter/${letter.id}`)}
+            onClick={() => router.push(`/cover-email/${letter.id}`)}
           >
             <div className="flex items-start justify-between mb-6">
               <div className="flex-1">
@@ -149,7 +152,7 @@ export default function ColdEmailList({ coldEmail }) {
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    router.push(`/cover-letter/${letter.id}`)
+                    router.push(`/cold-email/${letter.id}`)
                   }}
                   className="h-9 w-9 p-0 rounded-xl bg-slate-800/50 border border-orange-500/20 hover:border-orange-500/50 hover:bg-orange-600/20 text-gray-400 hover:text-orange-400 transition-all duration-300"
                 >

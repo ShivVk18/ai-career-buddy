@@ -8,6 +8,8 @@ import { getColdEmails } from "@/actions/ColdEmail"
 export default async function ColdEmailPage() {
   const coldEmails = await getColdEmails()
 
+  console.log(coldEmails)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950/20 text-white">
       {/* Animated background elements */}
