@@ -4,6 +4,10 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import AiServices from "@/services/AiServices";
 
+const client = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
 export async function generateCoverLetter(data) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
@@ -14,12 +18,43 @@ export async function generateCoverLetter(data) {
 
   if (!user) throw new Error("User not found");
 
+  const prompt = `Write a professional cover letter for a ${
+    data.jobTitle
+  } position at ${data.companyName}.
+      
+      About the candidate:
+      - Industry: ${user.industry}
+      - Years of Experience: ${user.experience}
+      - Skills: ${user.skills?.join(", ")}
+      - Professional Background: ${user.bio}
+      
+      Job Description:
+      ${data.jobDescription}
+      
+      Requirements:
+      1. Use a professional, enthusiastic tone
+      2. Highlight relevant skills and experience
+      3. Show understanding of the company's needs
+      4. Keep it concise (max 400 words)
+      5. Use proper business letter formatting in markdown
+      6. Include specific examples of achievements
+      7. Relate candidate's background to job requirements
+      
+      Format the letter in markdown.
+    `;
+
   try {
-    const content = await AiServices.generateCoverLetter(data, user);
+    const content = await client.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: prompt,
+      config: {
+        temperature: 0.3,
+      },
+    });
 
     const coverLetter = await db.coverLetter.create({
       data: {
-        content,
+        content: content.text,
         jobDescription: data.jobDescription,
         companyName: data.companyName,
         jobTitle: data.jobTitle,

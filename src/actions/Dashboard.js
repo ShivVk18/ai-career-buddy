@@ -4,6 +4,8 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import AiServices from "@/services/AiServices";
 
+
+
 export const generateAIInsights = async (industry) => {
   return await AiServices.generateIndustryInsights(industry);
 };

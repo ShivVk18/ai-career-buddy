@@ -144,34 +144,24 @@ model CoverLetter {
 }
 
 
-// Career Roadmap System
 model CareerPath {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  
+  id            String   @id @default(uuid())
   currentRole   String
   targetRole    String
   industry      String
-  
-  // Roadmap content
-  steps         Json[]   
-  milestones    Json[]  
-  resources     Json[]  
-  
-  // Progress tracking
-  progress      Float    @default(0) // 0-100
+  steps         Json     // store steps array
+  milestones    Json     // store milestones array
+  resources     Json     // store resources array
+  timeline      Json     // store full object (not Int)
+  progress      Float    @default(0)
   currentStep   Int      @default(0)
-  timeline      Int      // Estimated months to complete
-  
-  // Status
-  status        String   @default("active") // active, completed, paused
-  
+  status        String   @default("active")
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
-  @@index([userId, status])
 }
+
 
 // Skill Gap Analysis
 model SkillGapAnalysis {

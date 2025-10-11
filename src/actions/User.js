@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import AiServices from "@/services/AiServices";
 
@@ -70,27 +70,28 @@ export async function getUserOnboardingStatus() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
+  let user = await db.user.findUnique({
     where: { clerkUserId: userId },
   });
 
-  if (!user) throw new Error("User not found");
+  // 👇 auto-create user record if it doesn't exist
+  if (!user) {
+    const client = await clerkClient();  // ✅ Call clerkClient as a function
+    const clerkUser = await client.users.getUser(userId);
 
-  try {
-    const user = await db.user.findUnique({
-      where: {
+    user = await db.user.create({
+      data: {
         clerkUserId: userId,
-      },
-      select: {
-        industry: true,
+        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        industry: null,
+        experience: null,
+        bio: "",
+        skills: [],
       },
     });
-
-    return {
-      isOnboarded: !!user?.industry,
-    };
-  } catch (error) {
-    console.error("Error checking onboarding status:", error);
-    throw new Error("Failed to check onboarding status");
   }
+
+  return {
+    isOnboarded: !!user?.industry,
+  };
 }
