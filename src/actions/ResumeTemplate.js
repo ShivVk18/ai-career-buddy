@@ -579,4 +579,5 @@ export async function incrementTemplateUsage(templateId) {
     console.error("Error updating template usage:", error);
     
   }
-}
+}  
+

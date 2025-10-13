@@ -2,7 +2,8 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai" 
+import AiServices  from "@/services/AiServices";
 
 /* ---------- Initialize Gemini Client ---------- */
 const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -287,6 +288,8 @@ export async function generateProgressRecommendations(id) {
 
   try {
     const completedSteps = careerPath.steps.filter(step => step.completed);
+
+
     const recommendations = await AiServices.generateProgressUpdate(
       careerPath,
       completedSteps,

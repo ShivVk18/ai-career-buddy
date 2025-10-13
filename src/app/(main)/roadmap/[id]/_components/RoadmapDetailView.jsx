@@ -13,16 +13,12 @@ import {
   ChevronRight,
   ExternalLink,
   Award,
-  Brain,
   Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter } from "next/navigation";
-import { completeRoadmapStep } from "@/actions/CareerRoadmap";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { completeRoadmapStep } from "@/actions/CareerRoadmap";
 
 const RoadmapDetailView = ({ roadmap }) => {
   const [completingStep, setCompletingStep] = useState(null);
@@ -108,7 +104,7 @@ const RoadmapDetailView = ({ roadmap }) => {
               {roadmap.currentRole} → {roadmap.targetRole}
             </h1>
             <p className="text-gray-400 mt-1">
-              {roadmap.industry} • {roadmap.timeline} month timeline
+              {roadmap.industry} • {roadmap.timeline?.estimatedDuration}
             </p>
           </div>
         </motion.div>
@@ -127,7 +123,9 @@ const RoadmapDetailView = ({ roadmap }) => {
             >
               <Sparkles className="h-6 w-6 text-orange-400" />
             </motion.div>
-            <h2 className="text-2xl font-semibold text-white">Overall Progress</h2>
+            <h2 className="text-2xl font-semibold text-white">
+              Overall Progress
+            </h2>
           </div>
 
           <div className="space-y-4 mb-6">
@@ -144,34 +142,42 @@ const RoadmapDetailView = ({ roadmap }) => {
                 initial={{ width: 0 }}
                 animate={{ width: `${roadmap.progress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
-                className={`h-full bg-gradient-to-r ${getProgressColor(roadmap.progress)}`}
+                className={`h-full bg-gradient-to-r ${getProgressColor(
+                  roadmap.progress
+                )}`}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="backdrop-blur-xl bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold text-blue-300">
-                {roadmap.steps?.length || 0}
-              </div>
-              <div className="text-sm text-blue-400">Total Steps</div>
+          {/* Timeline Breakdown */}
+          {roadmap.timeline?.phaseBreakdown?.length > 0 && (
+            <div className="mt-8 space-y-4">
+              <h3 className="text-lg font-semibold text-orange-400">
+                Timeline Phases
+              </h3>
+              <ul className="space-y-3">
+                {roadmap.timeline.phaseBreakdown.map((phase, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start gap-3 text-gray-300"
+                  >
+                    <div className="mt-1.5">
+                      <CheckCircle className="h-4 w-4 text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">{phase.title}</p>
+                      <p className="text-sm text-gray-400">
+                        {phase.description}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="backdrop-blur-xl bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold text-emerald-300">
-                {roadmap.milestones?.length || 0}
-              </div>
-              <div className="text-sm text-emerald-400">Milestones</div>
-            </div>
-            <div className="backdrop-blur-xl bg-purple-500/10 border border-purple-500/30 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold text-purple-300">
-                {roadmap.resources?.length || 0}
-              </div>
-              <div className="text-sm text-purple-400">Resources</div>
-            </div>
-          </div>
+          )}
         </motion.div>
 
-        {/* Tabs */}
+        {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="backdrop-blur-xl bg-slate-800/50 border border-orange-500/20 rounded-2xl p-2">
             <TabsList className="grid w-full grid-cols-3 bg-transparent gap-2">
@@ -199,7 +205,7 @@ const RoadmapDetailView = ({ roadmap }) => {
             </TabsList>
           </div>
 
-          {/* Steps Tab */}
+          {/* --- Steps Tab --- */}
           <TabsContent value="steps" className="space-y-4">
             <AnimatePresence>
               {roadmap.steps.map((step, index) => {
@@ -238,7 +244,9 @@ const RoadmapDetailView = ({ roadmap }) => {
                               {step.title}
                             </h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs border capitalize ${getPriorityColor(step.priority)}`}
+                              className={`px-3 py-1 rounded-full text-xs border capitalize ${getPriorityColor(
+                                step.priority
+                              )}`}
                             >
                               {step.priority}
                             </span>
@@ -247,17 +255,6 @@ const RoadmapDetailView = ({ roadmap }) => {
                           <p className="text-gray-400 leading-relaxed">
                             {step.description}
                           </p>
-
-                          <div className="flex items-center gap-4 text-sm text-gray-400">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {step.duration}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Target className="h-4 w-4" />
-                              {step.estimatedHours}h
-                            </div>
-                          </div>
 
                           {step.resources && step.resources.length > 0 && (
                             <div className="space-y-2">
@@ -300,12 +297,12 @@ const RoadmapDetailView = ({ roadmap }) => {
             </AnimatePresence>
           </TabsContent>
 
-          {/* Milestones Tab */}
+          {/* --- Milestones Tab --- */}
           <TabsContent value="milestones" className="space-y-4">
             <AnimatePresence>
               {roadmap.milestones.map((milestone, index) => (
                 <motion.div
-                  key={milestone.id}
+                  key={milestone.title}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -316,40 +313,15 @@ const RoadmapDetailView = ({ roadmap }) => {
                       <Target className="h-6 w-6" />
                     </div>
                     <div className="space-y-3 flex-1">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-lg text-white">
-                          {milestone.title}
-                        </h3>
-                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs">
-                          Month {milestone.targetMonth}
-                        </span>
-                      </div>
+                      <h3 className="font-semibold text-lg text-white">
+                        {milestone.title}
+                      </h3>
                       <p className="text-gray-400 leading-relaxed">
-                        {milestone.description}
+                        {milestone.summary}
                       </p>
-                      {milestone.criteria && milestone.criteria.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-sm text-gray-300">Criteria:</h4>
-                          <ul className="space-y-1">
-                            {milestone.criteria.map((criteria, i) => (
-                              <li
-                                key={i}
-                                className="text-sm text-gray-400 flex items-center gap-2"
-                              >
-                                <CheckCircle className="h-3 w-3 text-emerald-400" />
-                                {criteria}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {milestone.reward && (
-                        <div className="p-3 backdrop-blur-xl bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
-                          <p className="text-sm text-emerald-300">
-                            <strong>Reward:</strong> {milestone.reward}
-                          </p>
-                        </div>
-                      )}
+                      <div className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs w-fit">
+                        {milestone.targetDate}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -357,7 +329,7 @@ const RoadmapDetailView = ({ roadmap }) => {
             </AnimatePresence>
           </TabsContent>
 
-          {/* Resources Tab */}
+          {/* --- Resources Tab --- */}
           <TabsContent value="resources" className="space-y-4">
             <AnimatePresence>
               {roadmap.resources.map((resource, index) => (
@@ -373,36 +345,27 @@ const RoadmapDetailView = ({ roadmap }) => {
                       <BookOpen className="h-6 w-6" />
                     </div>
                     <div className="space-y-3 flex-1">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-lg text-white">
-                          {resource.title}
-                        </h3>
-                        <span className="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-xs capitalize">
-                          {resource.type}
-                        </span>
-                      </div>
-                      <p className="text-gray-400 leading-relaxed">
-                        {resource.description}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-gray-400">
-                        {resource.estimatedCost && (
-                          <div>Cost: {resource.estimatedCost}</div>
-                        )}
-                        {resource.timeCommitment && (
-                          <div>Time: {resource.timeCommitment}</div>
-                        )}
-                      </div>
-                      {resource.url && (
-                        <a
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 backdrop-blur-xl bg-slate-800/50 border border-purple-500/30 hover:border-purple-500/50 rounded-xl text-purple-300 hover:text-purple-200 transition-all duration-300"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          View Resource
-                        </a>
-                      )}
+                      <h3 className="font-semibold text-lg text-white">
+                        {resource.category}
+                      </h3>
+                      <ul className="space-y-2">
+                        {resource.items.map((item, i) => (
+                          <li
+                            key={i}
+                            className="flex items-center gap-2 text-gray-400"
+                          >
+                            <ChevronRight className="h-3 w-3 text-purple-400" />
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-purple-300 transition"
+                            >
+                              {item.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 </motion.div>

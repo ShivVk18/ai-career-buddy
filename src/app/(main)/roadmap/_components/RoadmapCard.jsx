@@ -10,16 +10,15 @@ import {
   ChevronRight,
   Star,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
 const RoadmapCard = ({ roadmap, completed = false }) => {
-  const completedSteps = roadmap.steps.filter((step) => step.completed).length;
-  const totalSteps = roadmap.steps.length;
-  
+  console.log("🧭 RoadmapCard received:", roadmap);
+
+  const completedSteps = roadmap.steps?.filter((step) => step.completed).length || 0;
+  const totalSteps = roadmap.steps?.length || 0;
+
   const getProgressColor = (progress) => {
     if (progress >= 70) return "from-emerald-500/20 to-green-500/20 border-emerald-500/30";
     if (progress >= 50) return "from-blue-500/20 to-cyan-500/20 border-blue-500/30";
@@ -47,13 +46,18 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
     }
   };
 
+  // ✅ Safely extract duration
+  const duration =
+    roadmap.timeline?.estimatedDuration ||
+    `${totalSteps > 0 ? totalSteps * 2 : "N/A"} months`;
+
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      transition={{ duration: 0.2 }}
-      className="group"
-    >
-      <div className={`backdrop-blur-xl bg-gradient-to-br ${getProgressColor(roadmap.progress)} border-2 rounded-3xl p-6 shadow-xl hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300`}>
+    <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }} className="group">
+      <div
+        className={`backdrop-blur-xl bg-gradient-to-br ${getProgressColor(
+          roadmap.progress
+        )} border-2 rounded-3xl p-6 shadow-xl hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300`}
+      >
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="space-y-2 flex-1">
@@ -64,7 +68,11 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
               <span className="px-3 py-1 bg-slate-800/50 border border-orange-500/30 rounded-full text-xs text-orange-300">
                 {roadmap.industry}
               </span>
-              <span className={`px-3 py-1 rounded-full text-xs border capitalize ${getStatusColor(roadmap.status)}`}>
+              <span
+                className={`px-3 py-1 rounded-full text-xs border capitalize ${getStatusColor(
+                  roadmap.status
+                )}`}
+              >
                 {roadmap.status}
               </span>
             </div>
@@ -80,15 +88,17 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
               {Math.round(roadmap.progress)}%
             </span>
           </div>
+
+          {/* Progress Bar */}
           <div className="relative h-3 bg-slate-800/50 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${roadmap.progress}%` }}
               transition={{ duration: 1, ease: "easeOut" }}
               className={`h-full bg-gradient-to-r ${
-                roadmap.progress >= 70 
-                  ? "from-emerald-500 to-green-500" 
-                  : roadmap.progress >= 50 
+                roadmap.progress >= 70
+                  ? "from-emerald-500 to-green-500"
+                  : roadmap.progress >= 50
                   ? "from-blue-500 to-cyan-500"
                   : roadmap.progress >= 30
                   ? "from-amber-500 to-yellow-500"
@@ -96,9 +106,13 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
               }`}
             />
           </div>
+
           <div className="flex items-center justify-between text-xs text-gray-400">
-            <span>{completedSteps}/{totalSteps} steps completed</span>
-            <span>{roadmap.timeline} month{roadmap.timeline !== 1 ? "s" : ""} timeline</span>
+            <span>
+              {completedSteps}/{totalSteps} steps completed
+            </span>
+            {/* ✅ Fixed timeline display */}
+            <span>{duration} timeline</span>
           </div>
         </div>
 
@@ -114,9 +128,7 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
 
           <div className="backdrop-blur-xl bg-slate-800/30 border border-emerald-500/20 rounded-2xl p-3 text-center">
             <CheckCircle className="h-5 w-5 text-emerald-400 mx-auto mb-1" />
-            <div className="text-lg font-bold text-emerald-300">
-              {completedSteps}
-            </div>
+            <div className="text-lg font-bold text-emerald-300">{completedSteps}</div>
             <div className="text-xs text-emerald-400">Done</div>
           </div>
 
@@ -129,7 +141,7 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
           </div>
         </div>
 
-        {/* Timeline */}
+        {/* Timeline Info */}
         <div className="flex items-center gap-3 p-3 backdrop-blur-xl bg-slate-800/30 border border-orange-500/20 rounded-2xl mb-4">
           <Calendar className="h-4 w-4 text-orange-400 flex-shrink-0" />
           <div className="text-sm text-gray-300">
@@ -147,9 +159,7 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
             whileTap={{ scale: 0.98 }}
             className="w-full bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white py-3 px-4 rounded-2xl font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 flex items-center justify-center group"
           >
-            <span>
-              {completed ? "View Details" : "Continue Journey"}
-            </span>
+            <span>{completed ? "View Details" : "Continue Journey"}</span>
             <ChevronRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
           </motion.button>
         </Link>

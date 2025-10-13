@@ -149,7 +149,7 @@ model CareerPath {
   currentRole   String
   targetRole    String
   industry      String
-  steps         Json     // store steps array
+  steps         Json     
   milestones    Json     // store milestones array
   resources     Json     // store resources array
   timeline      Json     // store full object (not Int)

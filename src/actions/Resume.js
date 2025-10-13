@@ -3,12 +3,9 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import AiServices from "@/services/AiServices"; 
 import { GoogleGenAI } from "@google/genai";
 
-
-const client = GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); 
-
+const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function saveResume(content) {
   const { userId } = await auth();
@@ -70,10 +67,34 @@ export async function improveWithAI({ current, type }) {
     },
   });
 
+  
   if (!user) throw new Error("User not found");
 
+  const prompt = `
+      As an expert resume writer, improve the following ${type} description for a industry professional.
+      Make it more impactful, quantifiable, and aligned with industry standards.
+      Current content: "${current}"
+
+      Requirements:
+      1. Use action verbs
+      2. Include metrics and results where possible
+      3. Highlight relevant technical skills
+      4. Keep it concise but detailed
+      5. Focus on achievements over responsibilities
+      6. Use industry-specific keywords
+
+      Format the response as a single paragraph without any additional text or explanations.
+    `;
+
   try {
-    return await AiServices.improveResumeContent(current, type, user.industry);
+    const content = await client.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: prompt,
+      config: {
+        temperature: 0.3,
+      },
+    });
+    return content.text;
   } catch (error) {
     console.error("Error improving content:", error);
     throw new Error("Failed to improve content");
