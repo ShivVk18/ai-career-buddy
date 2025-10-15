@@ -13,7 +13,8 @@ export default async function ResumePage() {
       </div>
 
       <div className="relative z-10 container mx-auto py-8 px-4">
-        <ResumeBuilder initialContent={resume?.content} />
+        <ResumeBuilder initialContent={resume?.content} 
+          initialResume={resume} />
       </div>
     </div>
   );

@@ -1,10 +1,7 @@
 
 generator client {
   provider = "prisma-client-js"
-
 }
-
-
 
 datasource db {
   provider = "postgresql"
@@ -22,16 +19,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  
   bio           String?
   experience    Int?     
 
-  
   skills        String[]  
   assessments   Assessment[]
   resume        Resume?
   coverLetter   CoverLetter[]
-  
   
   careerPaths   CareerPath[]
   networkConnections NetworkConnection[]
@@ -63,21 +57,33 @@ model Resume {
   user        User      @relation(fields: [userId], references: [id])
   content     String    @db.Text 
   
- 
+  // Template information
   templateId  String?   
   template    ResumeTemplate? @relation("TemplateResumes", fields: [templateId], references: [id])
   customCSS   String?   
   
+  // Photo for templates that require it
+  photoUrl    String?   @db.Text
+  
+  // Contact information stored as JSON
+  contactInfo Json?
+  
+  // Resume sections stored as JSON
+  summary     String?   @db.Text
+  skills      String?   @db.Text
+  experience  Json[]
+  education   Json[]
+  projects    Json[]
+  
   atsScore    Float?
   feedback    String?
   
-  
+  // Tailored versions
   tailoredVersions ResumeVersion[]
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
-
 
 model ResumeTemplate {
   id          String   @id @default(cuid())
@@ -86,17 +92,25 @@ model ResumeTemplate {
   difficulty  String   
   style       String   
   
+  // Template identifiers
+  templateKey String   @unique // e.g., "modern-pro", "minimal-classic"
   
+  // Template configuration
+  requiresPhoto Boolean  @default(false)
+  colorScheme   String   // primary color theme
+  
+  // HTML and CSS for web rendering
   htmlContent String   @db.Text
   cssStyles   String   @db.Text
   thumbnail   String   
   
-  
+  // Customization options
   colorSchemes Json[] 
   fontOptions  String[] 
   layoutVariations Json[] 
   
- 
+  // Template metadata
+  description String?
   isActive    Boolean  @default(true)
   usageCount  Int      @default(0)
   successRate Float?   
@@ -104,12 +118,12 @@ model ResumeTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  
+  // Relations
   resumes     Resume[] @relation("TemplateResumes")
   
   @@index([category, style])
+  @@index([templateKey])
 }
-
 
 model ResumeVersion {
   id             String   @id @default(cuid())
@@ -143,16 +157,15 @@ model CoverLetter {
   @@index([userId])
 }
 
-
 model CareerPath {
   id            String   @id @default(uuid())
   currentRole   String
   targetRole    String
   industry      String
   steps         Json     
-  milestones    Json     // store milestones array
-  resources     Json     // store resources array
-  timeline      Json     // store full object (not Int)
+  milestones    Json     
+  resources     Json     
+  timeline      Json     
   progress      Float    @default(0)
   currentStep   Int      @default(0)
   status        String   @default("active")
@@ -162,8 +175,6 @@ model CareerPath {
   updatedAt     DateTime @updatedAt
 }
 
-
-// Skill Gap Analysis
 model SkillGapAnalysis {
   id                String   @id @default(cuid())
   userId            String
@@ -173,19 +184,17 @@ model SkillGapAnalysis {
   jobDescription    String   @db.Text
   companyName       String?
   
-  // Analysis results
-  userSkills        String[] // User's current skills
-  requiredSkills    String[] // Skills required for job
-  matchedSkills     String[] // Skills user has
-  missingSkills     String[] // Skills user lacks
+  userSkills        String[]
+  requiredSkills    String[]
+  matchedSkills     String[]
+  missingSkills     String[]
   
-  matchPercentage   Float    // Overall match percentage
-  confidenceScore   Float    // AI confidence in analysis
+  matchPercentage   Float
+  confidenceScore   Float
   
-  // Recommendations
-  learningPaths     Json[]   // Suggested learning resources
-  prioritySkills    String[] // Most important missing skills
-  timeToAcquire     Json[]   // Estimated time for each skill
+  learningPaths     Json[]
+  prioritySkills    String[]
+  timeToAcquire     Json[]
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -193,36 +202,30 @@ model SkillGapAnalysis {
   @@index([userId])
 }
 
-// Mock Interview System
 model MockInterview {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   
-  // Interview details
   jobRole         String
-  interviewType   String   // technical, behavioral, mixed
-  difficulty      String   // easy, medium, hard
+  interviewType   String
+  difficulty      String
   
-  // Interview content
-  questions       Json[]   // Array of questions asked
-  responses       Json[]   // User responses with timestamps
+  questions       Json[]
+  responses       Json[]
   
-  // Analysis results
   overallScore    Float
   confidenceScore Float
   communicationScore Float
-  technicalScore  Float?   // For technical interviews
+  technicalScore  Float?
   
-  // Feedback
   strengths       String[]
   improvements    String[]
-  aiTips          String[] // AI-generated improvement tips
+  aiTips          String[]
   
-  // Metadata
-  duration        Int      // Duration in minutes
+  duration        Int
   completedAt     DateTime?
-  status          String   @default("started") // started, completed, abandoned
+  status          String   @default("started")
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -230,59 +233,50 @@ model MockInterview {
   @@index([userId, status])
 }
 
-// Practice Sessions (for various activities)
 model PracticeSession {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   
-  type            String   // interview, presentation, networking, pitch
-  category        String?  // technical, behavioral, etc.
+  type            String
+  category        String?
   
-  // Session data
-  duration        Int      // Duration in minutes
+  duration        Int
   performanceScore Float
-  feedback        Json     // Structured feedback
+  feedback        Json
   
-  // Media
-  recording       String?  // URL to recording
-  transcript      String?  // Speech-to-text transcript
+  recording       String?
+  transcript      String?
   
-  // AI Analysis
-  emotionAnalysis Json?    // Emotion detection results
-  speechAnalysis  Json?    // Speech pattern analysis
+  emotionAnalysis Json?
+  speechAnalysis  Json?
   
   createdAt       DateTime @default(now())
   
   @@index([userId, type])
 }
 
-// Professional Networking
 model NetworkConnection {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   
-  // Contact details
   contactName String
   email       String?
   linkedin    String?
   company     String
   role        String
   
-  // Relationship
-  relationship String  // mentor, peer, referral, recruiter, etc.
-  strength    Int      // 1-10 connection strength
+  relationship String
+  strength    Int
   
-  // Interaction history
   lastContact DateTime?
   contactCount Int     @default(0)
   notes       String?
-  tags        String[] // Custom tags
+  tags        String[]
   
-  // Networking goals
-  purpose     String?  // Why this connection is important
-  nextAction  String?  // Planned next interaction
+  purpose     String?
+  nextAction  String?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -290,37 +284,30 @@ model NetworkConnection {
   @@index([userId])
 }
 
-// Goal Setting and Tracking
 model CareerGoal {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   
-  // Goal details
   title       String
   description String
-  category    String   // salary, role, skill, location, etc.
-  priority    String   @default("medium") // low, medium, high
+  category    String
+  priority    String   @default("medium")
   
-  // Timeline
   targetDate  DateTime
   startDate   DateTime @default(now())
   
-  // Progress
-  status      String   @default("active") // active, completed, paused, cancelled
-  progress    Float    @default(0) // 0-100
+  status      String   @default("active")
+  progress    Float    @default(0)
   
-  // Milestones and actions
-  milestones  Json[]   // Breakdown of smaller goals
-  actions     Json[]   // Action items to achieve goal
+  milestones  Json[]
+  actions     Json[]
   
-  // Metrics
-  targetValue String?  // e.g., salary amount, skill level
-  currentValue String? // Current progress value
+  targetValue String?
+  currentValue String?
   
-  // Reflection
   notes       String?
-  lessons     String[] // Lessons learned
+  lessons     String[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -328,39 +315,31 @@ model CareerGoal {
   @@index([userId, status])
 }
 
-// Combined Industry Trends and Salary Insights
 model IndustryInsight {
   id            String    @id @default(cuid())
-  industry      String    @unique  // The industry this data belongs to (e.g., "tech-software-development")
+  industry      String    @unique
 
-  // Users in this industry
   users         User[]
 
-  // Salary data
-  salaryRanges  Json[]    // Array of { role: string, min: float, max: float, median: float, location: string? }
+  salaryRanges  Json[]
 
-  // Industry trends
-  growthRate    Float     // Industry growth rate
-  demandLevel   String    // "High", "Medium", "Low"
-  topSkills     String[]  // Most in-demand skills
+  growthRate    Float
+  demandLevel   String
+  topSkills     String[]
 
-  // Market conditions
-  marketOutlook String    // "Positive", "Neutral", "Negative"
-  keyTrends     String[]  // Array of current industry trends
+  marketOutlook String
+  keyTrends     String[]
 
-  // Learning suggestions
-  recommendedSkills String[]  // Skills recommended for the industry
+  recommendedSkills String[]
 
-  // Job market data
-  jobAvailability Json[]    // Available positions by role and location
-  hiringTrends   Json[]     // Hiring patterns and seasonal trends
+  jobAvailability Json[]
+  hiringTrends   Json[]
   
-  // Remote work data
-  remoteWorkPercentage Float? // Percentage of remote-friendly roles
-  hybridWorkTrends     Json[]  // Hybrid work patterns
+  remoteWorkPercentage Float?
+  hybridWorkTrends     Json[]
 
   lastUpdated   DateTime  @default(now())
-  nextUpdate    DateTime  // Scheduled update time
+  nextUpdate    DateTime
 
   @@index([industry])
 }
@@ -370,25 +349,20 @@ model ATSScore {
   userId         String
   user           User     @relation(fields: [userId], references: [id])
 
-  // Core ATS evaluation
   atsScore       Float
   matchPercentage Float?
 
-  // Analysis sections
   strengths      String[]
   weaknesses     String[]
   improvements   String[]
 
-  // Skills context
   relevantSkills String[]
   missingSkills  String[]
   recommendations Json[]
 
-  // AI context
   finalSummary   String   @db.Text
-  analyzedBy     String?  // e.g. "GPT-5", "Custom-LLM"
+  analyzedBy     String?
 
-  // Metadata
   jobTitle       String?
   companyName    String?
   jobDescription String?  @db.Text
@@ -397,7 +371,6 @@ model ATSScore {
   updatedAt      DateTime @updatedAt
 
   @@index([userId])
- 
 }
 
 model ColdEmail {
