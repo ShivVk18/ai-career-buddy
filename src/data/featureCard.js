@@ -47,11 +47,11 @@ export const featuresCard = [
     link: "/resume-parser",
   },
   {
-    icon: <LineChart className="w-10 h-10 mb-4 text-primary" />,
-    title: "Industry Insights",
+    icon: <FileText className="w-10 h-10 mb-4 text-primary" />,
+    title: "Cover Email Generator",
     description:
-      "Stay ahead with real-time industry trends, salary data, and market analysis.",
-    link: "/industry-insights",
+      "Craft professional, job-specific cover emails in seconds using AI suggestions.",
+    link: "/cover-email",
   },
 ];
 

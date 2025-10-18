@@ -43,11 +43,5 @@ export const featuresCard = [
       <ClipboardList className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
     ),
   },
-  {
-    label: "Industry Insights",
-    href: "/industry-insights",
-    icon: (
-      <LineChart className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-    ),
-  },
+  
 ];

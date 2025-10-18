@@ -39,7 +39,7 @@ const navigationItems = [
     label: "Cover Letter",
     href: "/cover-letter",
   },
-   {
+  {
     icon: <FileText size={20} />,
     label: "Cold Email",
     href: "/cold-email",
@@ -53,11 +53,6 @@ const navigationItems = [
     icon: <ClipboardList size={20} />,
     label: "Resume Parser",
     href: "/resume-parser",
-  },
-  {
-    icon: <LineChart size={20} />,
-    label: "Industry Insights",
-    href: "/industry-insights",
   },
 ];
 
@@ -73,11 +68,11 @@ export default function Sidebar() {
 
   const Logo = () => (
     <div className="flex items-center gap-2 px-4 py-3">
-      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-rose-500"></div>
+      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#ff5e00] to-[#ff8c42]"></div>
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-lg font-bold text-white"
+        className="text-lg font-bold text-[#fff4ed]"
       >
         CareerAI
       </motion.span>
@@ -95,21 +90,21 @@ export default function Sidebar() {
       animate={{
         width: sidebarOpen ? 280 : 80,
       }}
-      className="bg-slate-900/80 backdrop-blur-xl border-r border-slate-800 flex flex-col h-screen sticky top-0"
+      className="bg-[#312214]/80 backdrop-blur-xl border-r border-[#ffa36c]/20 flex flex-col h-screen sticky top-0"
     >
-      <div className="border-b border-slate-800">
+      <div className="border-b border-[#ffa36c]/20">
         {sidebarOpen ? (
           <Logo />
         ) : (
           <div className="flex items-center justify-center py-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-rose-500"></div>
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#ff5e00] to-[#ff8c42]"></div>
           </div>
         )}
       </div>
 
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="absolute -right-3 top-9 bg-slate-800 text-slate-300 p-1 rounded-full border border-slate-700 hover:bg-slate-700 transition-colors z-10"
+        className="absolute -right-3 top-9 bg-[#312214] text-[#c4a893] p-1 rounded-full border border-[#ffa36c]/30 hover:bg-[#3d2a1a] transition-colors z-10"
       >
         {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
       </button>
@@ -128,14 +123,14 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <div className="border-t border-slate-800 p-4">
-        <div className="bg-gradient-to-br from-orange-500/10 to-rose-500/10 rounded-lg p-3 border border-orange-500/20">
+      <div className="border-t border-[#ffa36c]/20 p-4">
+        <div className="bg-gradient-to-br from-[#ff5e00]/10 to-[#ff8c42]/10 rounded-lg p-3 border border-[#ff8c42]/20">
           <div className="flex items-center gap-3">
-            <CreditCard className="text-orange-500 shrink-0" size={20} />
+            <CreditCard className="text-[#ff8c42] shrink-0" size={20} />
             {sidebarOpen && (
               <div>
-                <p className="text-xs text-slate-400">Credits</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-xs text-[#c4a893]">Credits</p>
+                <p className="text-lg font-bold text-[#fff4ed]">
                   {creditsRemaining}
                 </p>
               </div>
@@ -144,28 +139,28 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="border-t border-slate-800 p-4">
+      <div className="border-t border-[#ffa36c]/20 p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-semibold shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff5e00] to-[#ff8c42] flex items-center justify-center text-white font-semibold shrink-0">
             {userName.charAt(0)}
           </div>
           {sidebarOpen && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
+              <p className="text-sm font-medium text-[#fff4ed] truncate">
                 {userName}
               </p>
-              <p className="text-xs text-slate-400 truncate">{userEmail}</p>
+              <p className="text-xs text-[#c4a893] truncate">{userEmail}</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="border-t border-slate-800 p-3">
+      <div className="border-t border-[#ffa36c]/20 p-3">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition-all group"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#c4a893] hover:bg-[#3d2a1a]/50 hover:text-[#fff4ed] transition-all group"
         >
-          <span className="shrink-0 group-hover:text-orange-500 transition-colors">
+          <span className="shrink-0 group-hover:text-[#ff8c42] transition-colors">
             <LogOut size={20} />
           </span>
           {sidebarOpen && (
@@ -183,16 +178,15 @@ export default function Sidebar() {
   );
 }
 
-
-const SidebarLink= ({ icon, label, href, open }) => {
+const SidebarLink = ({ icon, label, href, open }) => {
   const router = useRouter();
 
   return (
     <button
       onClick={() => router.push(href)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition-all group"
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#c4a893] hover:bg-[#3d2a1a]/50 hover:text-[#fff4ed] transition-all group"
     >
-      <span className="shrink-0 group-hover:text-orange-500 transition-colors">
+      <span className="shrink-0 group-hover:text-[#ff8c42] transition-colors">
         {icon}
       </span>
       {open && (

@@ -13,12 +13,7 @@ export const features = [
     description:
       "Practice with role-specific questions and get instant feedback to improve your performance.",
   },
-  {
-    icon: <LineChart className="w-10 h-10 mb-4 text-primary" />,
-    title: "Industry Insights",
-    description:
-      "Stay ahead with real-time industry trends, salary data, and market analysis.",
-  },
+  
   {
     icon: <ScrollText className="w-10 h-10 mb-4 text-primary" />,
     title: "Smart Resume Creation",
