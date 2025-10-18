@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
-import { SparklesCore } from "@/components/ui/sparkles";
+import { BackgroundBeams } from "@/components/ui/background-beams";
 import { Star, Trophy, ArrowRight } from "lucide-react";
 
 export default function HeroSection() {
@@ -20,29 +20,13 @@ export default function HeroSection() {
   ];
 
   return (
-   <section className="relative min-h-screen flex items-center justify-center px-6 lg:px-8 overflow-hidden">
-        <SparklesCore
-          id="hero-sparkles"
-          background="transparent"
-          minSize={0.4}
-          maxSize={1}
-          particleDensity={80}
-          className="absolute inset-0"
-          particleColor="#f97316"
-        />
-
-        <motion.div
-          animate={{
-            y: [0, -20, 0],
-            opacity: [0.15, 0.3, 0.15],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute top-20 left-10 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl"
-        />
+    <section className="relative min-h-screen flex items-center justify-center px-6 lg:px-8 overflow-hidden bg-[#1a0c05]">
+        <BackgroundBeams className="absolute inset-0 opacity-40" />
+        
+        {/* Gradient orbs with goldy color scheme */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#ff5e00]/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#ffa36c]/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-[#ff8c42]/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
 
         <div className="relative z-10 max-w-7xl mx-auto text-center">
           <motion.div
@@ -51,10 +35,10 @@ export default function HeroSection() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mb-12"
           >
-            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-slate-900/80 border border-slate-800 backdrop-blur-sm">
-              <Star className="h-4 w-4 text-orange-400 mr-2" />
-              <span className="text-sm font-medium text-slate-300">AI-Powered Career Platform</span>
-              <Trophy className="h-4 w-4 text-orange-400 ml-2" />
+            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-[#312214]/80 border border-[#ffa36c]/40 backdrop-blur-sm">
+              <Star className="h-4 w-4 text-[#ff8c42] mr-2" />
+              <span className="text-sm font-medium text-[#fff4ed]">AI-Powered Career Platform</span>
+              <Trophy className="h-4 w-4 text-[#ff8c42] ml-2" />
             </div>
           </motion.div>
 
@@ -74,7 +58,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1 }}
-            className="text-xl sm:text-2xl md:text-2xl text-slate-400 mb-16 max-w-3xl mx-auto leading-relaxed font-light"
+            className="text-xl sm:text-2xl md:text-2xl text-[#c4a893] mb-16 max-w-3xl mx-auto leading-relaxed font-light"
           >
             Discover your potential, map your path, and accelerate your professional growth with personalized insights and expert guidance
           </motion.p>
@@ -88,7 +72,7 @@ export default function HeroSection() {
             <Link href="/assessment">
               <Button
                 size="lg"
-                className="px-10 py-7 text-base font-medium bg-orange-600 hover:bg-orange-500 text-white border-0 rounded-xl shadow-lg shadow-orange-600/20 hover:shadow-xl hover:shadow-orange-600/30 transition-all duration-300"
+                className="px-10 py-7 text-base font-medium bg-gradient-to-r from-[#ff5e00] to-[#ff8c42] hover:from-[#ff5e00]/90 hover:to-[#ff8c42]/90 text-white border-0 rounded-xl shadow-lg shadow-[#ff5e00]/40 hover:shadow-xl hover:shadow-[#ff5e00]/50 transition-all duration-300"
               >
                 Start Free Assessment
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -99,7 +83,7 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 variant="outline"
-                className="px-10 py-7 text-base font-medium border-slate-700 hover:bg-slate-800/50 rounded-xl backdrop-blur-sm hover:border-slate-600 transition-all duration-300 text-slate-200"
+                className="px-10 py-7 text-base font-medium border-[#ffa36c]/40 hover:bg-[#312214]/50 rounded-xl backdrop-blur-sm hover:border-[#ffa36c]/60 transition-all duration-300 text-[#fff4ed]"
               >
                 Explore Features
               </Button>
@@ -124,11 +108,11 @@ export default function HeroSection() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 1.6 + i * 0.1 }}
                   >
-                    <Star className="h-5 w-5 text-orange-400 fill-orange-400" />
+                    <Star className="h-5 w-5 text-[#ff8c42] fill-[#ff8c42]" />
                   </motion.div>
                 ))}
               </div>
-              <span className="text-slate-400 text-sm ml-2 font-light">Trusted by 10,000+ professionals</span>
+              <span className="text-[#c4a893] text-sm ml-2 font-light">Trusted by 10,000+ professionals</span>
             </div>
           </motion.div>
         </div>

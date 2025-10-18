@@ -1,21 +1,16 @@
 'use client'
 
 import React from "react";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-import { AnimatedSection, AnimatedCard, AnimatedText } from "@/components/AnimatedSection";  
-
-
+import { AnimatedSection, AnimatedCard, AnimatedText } from "@/components/AnimatedSection";
 
 const FAQSection = () => {
-
-     const faqs = [
+  const faqs = [
     {
       question: "How does the career assessment work?",
       answer: "Our assessment evaluates your current skills, experience, and interests through a series of questions and exercises. It then provides insights into potential career paths and areas for development."
@@ -37,43 +32,47 @@ const FAQSection = () => {
       answer: "Absolutely! Our platform is designed for professionals at all stages - from students and recent graduates to experienced professionals looking to pivot or advance."
     }
   ];
+
   return (
-    <section className="py-32 px-6 lg:px-8 relative bg-slate-900/30">
-            <div className="max-w-4xl mx-auto">
-              <AnimatedSection className="text-center mb-24">
-                <AnimatedText>
-                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white tracking-tight">
-                    Frequently Asked Questions
-                  </h2>
-                </AnimatedText>
-                <AnimatedText delay={0.2}>
-                  <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-light leading-relaxed">
-                    Everything you need to know about getting started
-                  </p>
-                </AnimatedText>
-              </AnimatedSection>
-    
-              <AnimatedSection>
-                <Accordion type="single" collapsible className="w-full space-y-4">
-                  {faqs.map((faq, index) => (
-                    <AnimatedCard key={index} delay={index * 0.1}>
-                      <AccordionItem 
-                        value={`item-${index}`}
-                        className="relative border-slate-800 rounded-xl px-8 hover:border-slate-700 transition-all duration-300 backdrop-blur-sm bg-slate-900/50"
-                      >
-                        <AccordionTrigger className="text-left text-white hover:text-orange-400 transition-colors py-6 text-lg font-medium">
-                          {faq.question}
-                        </AccordionTrigger>
-                        <AccordionContent className="text-slate-400 pb-6 leading-relaxed font-light">
-                          {faq.answer}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </AnimatedCard>
-                  ))}
-                </Accordion>
-              </AnimatedSection>
-            </div>
-          </section>
+    <section className="py-32 px-6 lg:px-8 relative bg-[#1a0c05]">
+      {/* Subtle bottom glow */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#ffa36c]/30 to-transparent" />
+      
+      <div className="max-w-4xl mx-auto relative z-10">
+        <AnimatedSection className="text-center mb-20">
+          <AnimatedText>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-[#fff4ed] tracking-tight">
+              Frequently Asked Questions
+            </h2>
+          </AnimatedText>
+          <AnimatedText delay={0.2}>
+            <p className="text-xl md:text-2xl text-[#c4a893] max-w-3xl mx-auto font-light leading-relaxed">
+              Everything you need to know about getting started
+            </p>
+          </AnimatedText>
+        </AnimatedSection>
+
+        <AnimatedSection>
+          <Accordion type="single" collapsible className="w-full space-y-4">
+            {faqs.map((faq, index) => (
+              <AnimatedCard key={index} delay={index * 0.1}>
+                <AccordionItem 
+                  value={`item-${index}`}
+                  className="relative border border-[#ffa36c]/20 rounded-2xl px-8 hover:border-[#ffa36c]/40 transition-all duration-300 backdrop-blur-sm bg-[#312214]/30 hover:bg-[#312214]/50"
+                >
+                  <AccordionTrigger className="text-left text-[#fff4ed] hover:text-[#ff8c42] transition-colors py-6 text-lg font-medium">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-[#c4a893] pb-6 leading-relaxed font-light">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              </AnimatedCard>
+            ))}
+          </Accordion>
+        </AnimatedSection>
+      </div>
+    </section>
   )
 }
 
