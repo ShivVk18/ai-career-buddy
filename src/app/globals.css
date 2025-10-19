@@ -41,13 +41,13 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-   --color-goldyBg: #0f0e0a;           /* Deep dark brown background */
-    --color-accent-primary: #ff5e00;     /* Vibrant orange - main CTA */
-    --color-accent-secondary: #ff8c42;   /* Warm orange - highlights */
-    --color-accent-glow: #ffa36c;        /* Light orange - glow effects */
-    --color-text-primary: #fff4ed;       /* Warm white - main text */
-    --color-text-secondary: #c4a893;     /* Warm gray - secondary text */
-    --color-surface: #312214;            /* Dark brown - cards/surfaces */
+   --color-goldyBg: #0f0e0a;          
+    --color-accent-primary: #ff5e00;     
+    --color-accent-secondary: #ff8c42;   
+    --color-accent-glow: #ffa36c;       
+    --color-text-primary: #fff4ed;       
+    --color-text-secondary: #c4a893;    
+    --color-surface: #312214;           
     
     /* Additional utility colors */
     --color-border: rgba(255, 163, 108, 0.4);

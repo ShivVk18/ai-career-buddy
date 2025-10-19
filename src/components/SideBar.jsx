@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Sidebar, SidebarBody, SidebarLink } from "./ui/sidebar";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
@@ -10,54 +11,13 @@ import {
   FileText,
   BrainCircuit,
   ClipboardList,
-  LineChart,
   LayoutDashboard,
   CreditCard,
   LogOut,
-  Menu,
-  X,
 } from "lucide-react";
 
-const navigationItems = [
-  {
-    icon: <LayoutDashboard size={20} />,
-    label: "Dashboard",
-    href: "/dashboard",
-  },
-  {
-    icon: <ScrollText size={20} />,
-    label: "Resume Builder",
-    href: "/resume",
-  },
-  {
-    icon: <Briefcase size={20} />,
-    label: "Interview Prep",
-    href: "/interview",
-  },
-  {
-    icon: <FileText size={20} />,
-    label: "Cover Letter",
-    href: "/cover-letter",
-  },
-  {
-    icon: <FileText size={20} />,
-    label: "Cold Email",
-    href: "/cold-email",
-  },
-  {
-    icon: <BrainCircuit size={20} />,
-    label: "Career Roadmap",
-    href: "/roadmap",
-  },
-  {
-    icon: <ClipboardList size={20} />,
-    label: "Resume Parser",
-    href: "/resume-parser",
-  },
-];
-
-export default function Sidebar() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+export default function SideNavbar() {
+  const [open, setOpen] = useState(true);
   const router = useRouter();
   const { signOut } = useClerk();
   const { user } = useUser();
@@ -66,138 +26,159 @@ export default function Sidebar() {
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
   const creditsRemaining = 150;
 
-  const Logo = () => (
-    <div className="flex items-center gap-2 px-4 py-3">
-      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#ff5e00] to-[#ff8c42]"></div>
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-lg font-bold text-[#fff4ed]"
-      >
-        CareerAI
-      </motion.span>
-    </div>
-  );
-
   const handleSignOut = async () => {
     await signOut();
     router.push("/");
   };
 
+  const links = [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      icon: (
+        <LayoutDashboard className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+    {
+      label: "Resume Builder",
+      href: "/resume",
+      icon: (
+        <ScrollText className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+    {
+      label: "Interview Prep",
+      href: "/interview",
+      icon: (
+        <Briefcase className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+    {
+      label: "Cover Letter",
+      href: "/cover-letter",
+      icon: (
+        <FileText className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+    {
+      label: "Cold Email",
+      href: "/cold-email",
+      icon: (
+        <FileText className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+    {
+      label: "Career Roadmap",
+      href: "/roadmap",
+      icon: (
+        <BrainCircuit className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+    {
+      label: "Resume Parser",
+      href: "/resume-parser",
+      icon: (
+        <ClipboardList className="h-5 w-5 shrink-0 text-[#b0b0b0] group-hover:text-[#f59e0b] transition-colors" />
+      ),
+    },
+  ];
+
   return (
-    <motion.aside
-      initial={false}
-      animate={{
-        width: sidebarOpen ? 280 : 80,
-      }}
-      className="bg-[#312214]/80 backdrop-blur-xl border-r border-[#ffa36c]/20 flex flex-col h-screen sticky top-0"
-    >
-      <div className="border-b border-[#ffa36c]/20">
-        {sidebarOpen ? (
-          <Logo />
-        ) : (
-          <div className="flex items-center justify-center py-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#ff5e00] to-[#ff8c42]"></div>
+    <Sidebar open={open} setOpen={setOpen}>
+      <SidebarBody className="justify-between gap-10 bg-gradient-to-br from-[#1a1815]/95 via-[#252218]/90 to-[#1a1815]/95 backdrop-blur-xl border-r border-[#f59e0b]/20">
+        {/* Top gradient accent */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#f59e0b]/50 to-transparent" />
+        
+        <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+          {open ? <Logo /> : <LogoIcon />}
+          <div className="mt-8 flex flex-col gap-2">
+            {links.map((link, idx) => (
+              <SidebarLink key={idx} link={link} />
+            ))}
           </div>
-        )}
-      </div>
-
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="absolute -right-3 top-9 bg-[#312214] text-[#c4a893] p-1 rounded-full border border-[#ffa36c]/30 hover:bg-[#3d2a1a] transition-colors z-10"
-      >
-        {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
-      </button>
-
-      <nav className="flex-1 py-6 overflow-y-auto">
-        <div className="space-y-1 px-3">
-          {navigationItems.map((item, index) => (
-            <SidebarLink
-              key={index}
-              icon={item.icon}
-              label={item.label}
-              href={item.href}
-              open={sidebarOpen}
-            />
-          ))}
         </div>
-      </nav>
 
-      <div className="border-t border-[#ffa36c]/20 p-4">
-        <div className="bg-gradient-to-br from-[#ff5e00]/10 to-[#ff8c42]/10 rounded-lg p-3 border border-[#ff8c42]/20">
-          <div className="flex items-center gap-3">
-            <CreditCard className="text-[#ff8c42] shrink-0" size={20} />
-            {sidebarOpen && (
-              <div>
-                <p className="text-xs text-[#c4a893]">Credits</p>
-                <p className="text-lg font-bold text-[#fff4ed]">
-                  {creditsRemaining}
+        {/* Credits Section */}
+        <div className={`border-t border-[#f59e0b]/20 pt-4 ${open ? 'px-2' : 'px-1'}`}>
+          <div className="relative rounded-xl overflow-hidden border border-[#f59e0b]/20 bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 p-3 mb-4">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#f59e0b]/50 to-transparent" />
+            <div className={`flex items-center ${open ? 'gap-3' : 'justify-center'} relative z-10`}>
+              <CreditCard className="text-[#f59e0b] shrink-0" size={20} />
+              {open && (
+                <div>
+                  <p className="text-xs text-[#b0b0b0]">Credits</p>
+                  <p className="text-lg font-bold bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] bg-clip-text text-transparent">
+                    {creditsRemaining}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* User Profile */}
+          <div className={`flex items-center ${open ? 'gap-3 mb-3' : 'justify-center mb-3'}`}>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] flex items-center justify-center text-black font-semibold shrink-0">
+              {userName.charAt(0)}
+            </div>
+            {open && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {userName}
                 </p>
+                <p className="text-xs text-[#b0b0b0] truncate">{userEmail}</p>
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      <div className="border-t border-[#ffa36c]/20 p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff5e00] to-[#ff8c42] flex items-center justify-center text-white font-semibold shrink-0">
-            {userName.charAt(0)}
-          </div>
-          {sidebarOpen && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#fff4ed] truncate">
-                {userName}
-              </p>
-              <p className="text-xs text-[#c4a893] truncate">{userEmail}</p>
-            </div>
-          )}
+          {/* Logout Button */}
+          <button
+            onClick={handleSignOut}
+            className={`w-full flex items-center ${open ? 'gap-3 px-3' : 'justify-center px-2'} py-2.5 rounded-lg text-[#b0b0b0] hover:bg-[#252218]/50 hover:text-white transition-all group border-t border-[#f59e0b]/20 pt-3`}
+          >
+            <span className="shrink-0 group-hover:text-[#f59e0b] transition-colors">
+              <LogOut size={20} />
+            </span>
+            {open && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-medium"
+              >
+                Logout
+              </motion.span>
+            )}
+          </button>
         </div>
-      </div>
-
-      <div className="border-t border-[#ffa36c]/20 p-3">
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#c4a893] hover:bg-[#3d2a1a]/50 hover:text-[#fff4ed] transition-all group"
-        >
-          <span className="shrink-0 group-hover:text-[#ff8c42] transition-colors">
-            <LogOut size={20} />
-          </span>
-          {sidebarOpen && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm font-medium"
-            >
-              Logout
-            </motion.span>
-          )}
-        </button>
-      </div>
-    </motion.aside>
+      </SidebarBody>
+    </Sidebar>
   );
 }
 
-const SidebarLink = ({ icon, label, href, open }) => {
-  const router = useRouter();
-
+export const Logo = () => {
   return (
-    <button
-      onClick={() => router.push(href)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#c4a893] hover:bg-[#3d2a1a]/50 hover:text-[#fff4ed] transition-all group"
+    <a
+      href="/dashboard"
+      className="relative z-20 flex items-center space-x-2 py-1 text-sm font-normal px-2"
     >
-      <span className="shrink-0 group-hover:text-[#ff8c42] transition-colors">
-        {icon}
-      </span>
-      {open && (
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-sm font-medium"
-        >
-          {label}
-        </motion.span>
-      )}
-    </button>
+      <div className="h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br from-[#f59e0b] to-[#fbbf24]" />
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="font-bold text-lg whitespace-pre text-white"
+      >
+        AscendAI
+      </motion.span>
+    </a>
+  );
+};
+
+export const LogoIcon = () => {
+  return (
+    <a
+      href="/dashboard"
+      className="relative z-20 flex items-center justify-center py-1 text-sm font-normal"
+    >
+      <div className="h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br from-[#f59e0b] to-[#fbbf24]" />
+    </a>
   );
 };

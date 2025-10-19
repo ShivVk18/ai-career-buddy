@@ -256,33 +256,7 @@ model PracticeSession {
   @@index([userId, type])
 }
 
-model NetworkConnection {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  contactName String
-  email       String?
-  linkedin    String?
-  company     String
-  role        String
-  
-  relationship String
-  strength    Int
-  
-  lastContact DateTime?
-  contactCount Int     @default(0)
-  notes       String?
-  tags        String[]
-  
-  purpose     String?
-  nextAction  String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@index([userId])
-}
+
 
 model CareerGoal {
   id          String   @id @default(cuid())
@@ -386,4 +360,4 @@ model ColdEmail {
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
-}
+}   

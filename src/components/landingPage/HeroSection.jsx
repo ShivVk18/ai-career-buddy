@@ -21,7 +21,7 @@ export default function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 lg:px-8 overflow-hidden bg-[#0f0e0a] pt-32 md:pt-40 pb-20 md:pb-32">
+    <section className="relative min-h-screen flex items-center justify-center px-6 lg:px-8 overflow-hidden bg-[#0f0e0a] pt-32 md:pt-40 pb-12 md:pb-22">
        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#f59e0b]/30 to-transparent" />
         <BackgroundBeams className="absolute inset-0 opacity-40" />
         
@@ -93,31 +93,7 @@ export default function HeroSection() {
             </Link>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 1.4 }}
-            className="flex flex-col items-center gap-5"
-          >
-            <div className="flex items-center justify-center">
-              <AnimatedTooltip items={testimonialUsers} />
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 1.6 + i * 0.1 }}
-                  >
-                    <Star className="h-5 w-5 text-[#fbbf24] fill-[#fbbf24]" />
-                  </motion.div>
-                ))}
-              </div>
-              <span className="text-[#b0b0b0] text-sm ml-2 font-light">Trusted by 10,000+ professionals</span>
-            </div>
-          </motion.div>
+          
         </div>
       </section>
   );
