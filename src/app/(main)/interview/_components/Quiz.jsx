@@ -87,12 +87,12 @@ export default function Quiz() {
 
   if (generatingQuiz) {
     return (
-      <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-12 text-center shadow-2xl">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-orange-500/20 to-rose-500/20 flex items-center justify-center mb-6 mx-auto border border-orange-500/30 animate-pulse">
-          <Brain className="w-10 h-10 text-orange-400 animate-pulse" />
+      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-12 text-center shadow-2xl shadow-[#f59e0b]/5">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center mb-6 mx-auto border border-[#f59e0b]/30 animate-pulse">
+          <Brain className="w-10 h-10 text-[#f59e0b] animate-pulse" />
         </div>
-        <p className="text-xl text-gray-300 mb-4">Generating your personalized quiz...</p>
-        <BarLoader width={200} color="#f97316" className="mx-auto" />
+        <p className="text-xl text-[#b0b0b0] mb-4">Generating your personalized quiz...</p>
+        <BarLoader width={200} color="#f59e0b" className="mx-auto" />
       </div>
     );
   }
@@ -108,38 +108,38 @@ export default function Quiz() {
 
   if (!quizData) {
     return (
-      <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl mx-2">
+      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5 mx-2">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-orange-500/10 to-rose-500/10 border border-orange-500/20 backdrop-blur-xl mb-6">
-            <Sparkles className="h-4 w-4 text-orange-400 mr-2" />
-            <span className="text-sm font-medium text-orange-300">AI-Powered Questions</span>
-            <Brain className="h-4 w-4 text-rose-400 ml-2" />
+          <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-[#f59e0b]/10 to-[#fbbf24]/10 border border-[#f59e0b]/20 backdrop-blur-xl mb-6">
+            <Sparkles className="h-4 w-4 text-[#f59e0b] mr-2" />
+            <span className="text-sm font-medium text-[#fbbf24]">AI-Powered Questions</span>
+            <Brain className="h-4 w-4 text-[#f59e0b] ml-2" />
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Test Your Knowledge?</h2>
-          <p className="text-gray-400 mb-8">
+          <p className="text-[#b0b0b0] mb-8">
             This quiz contains 10 questions specific to your industry and skills. Take your time and choose the best answer for each question.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="backdrop-blur-xl bg-slate-800/30 rounded-2xl p-4 border border-orange-500/20">
-              <Clock className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-300">10 Questions</p>
+            <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-4 border border-[#f59e0b]/20">
+              <Clock className="w-8 h-8 text-[#f59e0b] mx-auto mb-2" />
+              <p className="text-sm text-[#b0b0b0]">10 Questions</p>
             </div>
-            <div className="backdrop-blur-xl bg-slate-800/30 rounded-2xl p-4 border border-rose-500/20">
-              <Target className="w-8 h-8 text-rose-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-300">Industry Focused</p>
+            <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-4 border border-[#f59e0b]/20">
+              <Target className="w-8 h-8 text-[#f59e0b] mx-auto mb-2" />
+              <p className="text-sm text-[#b0b0b0]">Industry Focused</p>
             </div>
-            <div className="backdrop-blur-xl bg-slate-800/30 rounded-2xl p-4 border border-blue-500/20">
-              <Award className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-300">Instant Feedback</p>
+            <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-4 border border-[#f59e0b]/20">
+              <Award className="w-8 h-8 text-[#f59e0b] mx-auto mb-2" />
+              <p className="text-sm text-[#b0b0b0]">Instant Feedback</p>
             </div>
           </div>
         </div>
         
         <button
           onClick={generateQuizFn}
-          className="w-full bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white py-4 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/50 transform hover:scale-105 flex items-center justify-center gap-3"
+          className="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-4 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 flex items-center justify-center gap-3"
         >
           <Play className="w-5 h-5" />
           Start Quiz
@@ -152,18 +152,18 @@ export default function Quiz() {
   const progress = ((currentQuestion + 1) / quizData.length) * 100;
 
   return (
-    <div className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 p-8 shadow-2xl mx-2">
+    <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5 mx-2">
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-medium text-gray-300">
+          <span className="text-sm font-medium text-[#b0b0b0]">
             Question {currentQuestion + 1} of {quizData.length}
           </span>
-          <span className="text-sm font-medium text-orange-400">{Math.round(progress)}%</span>
+          <span className="text-sm font-medium text-[#f59e0b]">{Math.round(progress)}%</span>
         </div>
-        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-[#1a1815]/50 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-orange-500 to-rose-500 transition-all duration-500 rounded-full"
+            className="h-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] transition-all duration-500 rounded-full"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -180,14 +180,14 @@ export default function Quiz() {
               onClick={() => handleAnswer(option)}
               className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ${
                 answers[currentQuestion] === option
-                  ? 'bg-gradient-to-r from-orange-500/20 to-rose-500/20 border-orange-500/50 shadow-lg shadow-orange-500/20'
-                  : 'bg-slate-800/30 border-slate-700 hover:border-orange-500/30 hover:bg-slate-800/50'
+                  ? 'bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 border-[#f59e0b]/50 shadow-lg shadow-[#f59e0b]/20'
+                  : 'bg-[#1a1815]/30 border-[#6b7280] hover:border-[#f59e0b]/30 hover:bg-[#1a1815]/50'
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                   answers[currentQuestion] === option
-                    ? 'border-orange-400 bg-orange-400'
+                    ? 'border-[#f59e0b] bg-[#f59e0b]'
                     : 'border-gray-500'
                 }`}>
                   {answers[currentQuestion] === option && (
@@ -203,12 +203,12 @@ export default function Quiz() {
 
       {/* Explanation */}
       {showExplanation && (
-        <div className="mb-6 backdrop-blur-xl bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+        <div className="mb-6 backdrop-blur-xl bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-2xl p-6">
           <div className="flex items-start gap-3">
-            <Brain className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+            <Brain className="w-6 h-6 text-[#f59e0b] flex-shrink-0 mt-1" />
             <div>
-              <p className="font-semibold text-blue-300 mb-2">Explanation</p>
-              <p className="text-blue-200 leading-relaxed">{question.explanation}</p>
+              <p className="font-semibold text-[#fbbf24] mb-2">Explanation</p>
+              <p className="text-[#b0b0b0] leading-relaxed">{question.explanation}</p>
             </div>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function Quiz() {
           <button
             onClick={() => setShowExplanation(true)}
             disabled={!answers[currentQuestion]}
-            className="flex-1 backdrop-blur-xl bg-slate-800/50 border border-blue-500/30 hover:border-blue-500/50 text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold hover:bg-slate-800/70 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 backdrop-blur-xl bg-[#1a1815]/50 border border-[#f59e0b]/30 hover:border-[#f59e0b]/50 text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold hover:bg-[#1a1815]/70 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Show Explanation
           </button>
@@ -228,7 +228,7 @@ export default function Quiz() {
         <button
           onClick={handleNext}
           disabled={!answers[currentQuestion] || savingResult}
-          className="flex-1 bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/50 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {savingResult ? (
             <BarLoader width={100} color="#ffffff" />

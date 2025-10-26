@@ -53,7 +53,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl border-0 bg-transparent p-0 sm:rounded-3xl">
-        <div className="backdrop-blur-xl bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-3xl border-2 border-orange-500/30 p-8 shadow-2xl">
+        <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/95 via-[#252218]/95 to-[#1a1815]/95 rounded-3xl border-2 border-[#f59e0b]/30 p-8 shadow-2xl shadow-[#f59e0b]/10">
           <AnimatePresence>
             {open && (
               <motion.div
@@ -68,15 +68,15 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                     className="inline-block"
                   >
-                    <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-orange-500/20 to-rose-500/20 flex items-center justify-center border border-orange-500/30">
-                      <Sparkles className="h-8 w-8 text-orange-400" />
+                    <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
+                      <Sparkles className="h-8 w-8 text-[#f59e0b]" />
                     </div>
                   </motion.div>
-                  <DialogTitle className="text-3xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-amber-400 bg-clip-text text-transparent">
+                  <DialogTitle className="text-3xl font-bold bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
                     Create Your Career Roadmap
                   </DialogTitle>
-                  <p className="text-gray-400 flex items-center justify-center gap-2">
-                    <Brain className="h-4 w-4 text-rose-400" />
+                  <p className="text-[#b0b0b0] flex items-center justify-center gap-2">
+                    <Brain className="h-4 w-4 text-[#f59e0b]" />
                     Let AI design a personalized path to your dream role
                   </p>
                 </DialogHeader>
@@ -84,7 +84,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                 <form onSubmit={handleSubmit} className="space-y-6 mt-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="currentRole" className="text-sm font-medium text-gray-300">
+                      <Label htmlFor="currentRole" className="text-sm font-medium text-[#b0b0b0]">
                         Current Role
                       </Label>
                       <Input
@@ -94,12 +94,12 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                         value={formData.currentRole}
                         onChange={handleChange}
                         required
-                        className="bg-slate-800/50 border border-orange-500/20 focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 rounded-xl text-white placeholder-gray-500"
+                        className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="targetRole" className="text-sm font-medium text-gray-300">
+                      <Label htmlFor="targetRole" className="text-sm font-medium text-[#b0b0b0]">
                         Target Role
                       </Label>
                       <Input
@@ -109,13 +109,13 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                         value={formData.targetRole}
                         onChange={handleChange}
                         required
-                        className="bg-slate-800/50 border border-orange-500/20 focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 rounded-xl text-white placeholder-gray-500"
+                        className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="industry" className="text-sm font-medium text-gray-300">
+                    <Label htmlFor="industry" className="text-sm font-medium text-[#b0b0b0]">
                       Industry
                     </Label>
                     <Input
@@ -125,12 +125,12 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                       value={formData.industry}
                       onChange={handleChange}
                       required
-                      className="bg-slate-800/50 border border-orange-500/20 focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 rounded-xl text-white placeholder-gray-500"
+                      className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="timeline" className="text-sm font-medium text-gray-300">
+                    <Label htmlFor="timeline" className="text-sm font-medium text-[#b0b0b0]">
                       Desired Timeline (Optional)
                     </Label>
                     <Input
@@ -139,7 +139,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                       placeholder="e.g. 12 months, 2 years"
                       value={formData.timeline}
                       onChange={handleChange}
-                      className="bg-slate-800/50 border border-orange-500/20 focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 rounded-xl text-white placeholder-gray-500"
+                      className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
                     />
                   </div>
 
@@ -148,7 +148,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                       type="button"
                       variant="outline"
                       onClick={onClose}
-                      className="flex-1 backdrop-blur-xl bg-slate-800/50 border border-gray-500/30 hover:border-gray-500/50 hover:bg-slate-800/70 rounded-xl text-white transition-all duration-300"
+                      className="flex-1 backdrop-blur-xl bg-[#1a1815]/50 border border-[#f59e0b]/30 hover:border-[#f59e0b]/50 hover:bg-[#1a1815]/70 rounded-xl text-white transition-all duration-300"
                       disabled={loading}
                     >
                       Cancel
@@ -161,7 +161,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                       <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white border-0 rounded-xl disabled:opacity-50 font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300"
+                        className="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 rounded-xl disabled:opacity-50 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-xl hover:shadow-[#f59e0b]/40 transition-all duration-300"
                       >
                         {loading ? (
                           <>

@@ -3,6 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import AiServices from "@/services/AiServices";
+import { GoogleGenAI } from "@google/genai";
 
 const client = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,

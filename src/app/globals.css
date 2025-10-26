@@ -42,17 +42,26 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
    --color-goldyBg: #0f0e0a;          
-    --color-accent-primary: #ff5e00;     
-    --color-accent-secondary: #ff8c42;   
-    --color-accent-glow: #ffa36c;       
-    --color-text-primary: #fff4ed;       
-    --color-text-secondary: #c4a893;    
-    --color-surface: #312214;           
+    --primary-orange: #f59e0b;
+    --primary-amber: #fbbf24;
     
-    /* Additional utility colors */
-    --color-border: rgba(255, 163, 108, 0.4);
-    --color-hover: rgba(255, 163, 108, 0.2);
-    --color-shadow: rgba(255, 94, 0, 0.4);
+    /* Background Colors */
+    --bg-primary: #0f0e0a;
+    --bg-card-dark: #1a1815;
+    --bg-card-medium: #252218;
+    
+    /* Text Colors */
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-muted: #6b7280;
+    
+    /* Border Colors */
+    --border-primary: rgba(245, 158, 11, 0.2);
+    --border-hover: rgba(245, 158, 11, 0.5);
+    
+    /* Shadow Colors */
+    --shadow-primary: rgba(245, 158, 11, 0.05);
+    --shadow-hover: rgba(245, 158, 11, 0.1);
 }
 
 :root {

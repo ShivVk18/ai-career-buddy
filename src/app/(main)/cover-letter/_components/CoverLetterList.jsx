@@ -50,8 +50,8 @@ export default function CoverLetterList({ coverLetters }) {
         <Card className="glass-dark border-white/10 backdrop-blur-xl relative z-10">
           <CardHeader className="text-center py-16">
             <div className="flex items-center justify-center mb-6">
-              <div className="p-4 rounded-3xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-white/10">
-                <FileText className="h-12 w-12 text-blue-400" />
+              <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-4 rounded-3xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 group shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
+                <FileText className="h-12 w-12 text-primary" />
               </div>
             </div>
             <CardTitle className="text-2xl text-white mb-2">No Cover Letters Yet</CardTitle>
@@ -61,7 +61,7 @@ export default function CoverLetterList({ coverLetters }) {
             <div className="mt-8">
               <Button 
                 onClick={() => router.push('/cover-letter/new')}
-                className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105"
               >
                 Create Your First Cover Letter
               </Button>
