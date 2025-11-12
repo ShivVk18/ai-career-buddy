@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Eye, Trash2, FileText, Calendar, Building2, Briefcase,CheckCircle } from "lucide-react";
+import { Eye, Trash2, FileText, Calendar, Building2, Briefcase, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -43,25 +43,25 @@ export default function CoverLetterList({ coverLetters }) {
       <div className="relative">
         {/* Animated background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400/10 rounded-full blur-sm animate-pulse"></div>
-          <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-purple-400/10 rounded-full blur-sm animate-bounce"></div>
+          <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-[#f59e0b]/10 rounded-full blur-sm animate-pulse"></div>
+          <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-[#fbbf24]/10 rounded-full blur-sm animate-bounce"></div>
         </div>
 
-        <Card className="glass-dark border-white/10 backdrop-blur-xl relative z-10">
+        <Card className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border border-[#f59e0b]/10 relative z-10 rounded-3xl">
           <CardHeader className="text-center py-16">
             <div className="flex items-center justify-center mb-6">
-              <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-4 rounded-3xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 group shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-                <FileText className="h-12 w-12 text-primary" />
+              <div className="backdrop-blur-xl bg-gradient-to-br from-[#f59e0b]/20 to-[#fbbf24]/20 p-4 rounded-3xl border border-[#f59e0b]/30 hover:border-[#f59e0b]/40 transition-all duration-300 group shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
+                <FileText className="h-12 w-12 text-[#f59e0b]" />
               </div>
             </div>
             <CardTitle className="text-2xl text-white mb-2">No Cover Letters Yet</CardTitle>
-            <CardDescription className="text-gray-400 text-lg">
+            <CardDescription className="text-[#b0b0b0] text-lg">
               Create your first AI-generated cover letter to get started
             </CardDescription>
             <div className="mt-8">
               <Button 
                 onClick={() => router.push('/cover-letter/new')}
-                className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 rounded-2xl shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all duration-300 hover:scale-105"
               >
                 Create Your First Cover Letter
               </Button>
@@ -73,22 +73,22 @@ export default function CoverLetterList({ coverLetters }) {
   }
 
   return (
-     <div className="space-y-8">
+    <div className="space-y-8">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="backdrop-blur-xl bg-gradient-to-br from-orange-500/10 to-rose-500/10 border border-orange-500/30 rounded-3xl p-6">
+        <div className="backdrop-blur-xl bg-gradient-to-br from-[#f59e0b]/10 to-[#fbbf24]/10 border border-[#f59e0b]/30 rounded-3xl p-6 shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10 transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-300 text-sm font-medium mb-1">Total Letters</p>
+              <p className="text-[#fbbf24] text-sm font-medium mb-1">Total Letters</p>
               <p className="text-3xl font-bold text-white">{coverLetters.length}</p>
             </div>
-            <div className="w-14 h-14 rounded-full bg-orange-500/20 flex items-center justify-center border border-orange-500/30">
-              <FileText className="h-7 w-7 text-orange-400" />
+            <div className="w-14 h-14 rounded-full bg-[#f59e0b]/20 flex items-center justify-center border border-[#f59e0b]/30">
+              <FileText className="h-7 w-7 text-[#f59e0b]" />
             </div>
           </div>
         </div>
         
-        <div className="backdrop-blur-xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-3xl p-6">
+        <div className="backdrop-blur-xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-3xl p-6 shadow-xl shadow-emerald-500/5 hover:shadow-emerald-500/10 transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-emerald-300 text-sm font-medium mb-1">This Month</p>
@@ -106,16 +106,16 @@ export default function CoverLetterList({ coverLetters }) {
           </div>
         </div>
 
-        <div className="backdrop-blur-xl bg-gradient-to-br from-rose-500/10 to-pink-500/10 border border-rose-500/30 rounded-3xl p-6">
+        <div className="backdrop-blur-xl bg-gradient-to-br from-[#fbbf24]/10 to-[#f59e0b]/10 border border-[#fbbf24]/30 rounded-3xl p-6 shadow-xl shadow-[#fbbf24]/5 hover:shadow-[#fbbf24]/10 transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-rose-300 text-sm font-medium mb-1">Companies</p>
+              <p className="text-[#fbbf24] text-sm font-medium mb-1">Companies</p>
               <p className="text-3xl font-bold text-white">
                 {new Set(coverLetters.map(letter => letter.companyName)).size}
               </p>
             </div>
-            <div className="w-14 h-14 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-              <Building2 className="h-7 w-7 text-rose-400" />
+            <div className="w-14 h-14 rounded-full bg-[#fbbf24]/20 flex items-center justify-center border border-[#fbbf24]/30">
+              <Building2 className="h-7 w-7 text-[#fbbf24]" />
             </div>
           </div>
         </div>
@@ -126,25 +126,25 @@ export default function CoverLetterList({ coverLetters }) {
         {coverLetters.map((letter, index) => (
           <div 
             key={letter.id} 
-            className="backdrop-blur-xl bg-slate-900/50 rounded-3xl border border-orange-500/10 hover:border-orange-500/30 p-8 shadow-2xl transition-all duration-500 group hover:scale-[1.02] cursor-pointer"
+            className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/30 p-8 shadow-2xl shadow-[#f59e0b]/5 transition-all duration-500 group hover:scale-[1.02] cursor-pointer"
             onClick={() => router.push(`/cover-letter/${letter.id}`)}
           >
             <div className="flex items-start justify-between mb-6">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-3">
-                  <div className="p-2 rounded-lg bg-gradient-to-r from-orange-500/20 to-rose-500/20 border border-orange-500/30">
-                    <Briefcase className="h-4 w-4 text-orange-400" />
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 border border-[#f59e0b]/30">
+                    <Briefcase className="h-4 w-4 text-[#f59e0b]" />
                   </div>
                   <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
                     Cover Letter
                   </span>
                 </div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-rose-400 bg-clip-text text-transparent mb-2 group-hover:from-orange-300 group-hover:to-rose-300 transition-all duration-300">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] bg-clip-text text-transparent mb-2 group-hover:from-[#fbbf24] group-hover:to-[#f59e0b] transition-all duration-300">
                   {letter.jobTitle}
                 </h3>
                 <div className="flex items-center space-x-2">
                   <Building2 className="h-4 w-4 text-gray-500" />
-                  <p className="text-gray-400 font-medium">{letter.companyName}</p>
+                  <p className="text-[#b0b0b0] font-medium">{letter.companyName}</p>
                 </div>
               </div>
               
@@ -156,7 +156,7 @@ export default function CoverLetterList({ coverLetters }) {
                     e.stopPropagation();
                     router.push(`/cover-letter/${letter.id}`);
                   }}
-                  className="h-9 w-9 p-0 rounded-xl bg-slate-800/50 border border-orange-500/20 hover:border-orange-500/50 hover:bg-orange-600/20 text-gray-400 hover:text-orange-400 transition-all duration-300"
+                  className="h-9 w-9 p-0 rounded-xl bg-[#1a1815]/50 border border-[#f59e0b]/20 hover:border-[#f59e0b]/50 hover:bg-[#f59e0b]/20 text-gray-400 hover:text-[#f59e0b] transition-all duration-300"
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
@@ -167,22 +167,22 @@ export default function CoverLetterList({ coverLetters }) {
                       variant="ghost"
                       size="sm"
                       onClick={(e) => e.stopPropagation()}
-                      className="h-9 w-9 p-0 rounded-xl bg-slate-800/50 border border-rose-500/20 hover:border-rose-500/50 hover:bg-rose-600/20 text-gray-400 hover:text-rose-400 transition-all duration-300"
+                      className="h-9 w-9 p-0 rounded-xl bg-[#1a1815]/50 border border-rose-500/20 hover:border-rose-500/50 hover:bg-rose-600/20 text-gray-400 hover:text-rose-400 transition-all duration-300"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="backdrop-blur-xl bg-slate-900/95 border-orange-500/20">
+                  <AlertDialogContent className="backdrop-blur-xl bg-[#1a1815]/95 border-[#f59e0b]/20">
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-white text-xl">Delete Cover Letter?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-gray-400">
+                      <AlertDialogDescription className="text-[#b0b0b0]">
                         This action cannot be undone. This will permanently delete your cover letter for{" "}
-                        <span className="text-orange-400 font-semibold">{letter.jobTitle}</span> at{" "}
-                        <span className="text-orange-400 font-semibold">{letter.companyName}</span>.
+                        <span className="text-[#f59e0b] font-semibold">{letter.jobTitle}</span> at{" "}
+                        <span className="text-[#f59e0b] font-semibold">{letter.companyName}</span>.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel className="bg-slate-800/50 border-orange-500/20 text-gray-300 hover:bg-slate-800/70">
+                      <AlertDialogCancel className="bg-[#1a1815]/50 border-[#f59e0b]/20 text-gray-300 hover:bg-[#1a1815]/70">
                         Cancel
                       </AlertDialogCancel>
                       <AlertDialogAction
@@ -211,12 +211,12 @@ export default function CoverLetterList({ coverLetters }) {
                 </div>
               </div>
 
-              <p className="text-gray-400 text-sm line-clamp-2 leading-relaxed">
+              <p className="text-[#b0b0b0] text-sm line-clamp-2 leading-relaxed">
                 {letter.jobDescription}
               </p>
               
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 text-xs rounded-full bg-gradient-to-r from-orange-500/20 to-rose-500/20 border border-orange-500/30 text-orange-400">
+                <span className="px-3 py-1 text-xs rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 border border-[#f59e0b]/30 text-[#f59e0b]">
                   AI Generated
                 </span>
                 <span className="px-3 py-1 text-xs rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 text-blue-400">
