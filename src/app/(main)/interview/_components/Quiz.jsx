@@ -2,32 +2,34 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { generateQuiz, saveQuizResult } from "@/actions/Interview";
-import QuizResult from "./QuizResult";
-import useFetch from "@/hooks/use-fetch";
 import { BarLoader } from "react-spinners";
-import { Sparkles, Brain, Play, Clock, Target, Award, CheckCircle2, ArrowRight, RefreshCw } from "lucide-react";
+import {
+  Sparkles,
+  Brain,
+  Play,
+  Clock,
+  Target,
+  Award,
+  CheckCircle2,
+  ArrowRight,
+  Home
+} from "lucide-react";
 
-export default function Quiz() {
+import { saveQuizResult, getLatestQuiz } from "@/actions/Interview";
+import useFetch from "@/hooks/use-fetch";
+import QuizResult from "./QuizResult";
+
+export default function Quiz({ onComplete }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [showExplanation, setShowExplanation] = useState(false);
 
+  // Load quiz that was ALREADY generated from Skill Form
   const {
-    loading: generatingQuiz,
-    fn: generateQuizFn,
+    loading: loadingQuiz,
+    fn: loadQuizFn,
     data: quizData,
-  } = useFetch(generateQuiz);
+  } = useFetch(getLatestQuiz);
 
   const {
     loading: savingResult,
@@ -36,6 +38,11 @@ export default function Quiz() {
     setData: setResultData,
   } = useFetch(saveQuizResult);
 
+  // Load quiz on mount
+  useEffect(() => {
+    loadQuizFn();
+  }, []);
+
   useEffect(() => {
     if (quizData) {
       setAnswers(new Array(quizData.length).fill(null));
@@ -43,9 +50,9 @@ export default function Quiz() {
   }, [quizData]);
 
   const handleAnswer = (answer) => {
-    const newAnswers = [...answers];
-    newAnswers[currentQuestion] = answer;
-    setAnswers(newAnswers);
+    const updated = [...answers];
+    updated[currentQuestion] = answer;
+    setAnswers(updated);
   };
 
   const handleNext = () => {
@@ -57,12 +64,17 @@ export default function Quiz() {
     }
   };
 
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+      setShowExplanation(false);
+    }
+  };
+
   const calculateScore = () => {
     let correct = 0;
-    answers.forEach((answer, index) => {
-      if (answer === quizData[index].correctAnswer) {
-        correct++;
-      }
+    answers.forEach((ans, idx) => {
+      if (ans === quizData[idx].correctAnswer) correct++;
     });
     return (correct / quizData.length) * 100;
   };
@@ -71,78 +83,54 @@ export default function Quiz() {
     const score = calculateScore();
     try {
       await saveQuizResultFn(quizData, answers, score);
-      toast.success("Quiz completed!");
-    } catch (error) {
-      toast.error(error.message || "Failed to save quiz results");
+      toast.success("Quiz Completed!");
+    } catch (err) {
+      toast.error(err.message || "Failed to save quiz data");
     }
   };
 
-  const startNewQuiz = () => {
-    setCurrentQuestion(0);
-    setAnswers([]);
-    setShowExplanation(false);
-    generateQuizFn();
-    setResultData(null);
+  const handleBackToHome = () => {
+    if (onComplete) {
+      onComplete();
+    }
   };
 
-  if (generatingQuiz) {
+  // Loading screen
+  if (loadingQuiz) {
     return (
       <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-12 text-center shadow-2xl shadow-[#f59e0b]/5">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center mb-6 mx-auto border border-[#f59e0b]/30 animate-pulse">
-          <Brain className="w-10 h-10 text-[#f59e0b] animate-pulse" />
+        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center mb-6 mx-auto animate-pulse">
+          <Brain className="w-10 h-10 text-[#f59e0b]" />
         </div>
-        <p className="text-xl text-[#b0b0b0] mb-4">Generating your personalized quiz...</p>
+        <p className="text-xl text-[#b0b0b0] mb-3">Loading your quiz...</p>
         <BarLoader width={200} color="#f59e0b" className="mx-auto" />
       </div>
     );
   }
 
-  // Show results if quiz is completed
+  // Show quiz result
   if (resultData) {
     return (
       <div className="mx-2">
-        <QuizResult result={resultData} onStartNew={startNewQuiz} />
+        <QuizResult result={resultData} onStartNew={handleBackToHome} />
       </div>
     );
   }
 
+  // If quiz is not loaded yet
   if (!quizData) {
     return (
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5 mx-2">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-[#f59e0b]/10 to-[#fbbf24]/10 border border-[#f59e0b]/20 backdrop-blur-xl mb-6">
-            <Sparkles className="h-4 w-4 text-[#f59e0b] mr-2" />
-            <span className="text-sm font-medium text-[#fbbf24]">AI-Powered Questions</span>
-            <Brain className="h-4 w-4 text-[#f59e0b] ml-2" />
-          </div>
-          
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Test Your Knowledge?</h2>
-          <p className="text-[#b0b0b0] mb-8">
-            This quiz contains 10 questions specific to your industry and skills. Take your time and choose the best answer for each question.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-4 border border-[#f59e0b]/20">
-              <Clock className="w-8 h-8 text-[#f59e0b] mx-auto mb-2" />
-              <p className="text-sm text-[#b0b0b0]">10 Questions</p>
-            </div>
-            <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-4 border border-[#f59e0b]/20">
-              <Target className="w-8 h-8 text-[#f59e0b] mx-auto mb-2" />
-              <p className="text-sm text-[#b0b0b0]">Industry Focused</p>
-            </div>
-            <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-4 border border-[#f59e0b]/20">
-              <Award className="w-8 h-8 text-[#f59e0b] mx-auto mb-2" />
-              <p className="text-sm text-[#b0b0b0]">Instant Feedback</p>
-            </div>
-          </div>
+      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-12 text-center shadow-2xl shadow-[#f59e0b]/5">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center mb-6 mx-auto">
+          <Brain className="w-10 h-10 text-[#f59e0b]" />
         </div>
-        
+        <p className="text-xl text-white mb-2">No Quiz Found!</p>
+        <p className="text-[#b0b0b0] mb-6">Please generate a quiz first from the skills form.</p>
         <button
-          onClick={generateQuizFn}
-          className="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-4 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 flex items-center justify-center gap-3"
+          onClick={handleBackToHome}
+          className="bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold"
         >
-          <Play className="w-5 h-5" />
-          Start Quiz
+          Go Back
         </button>
       </div>
     );
@@ -153,92 +141,135 @@ export default function Quiz() {
 
   return (
     <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5 mx-2">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
+            <Target className="w-5 h-5 text-[#f59e0b]" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Skills Quiz</h2>
+        </div>
+        <button
+          onClick={handleBackToHome}
+          className="text-[#b0b0b0] hover:text-white transition-colors flex items-center gap-2"
+        >
+          <Home className="w-5 h-5" />
+          <span className="hidden sm:inline">Back</span>
+        </button>
+      </div>
+
       {/* Progress Bar */}
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-medium text-[#b0b0b0]">
-            Question {currentQuestion + 1} of {quizData.length}
-          </span>
-          <span className="text-sm font-medium text-[#f59e0b]">{Math.round(progress)}%</span>
+        <div className="flex justify-between text-[#b0b0b0] mb-3">
+          <span>Question {currentQuestion + 1} of {quizData.length}</span>
+          <span className="text-[#f59e0b] font-semibold">{Math.round(progress)}%</span>
         </div>
-        <div className="w-full h-2 bg-[#1a1815]/50 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] transition-all duration-500 rounded-full"
+        <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
       {/* Question */}
-      <div className="mb-8">
-        <h3 className="text-2xl font-bold text-white mb-6">{question.question}</h3>
-        
-        <div className="space-y-3">
-          {question.options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => handleAnswer(option)}
-              className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ${
+      <h3 className="text-2xl font-bold text-white mb-6">{question.question}</h3>
+
+      <div className="space-y-3">
+        {question.options.map((option, index) => (
+          <button
+            key={index}
+            onClick={() => handleAnswer(option)}
+            disabled={showExplanation}
+            className={`w-full p-4 rounded-xl border transition duration-300 text-left ${
+              answers[currentQuestion] === option
+                ? "border-[#f59e0b] bg-[#f59e0b]/20"
+                : "border-gray-600 bg-black/40 hover:bg-black/60"
+            } ${showExplanation ? 'cursor-not-allowed opacity-75' : ''}`}
+          >
+            <div className="flex gap-3 items-center">
+              <div className={`w-6 h-6 border-2 rounded-full flex items-center justify-center ${
                 answers[currentQuestion] === option
-                  ? 'bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 border-[#f59e0b]/50 shadow-lg shadow-[#f59e0b]/20'
-                  : 'bg-[#1a1815]/30 border-[#6b7280] hover:border-[#f59e0b]/30 hover:bg-[#1a1815]/50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  answers[currentQuestion] === option
-                    ? 'border-[#f59e0b] bg-[#f59e0b]'
-                    : 'border-gray-500'
-                }`}>
-                  {answers[currentQuestion] === option && (
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                  )}
-                </div>
-                <span className="text-gray-200">{option}</span>
+                  ? "border-[#f59e0b] bg-[#f59e0b]"
+                  : "border-gray-500"
+              }`}>
+                {answers[currentQuestion] === option && (
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                )}
               </div>
-            </button>
-          ))}
-        </div>
+              <span className="text-gray-200">{option}</span>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Explanation */}
       {showExplanation && (
-        <div className="mb-6 backdrop-blur-xl bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-2xl p-6">
-          <div className="flex items-start gap-3">
-            <Brain className="w-6 h-6 text-[#f59e0b] flex-shrink-0 mt-1" />
-            <div>
-              <p className="font-semibold text-[#fbbf24] mb-2">Explanation</p>
-              <p className="text-[#b0b0b0] leading-relaxed">{question.explanation}</p>
-            </div>
-          </div>
+        <div className="mt-6 p-5 bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+          <p className="text-[#fbbf24] font-semibold mb-2 flex items-center gap-2">
+            <Brain className="w-5 h-5" /> Explanation
+          </p>
+          <p className="text-[#b0b0b0]">{question.explanation}</p>
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 mt-8">
+        {currentQuestion > 0 && (
+          <button
+            onClick={handlePrevious}
+            className="py-3 px-6 rounded-xl bg-black/40 border border-[#f59e0b]/20 text-white hover:bg-black/60 transition-colors"
+          >
+            Previous
+          </button>
+        )}
+
         {!showExplanation && (
           <button
             onClick={() => setShowExplanation(true)}
             disabled={!answers[currentQuestion]}
-            className="flex-1 backdrop-blur-xl bg-[#1a1815]/50 border border-[#f59e0b]/30 hover:border-[#f59e0b]/50 text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold hover:bg-[#1a1815]/70 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-3 rounded-xl bg-black/40 border border-[#f59e0b]/20 text-white disabled:opacity-40 hover:bg-black/60 transition-colors"
           >
             Show Explanation
           </button>
         )}
+
         <button
           onClick={handleNext}
           disabled={!answers[currentQuestion] || savingResult}
-          className="flex-1 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-white flex items-center justify-center gap-2 disabled:opacity-40 hover:shadow-lg hover:shadow-[#f59e0b]/30 transition-all"
         >
           {savingResult ? (
-            <BarLoader width={100} color="#ffffff" />
+            <BarLoader width={80} color="#ffffff" />
           ) : (
             <>
-              {currentQuestion < quizData.length - 1 ? "Next Question" : "Finish Quiz"}
+              {currentQuestion < quizData.length - 1
+                ? "Next Question"
+                : "Finish Quiz"}
               <ArrowRight className="w-5 h-5" />
             </>
           )}
         </button>
+      </div>
+
+      {/* Question Navigation Dots */}
+      <div className="flex justify-center gap-2 mt-6">
+        {quizData.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              setCurrentQuestion(idx);
+              setShowExplanation(false);
+            }}
+            className={`w-3 h-3 rounded-full transition-all ${
+              idx === currentQuestion
+                ? 'bg-[#f59e0b] w-8'
+                : answers[idx]
+                ? 'bg-[#fbbf24]/50'
+                : 'bg-gray-600'
+            }`}
+          />
+        ))}
       </div>
     </div>
   );

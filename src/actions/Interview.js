@@ -40,36 +40,46 @@ function safeJsonParse(jsonString, fallbackData = null) {
     }
   }
 
-export async function generateQuiz() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+export async function generateQuiz(skills) {
+  try {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-    select: {
-      industry: true,
-      skills: true,
-    },
-  });
+    // Fetch user industry + skills from DB
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId },
+      select: {
+        industry: true,
+        skills: true,
+      },
+    });
 
-  if (!user) throw new Error("User not found");
+    if (!user) throw new Error("User not found");
 
-  const prompt = `
+    // Clean skills input
+    const sanitizedSkills = skills
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    const formattedSkills =
+      sanitizedSkills.length > 0 ? ` with expertise in ${sanitizedSkills.join(", ")}` : "";
+
+    // Prompt for the AI
+    const prompt = `
 You are an AI that outputs ONLY valid JSON.
 
-Generate exactly 10 multiple-choice interview questions for a ${user.industry} professional${
-    user.skills?.length ? ` with expertise in ${user.skills.join(", ")}` : ""
-  }.
+Generate exactly 10 high-quality multiple-choice interview questions for a 
+${user.industry} professional${formattedSkills}.
 
 Each question must follow this schema:
 {
   "question": "string",
   "options": ["string", "string", "string", "string"],
   "correctAnswer": "string",
-  "explanation": "string (1-2 sentences)"
+  "explanation": "string"
 }
 
-Final Output:
+Output format:
 {
   "questions": [
     { ... }, { ... }, ... 10 items
@@ -77,39 +87,48 @@ Final Output:
 }
 
 Rules:
-1. Output must be valid JSON.
-2. No comments, markdown, or extra text.
-3. Keep explanations concise (max 2 sentences).
+1. Output MUST be valid JSON.
+2. No Markdown, no extra text.
+3. Explanation must be 1–2 sentences.
+4. All options must be unique.
+5. "correctAnswer" MUST match one of the options.
 `;
 
-  try {
+    // Gemini API call
     const result = await client.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: { temperature: 0.3 },
     });
 
-    // ✅ Correctly extract text for @google/genai SDK
-    const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const rawText =
+      result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
 
     if (!rawText) {
-      console.error("Empty or invalid Gemini response:", JSON.stringify(result, null, 2));
-      throw new Error("No content received from AI");
+      console.error("❌ Empty Gemini response:", JSON.stringify(result, null, 2));
+      throw new Error("AI returned no content");
     }
 
-    console.log("Raw Gemini Output:", rawText);
+    console.log("🔍 Raw Gemini Output:", rawText);
 
-    const cleanedText = cleanJsonResponse(rawText);
-    const quiz = safeJsonParse(cleanedText);
+    // Clean invalid JSON (removes ```json, trailing commas, etc.)
+    const cleaned = cleanJsonResponse(rawText);
+    const parsed = safeJsonParse(cleaned);
 
-    if (!quiz?.questions || !Array.isArray(quiz.questions)) {
-      throw new Error("Invalid quiz format received from AI");
+    if (!parsed || !Array.isArray(parsed.questions)) {
+      throw new Error("Invalid quiz format from AI");
     }
 
-    return quiz.questions;
+    // Validate exactly 10 questions
+    if (parsed.questions.length !== 10) {
+      console.warn("⚠ AI returned wrong number of questions. Cutting to 10.");
+      parsed.questions = parsed.questions.slice(0, 10);
+    }
+
+    return parsed.questions;
   } catch (error) {
-    console.error("Error generating quiz:", error);
-    throw new Error("Failed to generate quiz questions");
+    console.error("🔥 Quiz Generation Error:", error);
+    throw new Error("Failed to generate quiz. Please try again.");
   }
 }
 
@@ -188,4 +207,16 @@ export async function getAssessments() {
     console.error("Error fetching assessments:", error);
     throw new Error("Failed to fetch assessments");
   }
+}
+
+export async function getLatestQuiz() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const quiz = await db.assessment.findFirst({
+    where: { clerkUserId: userId },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return quiz?.questions || null;
 }

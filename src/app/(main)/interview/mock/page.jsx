@@ -1,9 +1,15 @@
+'use client'
+
 import Link from "next/link";
 import { ArrowLeft, Sparkles, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Quiz from "../_components/Quiz";
+import { useState } from "react";
 
 export default function MockInterviewPage() {
+  
+
+
   return (
     <div className="min-h-screen bg-[#0f0e0a] py-12 px-4 sm:px-6 lg:px-8">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">

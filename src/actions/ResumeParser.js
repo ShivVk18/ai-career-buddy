@@ -1,4 +1,6 @@
-'use server'
+'use server';
+
+
 
 import { db } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -9,7 +11,6 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-// Create ATS Score Analysis
 export async function createATSAnalysis(formData) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
@@ -18,327 +19,148 @@ export async function createATSAnalysis(formData) {
   if (!clerkUser) throw new Error("User not found");
 
   try {
-    // Ensure user exists in database
+    // Ensure user exists
     await db.user.upsert({
       where: { clerkUserId: userId },
       update: {
         email: clerkUser.emailAddresses[0]?.emailAddress || `${userId}@placeholder.com`,
-        name: clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim() : null,
+        name: clerkUser.firstName
+          ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim()
+          : null,
       },
       create: {
         clerkUserId: userId,
         email: clerkUser.emailAddresses[0]?.emailAddress || `${userId}@placeholder.com`,
-        name: clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim() : null,
+        name: clerkUser.firstName
+          ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim()
+          : null,
         skills: [],
       },
     });
 
     const { companyName, jobTitle, jobDescription, resumeBase64 } = formData;
 
-    if (!resumeBase64) throw new Error("Resume file is required");
+    if (!resumeBase64) throw new Error("Resume PDF missing");
 
-    console.log("=== DEBUG INFO ===");
-    console.log("Resume base64 length:", resumeBase64?.length);
-    console.log("Has job description:", !!jobDescription);
-    console.log("Company:", companyName);
-    console.log("Job Title:", jobTitle);
+    console.log("=== DEBUG ===");
+    console.log("Base64 length:", resumeBase64.length);
 
-    // STRICT PROMPT WITH CHAIN OF THOUGHT
-    const prompt = `You are an expert ATS (Applicant Tracking System) analyzer. Carefully analyze the provided resume PDF against the job requirements.
+    // FULL ATS PROMPT (USE EXACT RULES)
+    const prompt = `
+You are an ATS scoring engine. Analyze the candidate's resume (PDF) using the strict scoring logic.
 
-**Job Details:**
-- Company: ${companyName || "Not specified"}
-- Position: ${jobTitle || "Not specified"}  
-- Job Description: ${jobDescription || "General resume analysis - evaluate overall ATS compatibility"}
+Important:
+- Think internally but DO NOT reveal chain of thought.
+- Output ONLY valid JSON.
+- No markdown. No commentary.
 
-**CRITICAL SCORING INSTRUCTIONS:**
+JOB DETAILS:
+Company: ${companyName}
+Position: ${jobTitle}
+Job Description: ${jobDescription}
 
-You MUST use Chain of Thought reasoning before scoring:
+SCORING RULES (STRICT):
 
-**Step 1: Keyword Analysis (40 points max)**
-- Extract ALL keywords from job description
-- Count exact matches in resume
-- Partial matches count as half points
-- Calculate: (matched keywords / total required keywords) × 40
+1. KEYWORD MATCH (40 points)
+   - Extract required technical keywords from job description.
+   - Score = (matched_keywords / total_keywords) * 40.
 
-**Step 2: Format & Structure (30 points max)**
-- ATS-friendly formatting (no tables/graphics): 10 points
-- Clear section headings: 10 points  
-- Contact info present: 5 points
-- Consistent formatting: 5 points
+2. FORMAT & STRUCTURE (30 points)
+   - ATS-friendly formatting = 10
+   - Clear headings = 10
+   - Contact info = 5
+   - Consistent formatting = 5
 
-**Step 3: Experience Relevance (30 points max)**
-- Years of relevant experience: 15 points
-- Job title alignment: 10 points
-- Industry fit: 5 points
+3. EXPERIENCE RELEVANCE (30 points)
+   - Relevant years = 15
+   - Job title match = 10
+   - Industry relevance = 5
 
-**STRICT GRADING SCALE - FOLLOW EXACTLY:**
-- 90-100: Exceptional - Perfect match, ready to submit (RARE - only if 0-1 weaknesses)
-- 80-89: Very Good - Strong candidate (max 2-3 minor weaknesses)
-- 70-79: Good - Decent match (3-4 weaknesses, needs improvements)
-- 60-69: Fair - Significant gaps (5-6 weaknesses, major improvements needed)
-- 50-59: Poor - Many issues (7+ weaknesses, overhaul required)
-- Below 50: Unacceptable - Fundamental problems
+DEDUCTIONS:
+-5 per major weakness
+-3 per missing essential skill
+If NO summary → -15
+If >5 weaknesses → score <65
+If >6 missing skills → score <60
 
-**CRITICAL RULES:**
-1. Match percentage should ALWAYS be LOWER than ATS score (by 5-15 points)
-2. If 5+ weaknesses → score MUST be below 65
-3. If 6+ missing skills → score MUST be below 60
-4. If no professional summary + no metrics → automatic -15 points
-5. Count your weaknesses and missing skills BEFORE scoring!
+SKILL RULES:
+- relevantSkills = technical hard skills found in resume
+- missingSkills = required skills missing from resume
+- ONLY hard skills (languages, frameworks, devops, cloud, db, ml, cybersecurity)
+- DO NOT include soft skills (teamwork, communication, leadership, etc.)
+- DO NOT include generic skills (MS Office, Google Suite, etc.)
 
-**Score Calculation Formula:**
-- Start with keyword match × 0.4 = max 40 points
-- Add format score (0-30 points)
-- Add experience relevance (0-30 points)
-- Subtract 5 points per critical weakness
-- Subtract 3 points per missing skill
-- Final score = Total after deductions
-
-**SKILLS EXTRACTION RULES (CRITICAL):**
-- relevantSkills: Extract ONLY core technical/professional skills from resume
-  * Programming languages (JavaScript, Python, Java, C++, etc.)
-  * Frameworks & libraries (React, Angular, Django, Spring, etc.)
-  * Databases (SQL, MongoDB, PostgreSQL, Redis, etc.)
-  * Cloud platforms (AWS, Azure, GCP)
-  * DevOps tools (Docker, Kubernetes, Jenkins, Git)
-  * Methodologies (Agile, Scrum, TDD only if specifically mentioned)
-  * Domain expertise (Machine Learning, Data Analysis, Cybersecurity, etc.)
-  * Professional certifications (PMP, AWS Certified, CISSP, etc.)
-
-- missingSkills: Extract ONLY core skills from job description that are NOT in resume
-  * Same categories as above
-  * Focus on skills that would significantly impact job performance
-
-**DO NOT INCLUDE:**
-- Soft skills (communication, leadership, teamwork, problem-solving)
-- Generic abilities (analytical thinking, attention to detail)
-- Basic tools (MS Office, Email, Google Suite)
-- Overly broad terms (programming, development, management)
-- Personal attributes (hardworking, dedicated, passionate)
-
-**LIMITS:**
-- Maximum 8-10 skills in relevantSkills array
-- Maximum 8-10 skills in missingSkills array
-- Only list the MOST important core skills
-
-**IMPORTANT**: Return ONLY valid JSON in this exact format (no markdown, no explanation):
-
+OUTPUT STRICT JSON:
 {
-  "atsScore": 72,
-  "matchPercentage": 65,
-  "strengths": [
-    "Well-structured resume with clear sections",
-    "Strong action verbs used throughout",
-    "Quantified achievements with metrics",
-    "Relevant technical skills listed"
-  ],
-  "weaknesses": [
-    "Missing keywords from job description",
-    "No professional summary section",
-    "Contact information incomplete"
-  ],
-  "improvements": [
-    "Add keywords like '${jobDescription ? jobDescription.split(' ').slice(0, 5).join(', ') : 'relevant terms'}' throughout resume",
-    "Include a professional summary at the top",
-    "Add certifications section if applicable",
-    "Use more industry-specific terminology"
-  ],
-  "relevantSkills": [
-    "JavaScript",
-    "React",
-    "Node.js",
-    "SQL",
-    "AWS"
-  ],
-  "missingSkills": [
-    "TypeScript",
-    "Docker",
-    "Kubernetes",
-    "GraphQL"
-  ],
+  "atsScore": 0,
+  "matchPercentage": 0,
+  "strengths": [],
+  "weaknesses": [],
+  "improvements": [],
+  "relevantSkills": [],
+  "missingSkills": [],
   "recommendations": [
     {
-      "category": "Keyword Optimization",
-      "priority": "High",
-      "action": "Add job-specific keywords like 'React', 'Node.js', 'Microservices' throughout your resume",
-      "impact": "Can improve ATS score by 15-20 points"
-    },
-    {
-      "category": "Quantifiable Achievements",
-      "priority": "High",
-      "action": "Replace generic descriptions with metrics (e.g., 'Increased system performance by 40%')",
-      "impact": "Makes resume 3x more impactful for recruiters"
-    },
-    {
-      "category": "ATS Formatting",
-      "priority": "Medium",
-      "action": "Use standard section headings: 'Work Experience', 'Education', 'Skills'",
-      "impact": "Ensures ATS can correctly parse all sections"
-    },
-    {
-      "category": "Skills Section",
-      "priority": "Medium",
-      "action": "Add a dedicated skills section with both technical and soft skills",
-      "impact": "Improves keyword matching by 25%"
+      "category": "",
+      "priority": "",
+      "action": "",
+      "impact": ""
     }
   ],
-  "finalSummary": "The resume demonstrates solid experience but needs optimization for ATS systems. Key improvements include adding relevant keywords, quantifying achievements, and ensuring all sections are clearly labeled. With targeted modifications, the ATS score could improve by 15-20 points."
+  "finalSummary": ""
 }
+`;
 
-**Be realistic and thorough - analyze the actual resume content carefully.**`;
-
-    // CORRECT SYNTAX (from official docs)
     const contents = [
       { text: prompt },
       {
         inlineData: {
           mimeType: "application/pdf",
-          data: resumeBase64, // Already base64 encoded
+          data: resumeBase64,
         },
       },
     ];
 
-    console.log("🚀 Sending request to Gemini API...");
+    console.log("🚀 Calling Gemini 2.5/3.0...");
 
-    // Call API with correct syntax
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp", // or gemini-1.5-flash
-      contents: contents, // Direct array, no nesting
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash", 
+      contents,
     });
 
-    console.log("✅ Response received from Gemini");
 
-    // Get response text
-    const responseText = response.text;
-    console.log("📄 Raw AI Response:", responseText?.substring(0, 200) + "...");
+    console.log(result.text)
+    
+    const responseText = result.text;
 
-    if (!responseText || responseText.trim() === "{}") {
-      throw new Error("Gemini returned empty response. The PDF might be too large or corrupted.");
+    console.log("📄 Raw Response:", responseText?.slice(0, 200));
+
+    if (!responseText) {
+      throw new Error("Empty response from Gemini");
     }
 
-    // Parse AI response
+    
     let analysisData;
+
     try {
-      // Clean response (remove markdown if present)
-      const cleanedText = responseText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
+      const cleaned = responseText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
         .trim();
-      
-      analysisData = JSON.parse(cleanedText);
-      
-      console.log("📊 Parsed Scores:");
-      console.log("  - ATS Score:", analysisData.atsScore);
-      console.log("  - Match %:", analysisData.matchPercentage);
 
-      // STRICT VALIDATION
-      if (!analysisData.atsScore || analysisData.atsScore === 0) {
-        console.error("❌ Invalid atsScore:", analysisData.atsScore);
-        throw new Error("AI failed to calculate ATS score. Please ensure the PDF is readable.");
-      }
-      
-      if (typeof analysisData.atsScore !== 'number' || analysisData.atsScore < 0 || analysisData.atsScore > 100) {
-        throw new Error(`Invalid ATS score range: ${analysisData.atsScore}`);
-      }
+      analysisData = JSON.parse(cleaned);
 
-      // Ensure match percentage exists
-      if (!analysisData.matchPercentage || typeof analysisData.matchPercentage !== 'number') {
-        analysisData.matchPercentage = Math.max(0, analysisData.atsScore - 10); // Slightly lower than ATS score
-      }
-
-      // Validate and ensure all arrays/objects exist
-      analysisData.strengths = Array.isArray(analysisData.strengths) && analysisData.strengths.length > 0
-        ? analysisData.strengths
-        : ["Resume successfully analyzed"];
-      
-      analysisData.weaknesses = Array.isArray(analysisData.weaknesses) 
-        ? analysisData.weaknesses 
-        : ["No major weaknesses detected"];
-      
-      analysisData.improvements = Array.isArray(analysisData.improvements) && analysisData.improvements.length > 0
-        ? analysisData.improvements
-        : ["Continue optimizing based on specific job requirements"];
-      
-      // FILTER CORE SKILLS ONLY (additional validation layer)
-      const filterCoreSkills = (skills) => {
-        if (!Array.isArray(skills)) return [];
-        
-        const softSkillsKeywords = [
-          'communication', 'teamwork', 'leadership', 'problem solving',
-          'analytical thinking', 'attention to detail', 'time management',
-          'critical thinking', 'adaptability', 'collaboration', 'creativity',
-          'work ethic', 'interpersonal', 'organizational', 'multitasking'
-        ];
-        
-        return skills
-          .filter(skill => {
-            const lowerSkill = skill.toLowerCase();
-            return !softSkillsKeywords.some(soft => lowerSkill.includes(soft));
-          })
-          .slice(0, 10); // Limit to 10 skills max
-      };
-      
-      analysisData.relevantSkills = filterCoreSkills(analysisData.relevantSkills);
-      analysisData.missingSkills = filterCoreSkills(analysisData.missingSkills);
-      
-      // NEW: Validate recommendations format
-      if (Array.isArray(analysisData.recommendations) && analysisData.recommendations.length > 0) {
-        // Check if recommendations are objects with required fields
-        const firstRec = analysisData.recommendations[0];
-        if (typeof firstRec === 'object' && firstRec.category && firstRec.action) {
-          // Already in correct format - ensure all have required fields
-          analysisData.recommendations = analysisData.recommendations.map(rec => ({
-            category: rec.category || "General Improvement",
-            priority: rec.priority || "Medium",
-            action: rec.action || "Review and optimize",
-            impact: rec.impact || "Will improve overall resume quality"
-          }));
-        } else {
-          // Convert string array to object format
-          analysisData.recommendations = analysisData.recommendations.map((rec, idx) => ({
-            category: idx === 0 ? "Keyword Optimization" : 
-                     idx === 1 ? "Content Enhancement" : 
-                     idx === 2 ? "Formatting" : "General Improvement",
-            priority: idx < 2 ? "High" : "Medium",
-            action: typeof rec === 'string' ? rec : "Optimize resume content",
-            impact: "Will improve ATS compatibility and recruiter appeal"
-          }));
-        }
-      } else {
-        // Default recommendations if none provided
-        analysisData.recommendations = [
-          {
-            category: "Resume Optimization",
-            priority: "High",
-            action: "Tailor resume for each job application with relevant keywords",
-            impact: "Significantly improves match percentage"
-          }
-        ];
-      }
-      
-      analysisData.finalSummary = analysisData.finalSummary && typeof analysisData.finalSummary === 'string'
-        ? analysisData.finalSummary
-        : "Resume analysis completed successfully. Review detailed feedback for improvement areas.";
-
-    } catch (parseError) {
-      console.error("❌ JSON Parse Error:", parseError.message);
-      console.error("Response preview:", responseText?.substring(0, 500));
-      throw new Error("Failed to parse AI response. The AI may have returned an invalid format.");
+      if (!analysisData.atsScore)
+        throw new Error("Missing atsScore field");
+    } catch (err) {
+      console.error("❌ PARSE ERROR:", err);
+      throw new Error("Invalid JSON returned by AI");
     }
 
-    // Clamp scores to valid range
-    analysisData.atsScore = Math.min(100, Math.max(0, Math.round(analysisData.atsScore)));
-    analysisData.matchPercentage = Math.min(100, Math.max(0, Math.round(analysisData.matchPercentage)));
-
-    console.log("💾 Saving to database...");
-
-    // Save to database
+    // Save to DB
     const atsAnalysis = await db.aTSScore.create({
       data: {
-        user: {
-          connect: { clerkUserId: userId }
-        },
+        user: { connect: { clerkUserId: userId } },
         atsScore: analysisData.atsScore,
         matchPercentage: analysisData.matchPercentage,
         strengths: analysisData.strengths,
@@ -348,22 +170,19 @@ You MUST use Chain of Thought reasoning before scoring:
         missingSkills: analysisData.missingSkills,
         recommendations: analysisData.recommendations,
         finalSummary: analysisData.finalSummary,
-        analyzedBy: "Gemini-2.0-Flash",
-        jobTitle: jobTitle || null,
-        companyName: companyName || null,
-        jobDescription: jobDescription || null,
+        analyzedBy: "Gemini-2.5-Flash",
+        jobTitle,
+        companyName,
+        jobDescription,
       },
     });
-
-    console.log("✅ Analysis saved successfully with ATS Score:", atsAnalysis.atsScore);
 
     revalidatePath("/ats-scores");
 
     return { success: true, data: atsAnalysis };
-
-  } catch (error) {
-    console.error("❌ Error in createATSAnalysis:", error);
-    throw new Error("Failed to analyze resume: " + error.message);
+  } catch (err) {
+    console.error("❌ Error in createATSAnalysis:", err);
+    return { success: false, message: err.message };
   }
 }
 

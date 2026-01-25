@@ -14,7 +14,7 @@ export const QuizSkeleton = () => {
         <motion.div
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="absolute inset-0 bg-gradient-to-br from-orange-500 to-orange-600 text-white flex items-center justify-center rounded-lg shadow-lg shadow-orange-500/30 backface-hidden"
+          className="absolute inset-0 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] text-white flex items-center justify-center rounded-lg shadow-lg shadow-[#f59e0b]/30 backface-hidden"
         >
           <motion.div
             animate={{ opacity: flipped ? 0 : 1 }}
@@ -28,14 +28,14 @@ export const QuizSkeleton = () => {
         <motion.div
           animate={{ rotateY: flipped ? 0 : -180 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="absolute inset-0 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white flex items-center justify-center rounded-lg shadow-lg border border-orange-200 dark:border-orange-900 backface-hidden rotate-y-180"
+          className="absolute inset-0 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white flex items-center justify-center rounded-lg shadow-lg border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 backface-hidden rotate-y-180"
         >
           <motion.div
             animate={{ opacity: flipped ? 1 : 0 }}
             transition={{ duration: 0.2 }}
             className="text-center px-4"
           >
-            <div className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-400 font-semibold mb-1 uppercase tracking-wide">Answer</div>
+            <div className="text-[10px] sm:text-xs text-[#f59e0b] dark:text-[#fbbf24] font-semibold mb-1 uppercase tracking-wide">Answer</div>
             <div className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
               AI platform for career improvement & growth
             </div>
@@ -58,17 +58,17 @@ export const ResumeParserSkeleton = () => {
 
   return (
     <div className="w-full h-[140px] sm:h-[160px]">
-      <div className="relative w-full h-full bg-gradient-to-br from-orange-50 to-white dark:from-neutral-900 dark:to-neutral-950 rounded-lg overflow-hidden border border-orange-200 dark:border-orange-900/30 p-3 sm:p-4">
+      <div className="relative w-full h-full bg-gradient-to-br from-[#fbbf24]/10 to-white dark:from-neutral-900 dark:to-neutral-950 rounded-lg overflow-hidden border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-5 h-5 border-2 border-orange-300 border-t-orange-600 rounded-full"
+              className="w-5 h-5 border-2 border-[#fbbf24]/50 border-t-[#f59e0b] rounded-full"
             />
             <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Parsing Document</span>
           </div>
-          <span className="text-xs font-bold text-orange-600">{progress}%</span>
+          <span className="text-xs font-bold text-[#f59e0b]">{progress}%</span>
         </div>
 
         <div className="space-y-2">
@@ -80,7 +80,7 @@ export const ResumeParserSkeleton = () => {
                   <motion.div
                     animate={{ width: isParsed ? "100%" : "0%" }}
                     transition={{ duration: 0.3 }}
-                    className="h-full bg-gradient-to-r from-orange-400 to-orange-500"
+                    className="h-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]"
                   />
                 </div>
                 <AnimatePresence>
@@ -89,7 +89,7 @@ export const ResumeParserSkeleton = () => {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       exit={{ scale: 0 }}
-                      className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center"
+                      className="w-4 h-4 bg-[#f59e0b] rounded-full flex items-center justify-center"
                     >
                       <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -105,7 +105,7 @@ export const ResumeParserSkeleton = () => {
         <div className="absolute bottom-0 left-0 w-full h-1 bg-neutral-200 dark:bg-neutral-800">
           <motion.div
             style={{ width: `${progress}%` }}
-            className="h-full bg-gradient-to-r from-orange-500 to-orange-600"
+            className="h-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]"
           />
         </div>
       </div>
@@ -123,7 +123,7 @@ export const ResumeMakerSkeleton = () => {
   
   return (
     <div className="w-full h-[140px] sm:h-[160px]">
-      <div className="h-full bg-white dark:bg-neutral-950 rounded-lg border border-orange-200 dark:border-orange-900/30 p-3 sm:p-4">
+      <div className="h-full bg-white dark:bg-neutral-950 rounded-lg border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Building Resume</span>
           <motion.div
@@ -132,7 +132,7 @@ export const ResumeMakerSkeleton = () => {
             className="flex gap-1"
           >
             {[0, 1, 2].map((i) => (
-              <div key={i} className="w-1 h-1 bg-orange-500 rounded-full" />
+              <div key={i} className="w-1 h-1 bg-[#f59e0b] rounded-full" />
             ))}
           </motion.div>
         </div>
@@ -147,7 +147,7 @@ export const ResumeMakerSkeleton = () => {
                     initial={{ width: 0 }}
                     animate={{ width: `${item.progress}%` }}
                     transition={{ duration: 1, delay: i * 0.15, ease: "easeOut" }}
-                    className="h-full bg-gradient-to-r from-orange-400 to-orange-500"
+                    className="h-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]"
                   />
                 </div>
               </div>
@@ -173,7 +173,7 @@ export const ColdEmailSkeleton = () => {
 
   return (
     <div className="w-full h-[140px] sm:h-[160px]">
-      <div className="relative h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-white dark:from-neutral-900 dark:to-neutral-950 rounded-lg border border-orange-200 dark:border-orange-900/30 overflow-hidden">
+      <div className="relative h-full flex items-center justify-center bg-gradient-to-br from-[#fbbf24]/10 to-white dark:from-neutral-900 dark:to-neutral-950 rounded-lg border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 overflow-hidden">
         <AnimatePresence mode="wait">
           {!sent ? (
             <motion.div
@@ -184,13 +184,13 @@ export const ColdEmailSkeleton = () => {
               transition={{ y: { duration: 2, repeat: Infinity }, exit: { duration: 0.4 } }}
               className="relative"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/40">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-xl flex items-center justify-center shadow-lg shadow-[#f59e0b]/40">
                 <span className="text-3xl">✉️</span>
               </div>
               <motion.div
                 animate={{ scale: [1, 1.2, 1], opacity: [1, 0] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
-                className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full"
+                className="absolute -top-1 -right-1 w-3 h-3 bg-[#f59e0b] rounded-full"
               />
             </motion.div>
           ) : (
@@ -201,12 +201,12 @@ export const ColdEmailSkeleton = () => {
               exit={{ scale: 0.8, opacity: 0 }}
               className="flex flex-col items-center gap-2"
             >
-              <div className="w-14 h-14 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+              <div className="w-14 h-14 bg-[#f59e0b] rounded-full flex items-center justify-center shadow-lg">
                 <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">Sent!</span>
+              <span className="text-sm font-semibold text-[#f59e0b] dark:text-[#fbbf24]">Sent!</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -237,9 +237,9 @@ export const CoverLetterSkeleton = () => {
 
   return (
     <div className="w-full h-[140px] sm:h-[160px]">
-      <div className="h-full bg-white dark:bg-neutral-950 rounded-lg border border-orange-200 dark:border-orange-900/30 p-3 sm:p-4">
+      <div className="h-full bg-white dark:bg-neutral-950 rounded-lg border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+          <div className="w-6 h-6 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-full flex items-center justify-center text-white text-xs font-bold">
             AI
           </div>
           <div className="flex-1">
@@ -255,7 +255,7 @@ export const CoverLetterSkeleton = () => {
                 key={i}
                 animate={{ y: [0, -3, 0] }}
                 transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                className="w-1 h-1 bg-orange-500 rounded-full"
+                className="w-1 h-1 bg-[#f59e0b] rounded-full"
               />
             ))}
           </motion.div>
@@ -266,7 +266,7 @@ export const CoverLetterSkeleton = () => {
           <motion.span
             animate={{ opacity: [1, 0] }}
             transition={{ duration: 0.5, repeat: Infinity }}
-            className="inline-block w-0.5 h-3 bg-orange-500 ml-0.5 align-middle"
+            className="inline-block w-0.5 h-3 bg-[#f59e0b] ml-0.5 align-middle"
           />
         </div>
       </div>
@@ -284,7 +284,7 @@ export const RoadmapSkeleton = () => {
 
   return (
     <div className="w-full h-[140px] sm:h-[160px]">
-      <div className="relative h-full bg-white dark:bg-neutral-950 rounded-lg border border-orange-200 dark:border-orange-900/30 p-3 sm:p-4 flex items-center">
+      <div className="relative h-full bg-white dark:bg-neutral-950 rounded-lg border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 p-3 sm:p-4 flex items-center">
         <div className="w-full space-y-2">
           {steps.map((step, i) => (
             <motion.div
@@ -295,8 +295,8 @@ export const RoadmapSkeleton = () => {
               className="flex items-center gap-3"
             >
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                step.done ? "bg-orange-500 border-orange-500" :
-                step.active ? "border-orange-500 bg-white dark:bg-neutral-950" :
+                step.done ? "bg-[#f59e0b] border-[#f59e0b]" :
+                step.active ? "border-[#f59e0b] bg-white dark:bg-neutral-950" :
                 "border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950"
               }`}>
                 {step.done && (
@@ -308,7 +308,7 @@ export const RoadmapSkeleton = () => {
                   <motion.div
                     animate={{ scale: [1, 1.3, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="w-2 h-2 bg-orange-500 rounded-full"
+                    className="w-2 h-2 bg-[#f59e0b] rounded-full"
                   />
                 )}
               </div>
@@ -336,7 +336,7 @@ export const KeywordCheckerSkeleton = () => {
 
   return (
     <div className="w-full h-[140px] sm:h-[160px]">
-      <div className="h-full bg-white dark:bg-neutral-950 rounded-lg border border-orange-200 dark:border-orange-900/30 p-3 sm:p-4">
+      <div className="h-full bg-white dark:bg-neutral-950 rounded-lg border border-[#fbbf24]/30 dark:border-[#f59e0b]/30 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Keywords</span>
           <motion.span
@@ -357,7 +357,7 @@ export const KeywordCheckerSkeleton = () => {
               transition={{ delay: i * 0.1 }}
               className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                 kw.match
-                  ? "border-orange-500 text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30"
+                  ? "border-[#f59e0b] text-[#f59e0b] dark:text-[#fbbf24] bg-[#fbbf24]/10 dark:bg-[#f59e0b]/10"
                   : "border-neutral-200 dark:border-neutral-800 text-neutral-400"
               }`}
             >
@@ -369,14 +369,14 @@ export const KeywordCheckerSkeleton = () => {
         <div className="space-y-1">
           <div className="flex justify-between text-[10px]">
             <span className="text-neutral-600 dark:text-neutral-400">Match Rate</span>
-            <span className="text-orange-600 font-bold">60%</span>
+            <span className="text-[#f59e0b] font-bold">60%</span>
           </div>
           <div className="h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: "60%" }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-orange-400 to-orange-500"
+              className="h-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]"
             />
           </div>
         </div>
