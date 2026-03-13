@@ -177,7 +177,7 @@ Requirements:
 Return only the improved content without any explanations or additional text.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model:'gemini-2.5-flash',
       contents: prompt,
       config: {
         temperature: 0.7,
@@ -185,13 +185,17 @@ Return only the improved content without any explanations or additional text.`;
       },
     });
 
-    const improvedText = response.text?.trim();
+    const improvedText =
+  response?.candidates?.[0]?.content?.parts
+    ?.map(p => p.text)
+    ?.join("")
+    ?.trim();
     
     if (!improvedText) {
       throw new Error("No response from AI");
     }
 
-    return improvedText;
+   return improvedText.replace(/^\d+:/gm, "").trim();
   } catch (error) {
     console.error("Error improving content:", error);
     throw new Error(error.message || "Failed to improve content");

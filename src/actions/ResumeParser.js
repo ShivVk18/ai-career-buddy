@@ -44,54 +44,108 @@ export async function createATSAnalysis(formData) {
 
     console.log("=== DEBUG ===");
     console.log("Base64 length:", resumeBase64.length);
+    
+   const today = new Date().toISOString().split("T")[0];
 
-    // FULL ATS PROMPT (USE EXACT RULES)
-    const prompt = `
-You are an ATS scoring engine. Analyze the candidate's resume (PDF) using the strict scoring logic.
+const prompt = `
+You are a REALISTIC ATS (Applicant Tracking System) scoring engine used by top tech companies.
 
-Important:
-- Think internally but DO NOT reveal chain of thought.
-- Output ONLY valid JSON.
-- No markdown. No commentary.
+CRITICAL RULES:
+- Output ONLY valid JSON
+- No markdown
+- No explanation
+- No reasoning
+- No extra text
+- No hallucination
+- If information unclear → assume neutral, not negative
+
+CURRENT DATE: ${today}
 
 JOB DETAILS:
 Company: ${companyName}
 Position: ${jobTitle}
 Job Description: ${jobDescription}
 
-SCORING RULES (STRICT):
+STEP 1 — DETECT CANDIDATE LEVEL:
+Classify candidate into one:
+- Student
+- Fresher
+- Junior (0-2 yrs)
+- Mid (2-5 yrs)
+- Senior (5+ yrs)
 
-1. KEYWORD MATCH (40 points)
-   - Extract required technical keywords from job description.
-   - Score = (matched_keywords / total_keywords) * 40.
+STEP 2 — EXPERIENCE DATE RULE:
+- If end date = "Present" → current role
+- If end date >= CURRENT DATE → current role
+- Do NOT assume future employment
+- If date unclear → assume current
 
-2. FORMAT & STRUCTURE (30 points)
-   - ATS-friendly formatting = 10
-   - Clear headings = 10
-   - Contact info = 5
-   - Consistent formatting = 5
+STEP 3 — SCORING WEIGHTS (Dynamic):
 
-3. EXPERIENCE RELEVANCE (30 points)
-   - Relevant years = 15
-   - Job title match = 10
-   - Industry relevance = 5
+IF Student/Fresher:
+- Skills Match → 50
+- Projects → 25
+- Internship → 15
+- Format → 10
 
-DEDUCTIONS:
--5 per major weakness
--3 per missing essential skill
-If NO summary → -15
-If >5 weaknesses → score <65
-If >6 missing skills → score <60
+IF Junior:
+- Skills → 40
+- Experience → 40
+- Format → 20
 
-SKILL RULES:
-- relevantSkills = technical hard skills found in resume
-- missingSkills = required skills missing from resume
-- ONLY hard skills (languages, frameworks, devops, cloud, db, ml, cybersecurity)
-- DO NOT include soft skills (teamwork, communication, leadership, etc.)
-- DO NOT include generic skills (MS Office, Google Suite, etc.)
+IF Mid/Senior:
+- Experience → 50
+- Skills → 30
+- Format → 20
 
-OUTPUT STRICT JSON:
+STEP 4 — KEYWORD MATCH:
+Extract ONLY technical required skills from job description.
+
+STEP 5 — EXPERIENCE RELEVANCE:
+- Title similarity
+- Tech stack similarity
+- Responsibility similarity
+- Domain relevance (BONUS only, no penalty)
+
+STEP 6 — WEAKNESS RULE:
+- Do NOT invent weaknesses
+- Only include REAL missing skills
+- Maximum weaknesses = 5
+
+STEP 7 — INDUSTRY RULE:
+- If industry matches → bonus
+- If not → no penalty
+
+STEP 8 — FORMAT RULE:
+ATS friendly means:
+- Standard headings
+- No tables
+- No images
+- Proper structure
+
+STEP 9 — SKILL RULES:
+Include ONLY:
+- Programming languages
+- Frameworks
+- Databases
+- DevOps
+- Cloud
+- AI/ML
+- System tools
+
+Exclude:
+- Soft skills
+- Office tools
+- Generic tools
+
+STEP 10 — FINAL SCORE:
+- Score must feel realistic like real ATS
+- Fresher should NOT score <55 unless very poor
+- Strong candidate should NOT score <70
+
+OUTPUT JSON STRUCTURE:
 {
+  "candidateLevel": "",
   "atsScore": 0,
   "matchPercentage": 0,
   "strengths": [],

@@ -28,7 +28,7 @@ model User {
   coverLetter   CoverLetter[]
   
   careerPaths   CareerPath[]
-  networkConnections NetworkConnection[]
+
   careerGoals   CareerGoal[]
   practiceSessions PracticeSession[]
   skillAnalyses SkillGapAnalysis[]

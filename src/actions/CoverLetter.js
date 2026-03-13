@@ -19,30 +19,56 @@ export async function generateCoverLetter(data) {
 
   if (!user) throw new Error("User not found");
 
-  const prompt = `Write a professional cover letter for a ${
-    data.jobTitle
-  } position at ${data.companyName}.
-      
-      About the candidate:
-      - Industry: ${user.industry}
-      - Years of Experience: ${user.experience}
-      - Skills: ${user.skills?.join(", ")}
-      - Professional Background: ${user.bio}
-      
-      Job Description:
-      ${data.jobDescription}
-      
-      Requirements:
-      1. Use a professional, enthusiastic tone
-      2. Highlight relevant skills and experience
-      3. Show understanding of the company's needs
-      4. Keep it concise (max 400 words)
-      5. Use proper business letter formatting in markdown
-      6. Include specific examples of achievements
-      7. Relate candidate's background to job requirements
-      
-      Format the letter in markdown.
-    `;
+  const prompt = `
+You are an expert career strategist and professional cover letter writer.
+
+Write a compelling, personalized cover letter for a ${data.jobTitle} role at ${data.companyName}.
+
+CANDIDATE PROFILE:
+- Industry: ${user.industry || "N/A"}
+- Experience: ${user.experience || "N/A"}
+- Skills: ${user.skills?.join(", ") || "N/A"}
+- Background: ${user.bio || "N/A"}
+
+JOB DESCRIPTION:
+${data.jobDescription || "N/A"}
+
+OBJECTIVE:
+Create a high-impact cover letter that positions the candidate as a strong solution to the company’s needs.
+
+WRITING STYLE RULES:
+
+1. Use a confident, professional, and modern tone
+2. Avoid generic phrases (e.g., "I am excited to apply")
+3. Start with a strong engaging opening
+4. Demonstrate clear understanding of company challenges or goals
+5. Highlight 2–3 relevant achievements or strengths
+6. Show measurable impact where possible
+7. Align candidate skills directly with job requirements
+8. Avoid repeating resume content verbatim
+9. Maintain logical flow and storytelling
+10. Keep length between 250–350 words
+
+STRUCTURE:
+
+• Professional header  
+• Personalized greeting  
+• Strong opening paragraph  
+• Skills + achievements paragraph  
+• Company alignment paragraph  
+• Confident closing with call-to-action  
+• Professional signature  
+
+FORMATTING RULES:
+
+- Format in clean markdown
+- Use proper business letter structure
+- Do NOT use bullet points inside paragraphs
+- Do NOT include placeholders like [Company Name]
+- Do NOT include explanations outside the letter
+
+Write like a strategic candidate, not a generic applicant.
+`;
 
   try {
     const content = await client.models.generateContent({

@@ -10,7 +10,9 @@ export default async function RoadmapDetailPage({ params }) {
     redirect("/onboarding");
   }
 
-  const roadmap = await getCareerRoadmap(params.id);
+  const {id} = await params
+
+  const roadmap = await getCareerRoadmap(id);
 
   if (!roadmap) {
     notFound();

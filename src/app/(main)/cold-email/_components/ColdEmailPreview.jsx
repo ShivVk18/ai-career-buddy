@@ -125,7 +125,7 @@ const ColdEmailPreview = ({ content }) => {
             onChange={setEditedContent}
             preview={previewMode}
             hideToolbar={previewMode === "preview"}
-            visibleDragBar={false}
+           visibleDragbar={false}
             height={700}
             data-color-mode="dark"
             className="custom-md-editor"

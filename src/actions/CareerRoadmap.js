@@ -31,7 +31,7 @@ function safeJsonParse(jsonString, fallbackData = null) {
   }
 }
 
-/* ---------- Generate Career Roadmap ---------- */
+
 export async function generateCareerRoadmap(data) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
@@ -43,49 +43,97 @@ export async function generateCareerRoadmap(data) {
   if (!user) throw new Error("User not found");
 
   const prompt = `
-You are an AI assistant that outputs ONLY valid JSON.
+You are an expert AI career coach.
 
-Generate a complete, detailed **career roadmap** for a person currently working as "${data.currentRole}" in the "${data.industry}" industry who wants to become a "${data.targetRole}".
+Generate a structured, realistic, and actionable career roadmap.
 
-The output MUST follow this structure exactly:
+User Profile:
+- Current Role: ${data.currentRole}
+- Target Role: ${data.targetRole}
+- Industry: ${data.industry}
+
+CRITICAL RULES:
+- Output ONLY valid JSON
+- No markdown
+- No explanation
+- No comments
+- No extra keys
+- Keep output concise but useful
+- Avoid generic advice
+- Ensure logical career progression
+- Steps must be practical and achievable
+
+IMPORTANT RESOURCE RULE:
+- Do NOT generate URLs
+- Only provide resource names
+- Use real well-known platforms (e.g., Coursera, FreeCodeCamp, React Docs, AWS Docs)
+
+OUTPUT STRUCTURE:
 
 {
   "steps": [
     {
-      "id": number,
-      "title": "string",
-      "description": "string",
-      "resources": ["string", "string"],
+      "id": number (start from 1),
+      "title": "short actionable step",
+      "description": "clear practical explanation",
+      "category": "skill | experience | networking | education | certification",
+      "priority": "high | medium | low",
+      "resources": ["resource name"],
       "completed": false
     }
   ],
   "milestones": [
     {
-      "title": "string",
-      "targetDate": "string (e.g., 3 months from now)",
-      "summary": "string"
+      "title": "milestone name",
+      "targetDate": "realistic timeline like '3 months'",
+      "summary": "achievement description"
     }
   ],
   "resources": [
     {
-      "category": "Courses" | "Certifications" | "Communities" | "Books",
-      "items": ["string", "string"]
+      "category": "Courses | Certifications | Communities | Books",
+      "items": [
+        {
+          "title": "resource name"
+        }
+      ]
     }
   ],
   "timeline": {
-    "estimatedDuration": "string (e.g., 12 months)",
+    "estimatedDuration": "realistic total duration like '12 months'",
     "phaseBreakdown": [
-      { "phase": "Beginner", "duration": "3 months" },
-      { "phase": "Intermediate", "duration": "6 months" },
-      { "phase": "Advanced", "duration": "3 months" }
+      {
+        "title": "Beginner Phase",
+        "description": "focus of this phase",
+        "duration": "3 months"
+      },
+      {
+        "title": "Intermediate Phase",
+        "description": "focus of this phase",
+        "duration": "6 months"
+      },
+      {
+        "title": "Advanced Phase",
+        "description": "focus of this phase",
+        "duration": "3 months"
+      }
     ]
   }
 }
 
-Rules:
-1. Output ONLY valid JSON.
-2. No comments or markdown.
-3. Keep it concise but practical.
+GENERATION RULES:
+1. Generate 6–10 steps only
+2. First steps should focus on core skill building
+3. Include at least one real-world project step
+4. Include at least one networking step
+5. Include certification only if relevant
+6. Prioritize high-impact skills first
+7. Avoid repeating similar steps
+8. Timeline must feel realistic
+9. Use industry-relevant progression
+10. Make roadmap suitable for someone transitioning roles
+
+Return ONLY JSON.
 `;
 
   try {
@@ -96,7 +144,11 @@ Rules:
     });
 
     // ✅ Correctly access Gemini output
-    const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const rawText =
+  result?.candidates?.[0]?.content?.parts
+    ?.map(p => p.text)
+    ?.join("")
+    ?.trim();
     if (!rawText) {
       console.error("Empty response from Gemini:", JSON.stringify(result, null, 2));
       throw new Error("No content received from AI");
