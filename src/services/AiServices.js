@@ -71,7 +71,7 @@ class aiServices {
       }
 
       const defaultOptions = {
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         maxOutputTokens: 1000,
         temperature: 0.7,
       };
@@ -114,31 +114,29 @@ class aiServices {
 
   async generateQuiz(industry, skills) {
     const prompt = `
-You are an AI that outputs ONLY valid JSON.
+You are an expert technical interviewer. Generate exactly 10 multiple-choice interview questions focused SPECIFICALLY on these technical skills: ${skills.join(", ")}.
 
-Generate exactly 10 multiple-choice interview questions for a ${industry} professional${
-      skills?.length ? ` with expertise in ${skills.join(", ")}` : ""
-    }.
+CONTEXT:
+- Target Industry: ${industry}
+- Candidate Level: Professional
 
-Each question must follow this schema:
-{
-  "question": "string",
-  "options": ["string", "string", "string", "string"],
-  "correctAnswer": "string",
-  "explanation": "string (1-2 sentences)"
-}
+RULES:
+1. Every question MUST directly relate to at least one of the provided skills.
+2. Ensure a mix of theoretical and practical questions.
+3. Output MUST be valid JSON.
+4. No markdown or extra text.
 
-Final Output:
+OUTPUT SCHEMA:
 {
   "questions": [
-    { ... }, { ... }, ... 10 items
+    {
+      "question": "string",
+      "options": ["string", "string", "string", "string"],
+      "correctAnswer": "string",
+      "explanation": "1-2 sentences"
+    }
   ]
 }
-
-Rules:
-1. Output must be valid JSON.
-2. No comments, markdown, or extra text.
-3. Keep explanations concise (max 2 sentences).
 `;
 
     try {
@@ -702,7 +700,7 @@ Format as plain text, not JSON. Be concise but specific.
     }
   }
 
-  async resumeParser(companyName, jobTitle, jobDescription, resumePdf) {
+  async resumeParser(companyName, jobTitle, jobDescription, resumeBase64) {
     const contents = [
       {
         text: `You are an expert in ATS (Applicant Tracking Systems), resume writing, and job market analysis.  
@@ -728,14 +726,14 @@ Respond ONLY in **valid JSON** with the following schema (no markdown, no extra 
       {
         inlineData: {
           mimeType: "application/pdf",
-          data: Buffer.from(fs.readFileSync(resumePdf)).toString("base64"),
+          data: resumeBase64,
         },
       },
     ];
 
     try {
       return await this.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents,
         config: {
           maxOutputTokens: 4000,

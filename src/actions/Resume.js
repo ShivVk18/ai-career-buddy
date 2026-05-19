@@ -69,7 +69,7 @@ export async function saveResume(data) {
       },
     });
 
-    // Update template usage count if template is selected
+   
     if (sanitizedData.templateId) {
       await db.resumeTemplate.update({
         where: { id: sanitizedData.templateId },
@@ -110,11 +110,11 @@ export async function getResume() {
       },
     });
 
-    // If resume exists, return it with templateKey for frontend compatibility
+    
     if (resume && resume.template) {
       return {
         ...resume,
-        templateId: resume.template.templateKey, // Use templateKey instead of ID
+        templateId: resume.template.templateKey, 
       };
     }
 
@@ -160,21 +160,46 @@ export async function improveWithAI({ current, type }) {
       ? `for a ${user.industry} industry professional` 
       : "for a professional";
 
-    const prompt = `As an expert resume writer, improve the following ${type} description ${industryContext}.
+    let prompt = "";
+
+    if (type === "skills") {
+      prompt = `As an expert resume writer, improve the following skills list ${industryContext}.
+Make it more professional, organized, and aligned with industry standards.
+
+Current skills: "${current}"
+
+Requirements:
+1. Group related skills logically (e.g., Languages, Frameworks, Soft Skills) if there are many.
+2. Use industry-standard terminology.
+3. Keep it concise but comprehensive.
+4. Return only the improved skills content separated by commas or newlines, without any explanations or introductory text.`;
+    } else if (type === "summary") {
+      prompt = `As an expert resume writer, improve the following professional summary ${industryContext}.
+Make it more impactful, compelling, and aligned with industry standards.
+
+Current summary: "${current}"
+
+Requirements:
+1. Make it a strong elevator pitch (3-4 sentences max).
+2. Highlight key achievements, expertise, and career goals.
+3. Use powerful adjectives and a professional tone.
+4. Avoid first-person pronouns (I, me, my) if possible, or use them sparingly.
+5. Return only the improved summary text without any explanations or introductory text.`;
+    } else {
+      prompt = `As an expert resume writer, improve the following ${type} description ${industryContext}.
 Make it more impactful, quantifiable, and aligned with industry standards.
 
 Current content: "${current}"
 
 Requirements:
-1. Use strong action verbs (led, achieved, developed, implemented)
-2. Include metrics and quantifiable results where possible
-3. Highlight relevant technical and soft skills
-4. Keep it concise (2-4 bullet points or 100-150 words)
-5. Focus on achievements and impact, not just responsibilities
-6. Use industry-specific keywords
-7. Maintain professional tone
-
-Return only the improved content without any explanations or additional text.`;
+1. Use strong action verbs (led, achieved, developed, implemented).
+2. Include metrics and quantifiable results where possible.
+3. Highlight relevant technical and soft skills.
+4. Keep it concise (2-4 bullet points or 100-150 words).
+5. Focus on achievements and impact, not just responsibilities.
+6. Use industry-specific keywords.
+7. Return only the improved content without any explanations or introductory text.`;
+    }
 
     const response = await client.models.generateContent({
       model:'gemini-2.5-flash',

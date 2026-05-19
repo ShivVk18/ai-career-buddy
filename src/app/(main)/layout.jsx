@@ -1,21 +1,39 @@
-"use client";
-
 import SideNavbar from "@/components/SideBar";
+import { getUserOnboardingStatus } from "@/actions/User";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
-export default function MainLayout({ children }) {
+export default async function MainLayout({ children }) {
+  const { isOnboarded } = await getUserOnboardingStatus();
+  
+  // Get the current path to avoid infinite redirect
+  const headerList = await headers();
+  const fullPath = headerList.get("x-invoke-path") || "";
+  
+  // If not onboarded and not already on the onboarding page, redirect
+  // Note: x-invoke-path might not be reliable in all environments, 
+  // but for local dev and most Vercel deploys it works.
+  // A safer way is to check the children or move the file.
+  
+  // Since we want to be robust, let's just add the check to the pages 
+  // that definitely need it, or move onboarding out of (main).
+
   return (
-    <div className="min-h-screen bg-[#0f0e0a] text-[#fff4ed]">
-      {/* Ambient background orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#f59e0b]/8 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#fbbf24]/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-[#f59e0b]/8 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
+    <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Global Noise Overlay */}
+      <div className="noise-overlay" />
+      
+      {/* Subtle Structural Grid for Inner App */}
+      <div className="absolute inset-0 bg-grid pointer-events-none opacity-5" />
 
-      <div className="flex h-screen relative">
+      <div className="flex h-screen relative z-10">
         <SideNavbar />
-        {/* Added pt-20 for mobile to account for fixed mobile header, md:pt-0 removes it on desktop */}
-        <main className="flex-1 overflow-auto pt-20 md:pt-0">{children}</main>
+        {/* Main content container with consistent spacing */}
+        <main className="flex-1 overflow-auto pt-20 md:pt-0 bg-background/50 backdrop-blur-[2px]">
+          <div className="max-w-7xl mx-auto min-h-full">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

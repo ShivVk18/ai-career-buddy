@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Loader, Sparkles, Zap, Brain, Target, FileText, AlertCircle } from "lucide-react";
+import { Loader2, Sparkles, Zap, Brain, Target, FileText, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,7 @@ export default function CoverLetterGenerator() {
   // Update content when letter is generated
   useEffect(() => {
     if (generatedLetter) {
-      toast.success("Cover letter generated successfully!");
+      toast.success("Cover letter generated! ✨");
       router.push(`/cover-letter/${generatedLetter.id}`);
       reset();
     }
@@ -52,154 +52,137 @@ export default function CoverLetterGenerator() {
 
   return (
     <div className="relative">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#f59e0b]/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#fbbf24]/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
-      <div className="space-y-8 relative z-10">
-        {/* Hero Section */}
-        <div className="text-center space-y-4 mb-12">
-          <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-[#f59e0b]/10 to-[#fbbf24]/10 border border-[#f59e0b]/20 backdrop-blur-xl mb-6">
-            <Sparkles className="h-4 w-4 text-[#f59e0b] mr-2" />
-            <span className="text-sm font-medium text-[#fbbf24]">AI-Powered Generation</span>
-            <Brain className="h-4 w-4 text-[#f59e0b] ml-2" />
+      <div className="space-y-16 relative z-10">
+        {/* Header */}
+        <div className="text-center space-y-6 mb-20 border-b border-divider pb-16">
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="w-8 h-[1px] bg-accent"></div>
+            <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
+              AI Career Assistant
+            </span>
+            <div className="w-8 h-[1px] bg-accent"></div>
           </div>
           
-          <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-            Cover Letter Generator
+          <h2 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none">
+            Cover Letter <span className="text-accent">Generator</span>
           </h2>
-          <p className="text-[#b0b0b0] text-lg max-w-2xl mx-auto">
-            Create compelling, personalized cover letters that stand out to employers
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
+            Create a professional, high-impact cover letter in seconds. Tailored to the job description and your unique experience.
           </p>
         </div>
 
-        {/* Main Form Card */}
-        <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5">
-          <div className="mb-8">
-            <h3 className="text-2xl font-semibold mb-6 flex items-center text-white">
-              <Target className="h-6 w-6 text-[#f59e0b] mr-3" />
-              Job Application Details
+        {/* Form Container */}
+        <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
+          
+          <div className="mb-12">
+            <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+              <Target className="h-4 w-4 text-accent" />
+              Job Details
             </h3>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Company and Job Title */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+            {/* Entity and Role */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
-                <Label htmlFor="companyName" className="text-gray-300 font-medium flex items-center space-x-2">
-                  <span>Company Name</span>
-                  <span className="text-[#f59e0b]">*</span>
+                <Label htmlFor="companyName" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                  Company Name
                 </Label>
                 <Input
                   id="companyName"
-                  placeholder="e.g., Google, Microsoft, Apple"
-                  className="w-full px-4 py-3 bg-[#1a1815]/50 border border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b]/50 transition-all duration-300 text-white placeholder-gray-500 h-12"
+                  placeholder="e.g., Google, Stripe"
                   {...register("companyName")}
+                  className="h-14"
                 />
                 {errors.companyName && (
-                  <p className="text-sm text-[#f59e0b] flex items-center space-x-1">
-                    <span className="w-1 h-1 bg-[#f59e0b] rounded-full"></span>
-                    <span>{errors.companyName.message}</span>
-                  </p>
+                  <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.companyName.message}</p>
                 )}
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="jobTitle" className="text-gray-300 font-medium flex items-center space-x-2">
-                  <span>Job Title</span>
-                  <span className="text-[#f59e0b]">*</span>
+                <Label htmlFor="jobTitle" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                  Job Title
                 </Label>
                 <Input
                   id="jobTitle"
-                  placeholder="e.g., Software Engineer, Product Manager"
-                  className="w-full px-4 py-3 bg-[#1a1815]/50 border border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b]/50 transition-all duration-300 text-white placeholder-gray-500 h-12"
+                  placeholder="e.g., Product Designer"
                   {...register("jobTitle")}
+                  className="h-14"
                 />
                 {errors.jobTitle && (
-                  <p className="text-sm text-[#f59e0b] flex items-center space-x-1">
-                    <span className="w-1 h-1 bg-[#f59e0b] rounded-full"></span>
-                    <span>{errors.jobTitle.message}</span>
-                  </p>
+                  <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobTitle.message}</p>
                 )}
               </div>
             </div>
 
-            {/* Job Description */}
+            {/* Content Logic */}
             <div className="space-y-3">
-              <Label htmlFor="jobDescription" className="text-gray-300 font-medium flex items-center space-x-2">
-                <span>Job Description</span>
-                <span className="text-[#f59e0b]">*</span>
+              <Label htmlFor="jobDescription" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Job Description
               </Label>
               <Textarea
                 id="jobDescription"
-                placeholder="Paste the complete job description here. Include requirements, responsibilities, and any specific skills mentioned..."
-                className="w-full px-4 py-3 bg-[#1a1815]/50 border border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b]/50 transition-all duration-300 text-white placeholder-gray-500 resize-none min-h-[150px]"
+                placeholder="Paste the job requirements here. Our AI will use this to highlight your most relevant experience..."
+                className="h-48 bg-divider/5 border-border focus:border-accent"
                 {...register("jobDescription")}
               />
               {errors.jobDescription && (
-                <p className="text-sm text-[#f59e0b] flex items-center space-x-1">
-                  <span className="w-1 h-1 bg-[#f59e0b] rounded-full"></span>
-                  <span>{errors.jobDescription.message}</span>
-                </p>
+                <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
               )}
-              <p className="text-xs text-gray-500">
-                💡 Tip: The more detailed the job description, the better your cover letter will be tailored
-              </p>
             </div>
 
-            {/* Generate Button */}
+            {/* Execution Trigger */}
             <Button 
               type="submit" 
               disabled={generating}
-              className="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-4 px-8 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 text-lg font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100 border-0"
+              className="w-full h-16 text-xs font-bold tracking-[0.3em] uppercase shadow-lg"
             >
               {generating ? (
                 <>
-                  <Loader className="w-6 h-6 animate-spin" />
-                  <span>Crafting Your Letter...</span>
+                  <Loader2 className="w-4 h-4 animate-spin mr-4" />
+                  Generating Letter...
                 </>
               ) : (
                 <>
-                  <Zap className="w-6 h-6" />
-                  <span>Generate Cover Letter</span>
+                  <PenTool className="w-4 h-4 mr-4" />
+                  Generate Cover Letter
                 </>
               )}
             </Button>
           </form>
         </div>
 
-        {/* Features Preview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-6 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 rounded-lg bg-[#f59e0b]/20 border border-[#f59e0b]/30">
-                <Target className="h-5 w-5 text-[#f59e0b]" />
+        {/* Benefits Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 pb-20">
+          <div className="border border-divider bg-divider/10 p-8 rounded-sm transition-editorial hover:border-accent group shadow-sm">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial">
+                <Target className="h-4 w-4 text-accent" />
               </div>
-              <h3 className="text-white font-semibold">Tailored Content</h3>
+              <h3 className="text-[10px] font-bold tracking-widest text-foreground uppercase">Precision Matching</h3>
             </div>
-            <p className="text-[#b0b0b0] text-sm">AI analyzes the job description to create personalized content</p>
+            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Our AI analyzes the job description to highlight your most relevant skills and wins.</p>
           </div>
           
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-6 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 rounded-lg bg-[#f59e0b]/20 border border-[#f59e0b]/30">
-                <Sparkles className="h-5 w-5 text-[#f59e0b]" />
+          <div className="border border-divider bg-divider/10 p-8 rounded-sm transition-editorial hover:border-accent group shadow-sm">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial">
+                <Sparkles className="h-4 w-4 text-accent" />
               </div>
-              <h3 className="text-white font-semibold">Professional Format</h3>
+              <h3 className="text-[10px] font-bold tracking-widest text-foreground uppercase">ATS Optimized</h3>
             </div>
-            <p className="text-[#b0b0b0] text-sm">Clean, ATS-friendly format that recruiters love</p>
+            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Generated content follows industry-standard formats that pass through recruiter filters.</p>
           </div>
           
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-6 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 rounded-lg bg-[#fbbf24]/20 border border-[#fbbf24]/30">
-                <FileText className="h-5 w-5 text-[#fbbf24]" />
+          <div className="border border-divider bg-divider/10 p-8 rounded-sm transition-editorial hover:border-accent group shadow-sm">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial">
+                <FileText className="h-4 w-4 text-accent" />
               </div>
-              <h3 className="text-white font-semibold">Instant Results</h3>
+              <h3 className="text-[10px] font-bold tracking-widest text-foreground uppercase">Ready to Use</h3>
             </div>
-            <p className="text-[#b0b0b0] text-sm">Get your cover letter in seconds, ready to customize</p>
+            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Get a polished, professional cover letter that you can download and use instantly.</p>
           </div>
         </div>
       </div>

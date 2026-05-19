@@ -79,7 +79,7 @@ Write like a smart, ambitious candidate reaching out strategically.
 
   try {
     const content = await client.models.generateContent({
-       model:'gemini-2.5-flash-lite',
+       model:'gemini-2.5-flash',
        contents:prompt,
        config:{
         temperature:0.3

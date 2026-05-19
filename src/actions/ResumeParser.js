@@ -240,7 +240,7 @@ OUTPUT JSON STRUCTURE:
   }
 }
 
-// Get all ATS scores for current user
+
 export async function getUserATSScores() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");

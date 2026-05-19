@@ -72,7 +72,7 @@ Write like a strategic candidate, not a generic applicant.
 
   try {
     const content = await client.models.generateContent({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         temperature: 0.3,
@@ -93,7 +93,8 @@ Write like a strategic candidate, not a generic applicant.
     return coverLetter;
   } catch (error) {
     console.error("Error generating cover letter:", error.message);
-    throw new Error("Failed to generate cover letter");
+    console.error("COVER LETTER ERROR:", error);
+  throw error;
   }
 }
 

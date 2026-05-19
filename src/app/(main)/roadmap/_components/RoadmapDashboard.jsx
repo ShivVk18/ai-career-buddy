@@ -7,18 +7,10 @@ import {
   Target,
   CheckCircle,
   TrendingUp,
-  Sparkles,
   ArrowRight,
-  Brain,
   Zap,
-  Calendar,
-  ChevronRight,
   Star,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import CreateRoadmapModal from "./CreateRoadmapModal";
 import RoadmapCard from "./RoadmapCard";
 
@@ -29,191 +21,166 @@ const RoadmapDashboard = ({ roadmaps }) => {
   const completedRoadmaps = roadmaps.filter((r) => r.status === "completed");
 
   return (
-    <div className="min-h-screen bg-[#0f0e0a] text-white py-12 px-4 sm:px-6 lg:px-8">
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#f59e0b]/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#fbbf24]/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
+    <div className="min-h-screen bg-transparent py-14 px-6 md:px-12">
+      <div className="relative z-10 max-w-7xl mx-auto space-y-16">
 
-      <div className="relative z-10 max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-[#f59e0b]/10 to-[#fbbf24]/10 border border-[#f59e0b]/20 backdrop-blur-xl mb-6">
-            <Sparkles className="h-4 w-4 text-[#f59e0b] mr-2" />
-            <span className="text-sm font-medium text-[#fbbf24]">AI-Powered Career Planning</span>
-            <Brain className="h-4 w-4 text-[#f59e0b] ml-2" />
+        <div className="mb-20 border-b border-divider pb-16">
+          <div className="flex flex-col lg:flex-row gap-12 items-start lg:items-center justify-between">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-[1px] bg-accent" />
+                <span className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                  Career Planning
+                </span>
+              </div>
+
+              <h1 className="text-5xl md:text-8xl font-clash font-bold text-foreground uppercase tracking-tight leading-[0.9] mb-8">
+                Your Career{" "}
+                <span className="text-accent underline decoration-1 underline-offset-8">
+                  Roadmaps
+                </span>
+              </h1>
+              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl font-general font-light leading-relaxed">
+                AI-generated, step-by-step plans to get you from where you are
+                to where you want to be — at your own pace.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="group inline-flex items-center h-20 px-12 bg-accent text-accent-foreground rounded-sm font-clash font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-editorial text-sm"
+            >
+              <Plus className="h-5 w-5 mr-4 group-hover:rotate-90 transition-editorial" />
+              New Roadmap
+              <ArrowRight className="ml-4 h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+          <div className="border border-divider bg-divider/10 p-10 rounded-sm group hover:border-accent transition-editorial">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Target className="h-6 w-6 text-accent" />
+                <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                  Active Roadmaps
+                </div>
+              </div>
+              <div className="text-5xl md:text-6xl font-clash font-bold text-foreground">
+                {activeRoadmaps.length}
+              </div>
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-            Your Career Journey
-          </h1>
-          <p className="text-lg md:text-xl text-[#b0b0b0] max-w-3xl mx-auto mb-8">
-            Transform your career with personalized AI-powered roadmaps
-          </p>
-
-          <motion.button
-            onClick={() => setShowCreateModal(true)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] rounded-2xl font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all duration-300"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Create New Roadmap
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </motion.button>
-        </motion.div>
-
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border border-[#f59e0b]/20 rounded-3xl p-6 shadow-xl shadow-[#f59e0b]/5"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <Target className="h-8 w-8 text-[#f59e0b]" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-[#fbbf24]">{activeRoadmaps.length}</div>
-                <div className="text-sm text-[#f59e0b]">Active Roadmaps</div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border border-[#f59e0b]/20 rounded-3xl p-6 shadow-xl shadow-[#f59e0b]/5"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <CheckCircle className="h-8 w-8 text-[#f59e0b]" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-[#fbbf24]">{completedRoadmaps.length}</div>
-                <div className="text-sm text-[#f59e0b]">Completed</div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border border-[#f59e0b]/20 rounded-3xl p-6 shadow-xl shadow-[#f59e0b]/5"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp className="h-8 w-8 text-[#f59e0b]" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-[#fbbf24]">
-                  {roadmaps.length > 0
-                    ? Math.round(roadmaps.reduce((acc, r) => acc + r.progress, 0) / roadmaps.length)
-                    : 0}%
+          <div className="border border-divider bg-divider/10 p-10 rounded-sm group hover:border-accent transition-editorial">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <CheckCircle className="h-6 w-6 text-accent" />
+                <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                  Completed
                 </div>
-                <div className="text-sm text-[#f59e0b]">Avg Progress</div>
+              </div>
+              <div className="text-5xl md:text-6xl font-clash font-bold text-foreground">
+                {completedRoadmaps.length}
               </div>
             </div>
-          </motion.div>
+          </div>
+
+          <div className="border border-divider bg-divider/10 p-10 rounded-sm group hover:border-accent transition-editorial">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <TrendingUp className="h-6 w-6 text-accent" />
+                <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                  Avg. Progress
+                </div>
+              </div>
+              <div className="text-5xl md:text-6xl font-clash font-bold text-foreground">
+                {roadmaps.length > 0
+                  ? Math.round(
+                      roadmaps.reduce((acc, r) => acc + r.progress, 0) /
+                        roadmaps.length
+                    )
+                  : 0}
+                %
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Active Roadmaps */}
         {activeRoadmaps.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            <h2 className="text-2xl font-semibold mb-6 flex items-center">
-              <Zap className="h-6 w-6 text-[#f59e0b] mr-3" />
-              Active Roadmaps
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h2 className="text-[10px] font-bold tracking-[0.4em] text-accent uppercase mb-12 flex items-center gap-4">
+              <Zap className="h-4 w-4" />
+              In Progress
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
               <AnimatePresence>
                 {activeRoadmaps.map((roadmap, index) => (
                   <motion.div
                     key={roadmap.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.1 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
                   >
                     <RoadmapCard roadmap={roadmap} />
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Completed Roadmaps */}
         {completedRoadmaps.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h2 className="text-2xl font-semibold mb-6 flex items-center">
-              <Star className="h-6 w-6 text-[#fbbf24] mr-3" />
-              Completed Roadmaps
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h2 className="text-[10px] font-bold tracking-[0.4em] text-muted-foreground uppercase mb-12 flex items-center gap-4">
+              <Star className="h-4 w-4" />
+              Completed
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
               <AnimatePresence>
                 {completedRoadmaps.map((roadmap, index) => (
                   <motion.div
                     key={roadmap.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.1 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
                   >
-                    <RoadmapCard roadmap={roadmap} completed />
+                    <RoadmapCard roadmap={roadmap} completed={true} />
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Empty State */}
         {roadmaps.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-20"
-          >
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="mb-8"
-            >
-              <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-                <Target className="h-12 w-12 text-[#f59e0b]" />
-              </div>
-            </motion.div>
-            <h3 className="text-3xl font-semibold text-gray-300 mb-4">
-              No roadmaps yet
+          <div className="text-center py-40 border border-divider border-dashed rounded-sm bg-divider/5">
+            <div className="w-24 h-24 mx-auto rounded-sm border border-divider flex items-center justify-center bg-background mb-10 group hover:border-accent transition-editorial">
+              <Target className="h-10 w-10 text-muted-foreground group-hover:text-accent transition-editorial" />
+            </div>
+            <h3 className="text-2xl md:text-4xl font-clash font-bold text-foreground uppercase tracking-tight mb-6">
+              No Roadmaps Yet
             </h3>
-            <p className="text-[#b0b0b0] mb-8 text-lg">
-              Create your first career roadmap to start your journey
+            <p className="text-muted-foreground mb-12 max-w-md mx-auto font-general font-light leading-relaxed">
+              Create your first AI-powered career roadmap and get a clear,
+              actionable plan to reach your next role.
             </p>
-            <motion.button
+            <button
               onClick={() => setShowCreateModal(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] rounded-2xl font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all duration-300"
+              className="inline-flex items-center h-16 px-12 bg-accent text-accent-foreground rounded-sm font-clash font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-editorial text-xs"
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Create Your First Roadmap
-            </motion.button>
-          </motion.div>
+              <Plus className="h-4 w-4 mr-4" />
+              Create My First Roadmap
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Create Roadmap Modal */}
       <CreateRoadmapModal
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}

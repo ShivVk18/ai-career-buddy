@@ -1,94 +1,99 @@
 import Link from "next/link"
-import { Plus, Sparkles, FileText, TrendingUp, Brain } from "lucide-react"
+import { redirect } from "next/navigation";
+import { getUserOnboardingStatus } from "@/actions/User";
+import { Plus, Sparkles, FileText, TrendingUp, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
 import ColdEmailList from "./_components/ColdEmailList"
 import { getColdEmails } from "@/actions/ColdEmail"
 
 export default async function ColdEmailPage() {
+  const { isOnboarded } = await getUserOnboardingStatus();
+
+  if (!isOnboarded) {
+    redirect("/onboarding");
+  }
+
   const coldEmails = await getColdEmails()
 
-  console.log(coldEmails)
-
   return (
-    <div className="min-h-screen bg-[#0f0e0a] text-white">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#f59e0b]/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#fbbf24]/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-[#f59e0b]/5 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-
-      <div className="container mx-auto py-12 px-4 relative z-10">
+    <div className="min-h-screen bg-transparent py-12 px-6 md:px-12">
+      <div className="container mx-auto relative z-10">
         {/* Header Section */}
-        <div className="relative mb-12">
-          <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
-            <div className="space-y-4">
-              <div className="inline-flex items-center px-6 py-2 rounded-full bg-gradient-to-r from-[#f59e0b]/10 to-[#fbbf24]/10 border border-[#f59e0b]/20 backdrop-blur-xl mb-4">
-                <Brain className="h-4 w-4 text-[#f59e0b] mr-2" />
-                <span className="text-sm font-medium text-[#fbbf24]">AI-Powered Writing</span>
-                <Sparkles className="h-4 w-4 text-[#f59e0b] ml-2" />
+        <div className="mb-16 border-b border-divider pb-12">
+          <div className="flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-8 h-[1px] bg-accent"></div>
+                <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
+                  Outreach Library
+                </span>
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-                My Cold Emails
+              <h1 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none mb-6">
+                Cold <span className="text-accent">Emails</span>
               </h1>
-              <p className="text-[#b0b0b0] text-lg max-w-2xl">
-                AI-powered cold emails tailored for your success
+              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl font-light leading-relaxed">
+                Connect directly with recruiters and hiring managers. Our AI helps you craft messages that open doors and start conversations.
               </p>
             </div>
 
             <Link href="/cold-email/new">
-              <Button className="px-8 py-4 text-base font-semibold bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 rounded-2xl shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all duration-300 hover:scale-105 group">
-                <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                Create New Email
-                <Sparkles className="h-4 w-4 ml-2" />
+              <Button size="lg" className="h-14 px-10 group shadow-lg">
+                <Plus className="h-5 w-5 mr-3 group-hover:rotate-90 transition-editorial" />
+                New Cold Email
+                <Sparkles className="h-4 w-4 ml-3" />
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-6 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 group shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-                <Sparkles className="h-6 w-6 text-[#f59e0b]" />
+        {/* Feature Highlights Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="border border-border bg-background p-8 rounded-sm hover:border-accent transition-editorial shadow-sm group">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 rounded-sm border border-divider flex items-center justify-center bg-divider/10 group-hover:border-accent transition-editorial shadow-sm">
+                <Sparkles className="h-5 w-5 text-accent" />
               </div>
-              <h3 className="text-white font-semibold text-lg">AI-Powered</h3>
+              <h3 className="text-foreground font-clash font-bold uppercase tracking-tight text-lg">AI-Driven</h3>
             </div>
-            <p className="text-[#b0b0b0] text-sm leading-relaxed">
-              Generate personalized cold emails using advanced AI technology
+            <p className="text-muted-foreground text-sm leading-relaxed font-general font-light">
+              Create highly personalized emails that focus on what hiring managers actually care about. No generic templates.
             </p>
           </div>
 
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-6 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 group shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-                <FileText className="h-6 w-6 text-[#f59e0b]" />
+          <div className="border border-border bg-background p-8 rounded-sm hover:border-accent transition-editorial shadow-sm group">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 rounded-sm border border-divider flex items-center justify-center bg-divider/10 group-hover:border-accent transition-editorial shadow-sm">
+                <FileText className="h-5 w-5 text-accent" />
               </div>
-              <h3 className="text-white font-semibold text-lg">Professional Format</h3>
+              <h3 className="text-foreground font-clash font-bold uppercase tracking-tight text-lg">Proven Frameworks</h3>
             </div>
-            <p className="text-[#b0b0b0] text-sm leading-relaxed">
-              Well-structured templates designed to get responses and conversions
+            <p className="text-muted-foreground text-sm leading-relaxed font-general font-light">
+              Our AI follows world-class outreach frameworks designed to respect the recipient&apos;s time and maximize replies.
             </p>
           </div>
 
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 p-6 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300 group shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-                <TrendingUp className="h-6 w-6 text-[#f59e0b]" />
+          <div className="border border-border bg-background p-8 rounded-sm hover:border-accent transition-editorial shadow-sm group">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 rounded-sm border border-divider flex items-center justify-center bg-divider/10 group-hover:border-accent transition-editorial shadow-sm">
+                <TrendingUp className="h-5 w-5 text-accent" />
               </div>
-              <h3 className="text-white font-semibold text-lg">Instant Results</h3>
+              <h3 className="text-foreground font-clash font-bold uppercase tracking-tight text-lg">Higher Replies</h3>
             </div>
-            <p className="text-[#b0b0b0] text-sm leading-relaxed">
-              Get professionally written cold emails in seconds
+            <p className="text-muted-foreground text-sm leading-relaxed font-general font-light">
+              Stop sending emails into the void. Increase your response rates with messages that stand out in a crowded inbox.
             </p>
           </div>
         </div>
 
         {/* Cold Emails List */}
-        <ColdEmailList coldEmails={coldEmails} />
+        <div className="border border-border p-8 rounded-sm bg-background shadow-lg">
+          <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+            <span className="w-4 h-[1px] bg-divider"></span>
+            Saved Emails
+          </h3>
+          <ColdEmailList coldEmails={coldEmails} />
+        </div>
       </div>
     </div>
   )

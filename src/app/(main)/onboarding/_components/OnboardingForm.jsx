@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -67,30 +67,39 @@ const OnboardingForm = ({ industries }) => {
 
   useEffect(() => {
     if (updateResult?.success && !updateLoading) {
-      toast.success("Profile completed successfully!");
+      toast.success("Profile set up! Welcome aboard 🎉");
       router.push("/dashboard");
       router.refresh();
     }
-  }, [updateResult, updateLoading]);
+  }, [updateResult, updateLoading, router]);
 
   const watchIndustry = watch("industry");
 
   return (
-    <div className="flex items-center justify-center bg-background">
-      <Card className="w-full max-w-lg mt-10 mx-2">
-        <CardHeader>
-          <CardTitle className="gradient-title text-4xl">
-            Complete Your Profile
+    <div className="flex items-center justify-center bg-transparent py-12 px-4">
+      <Card className="w-full max-w-lg bg-background border-border rounded-sm shadow-xl overflow-hidden">
+        <CardHeader className="border-b border-divider pb-8 pt-10 px-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-[1px] bg-accent"></div>
+            <span className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+              Profile Setup
+            </span>
+          </div>
+          <CardTitle className="text-3xl md:text-4xl font-clash font-bold uppercase tracking-tight text-foreground leading-none">
+            Tell us about <span className="text-accent">yourself</span>
           </CardTitle>
-          <CardDescription>
-            Select your industry to get personalized career insights and
-            recommendations.
+          <CardDescription className="text-muted-foreground font-light leading-relaxed mt-4 text-sm">
+            Help your AI coach understand your career path so we can provide the best guidance possible.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry</Label>
+        
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+            {/* Industry Selection */}
+            <div className="space-y-3">
+              <Label htmlFor="industry" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Your Industry
+              </Label>
               <Select
                 onValueChange={(value) => {
                   setValue("industry", value);
@@ -100,14 +109,14 @@ const OnboardingForm = ({ industries }) => {
                   setValue("subIndustry", "");
                 }}
               >
-                <SelectTrigger id="industry">
-                  <SelectValue placeholder="Select an industry" />
+                <SelectTrigger id="industry" className="h-14 bg-divider/10 border-divider rounded-sm text-foreground focus:ring-accent transition-editorial">
+                  <SelectValue placeholder="What's your field?" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border-border rounded-sm">
                   <SelectGroup>
-                    <SelectLabel>Industries</SelectLabel>
+                    <SelectLabel className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground px-4 py-2">Industries</SelectLabel>
                     {industries.map((ind) => (
-                      <SelectItem key={ind.id} value={ind.id}>
+                      <SelectItem key={ind.id} value={ind.id} className="hover:bg-divider/30 cursor-pointer">
                         {ind.name}
                       </SelectItem>
                     ))}
@@ -115,26 +124,29 @@ const OnboardingForm = ({ industries }) => {
                 </SelectContent>
               </Select>
               {errors.industry && (
-                <p className="text-sm text-red-500">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-destructive animate-pulse">
                   {errors.industry.message}
                 </p>
               )}
             </div>
 
+            {/* Sub-Industry Selection */}
             {watchIndustry && (
-              <div className="space-y-2">
-                <Label htmlFor="subIndustry">Specialization</Label>
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label htmlFor="subIndustry" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                  Your Specialization
+                </Label>
                 <Select
                   onValueChange={(value) => setValue("subIndustry", value)}
                 >
-                  <SelectTrigger id="subIndustry">
-                    <SelectValue placeholder="Select your specialization" />
+                  <SelectTrigger id="subIndustry" className="h-14 bg-divider/10 border-divider rounded-sm text-foreground focus:ring-accent transition-editorial">
+                    <SelectValue placeholder="What do you specialize in?" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background border-border rounded-sm">
                     <SelectGroup>
-                      <SelectLabel>Specializations</SelectLabel>
+                      <SelectLabel className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground px-4 py-2">Specializations</SelectLabel>
                       {selectedIndustry?.subIndustries.map((sub) => (
-                        <SelectItem key={sub} value={sub}>
+                        <SelectItem key={sub} value={sub} className="hover:bg-divider/30 cursor-pointer">
                           {sub}
                         </SelectItem>
                       ))}
@@ -142,66 +154,90 @@ const OnboardingForm = ({ industries }) => {
                   </SelectContent>
                 </Select>
                 {errors.subIndustry && (
-                  <p className="text-sm text-red-500">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-destructive animate-pulse">
                     {errors.subIndustry.message}
                   </p>
                 )}
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="experience">Years of Experience</Label>
+            {/* Experience */}
+            <div className="space-y-3">
+              <Label htmlFor="experience" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Years of Experience
+              </Label>
               <Input
                 id="experience"
                 type="number"
                 min="0"
                 max="50"
-                placeholder="Enter years of experience"
+                placeholder="How many years have you been working?"
                 {...register("experience")}
+                className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/30 font-general"
               />
               {errors.experience && (
-                <p className="text-sm text-red-500">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-destructive animate-pulse">
                   {errors.experience.message}
                 </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="skills">Skills</Label>
+            {/* Skills */}
+            <div className="space-y-3">
+              <Label htmlFor="skills" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Key Skills
+              </Label>
               <Input
                 id="skills"
-                placeholder="e.g., Python, JavaScript, Project Management"
+                placeholder="e.g., Python, Marketing, Project Management"
                 {...register("skills")}
+                className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/30 font-general"
               />
-              <p className="text-sm text-muted-foreground">
-                Separate multiple skills with commas
-              </p>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold tracking-[0.1em] text-muted-foreground/50 uppercase">
+                  Separate multiple skills with commas
+                </p>
+                <p className="text-[9px] font-bold tracking-[0.05em] text-accent uppercase">
+                  Please fill in your skills correctly, as they will be used to automatically set up your Cover Letters and Cold Emails.
+                </p>
+              </div>
               {errors.skills && (
-                <p className="text-sm text-red-500">{errors.skills.message}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-destructive animate-pulse">
+                  {errors.skills.message}
+                </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="bio">Professional Bio</Label>
+            {/* Bio */}
+            <div className="space-y-3">
+              <Label htmlFor="bio" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Tell us about your background
+              </Label>
               <Textarea
                 id="bio"
-                placeholder="Tell us about your professional background..."
-                className="h-32"
+                placeholder="A brief summary of your professional journey..."
+                className="h-32 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/30 font-general focus:border-accent transition-editorial resize-none"
                 {...register("bio")}
               />
               {errors.bio && (
-                <p className="text-sm text-red-500">{errors.bio.message}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-destructive animate-pulse">
+                  {errors.bio.message}
+                </p>
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={updateLoading}>
+            {/* Submit */}
+            <Button type="submit" className="w-full h-16 rounded-sm text-[10px] font-bold tracking-[0.2em] uppercase transition-editorial shadow-lg" disabled={updateLoading}>
               {updateLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="mr-3 h-4 w-4 animate-spin" />
+                  Building your profile...
                 </>
               ) : (
-                "Complete Profile"
+                <>
+                  <Sparkles className="mr-3 h-4 w-4" />
+                  Complete Setup
+                </>
               )}
             </Button>
           </form>

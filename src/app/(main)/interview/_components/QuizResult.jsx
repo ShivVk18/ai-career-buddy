@@ -2,7 +2,6 @@
 
 import { Trophy, CheckCircle2, XCircle, Sparkles, TrendingUp, Target, RefreshCw, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardFooter } from "@/components/ui/card";
 
 export default function QuizResult({
   result,
@@ -11,106 +10,103 @@ export default function QuizResult({
 }) {
   if (!result) return null;
 
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-[#fbbf24]';
-    if (score >= 80) return 'text-[#f59e0b]';
-    if (score >= 70) return 'text-[#f59e0b]';
-    return 'text-[#b0b0b0]';
-  };
-
-  const getScoreBgColor = (score) => {
-    if (score >= 90) return 'bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border-[#fbbf24]/30';
-    if (score >= 80) return 'bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/30';
-    if (score >= 70) return 'bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/25';
-    return 'bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/20';
-  };
+  const score = result.quizScore;
 
   return (
-    <div className="space-y-6">
-      <div className={`backdrop-blur-xl rounded-3xl border-2 p-8 ${getScoreBgColor(result.quizScore)} shadow-2xl shadow-[#f59e0b]/5`}>
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center mb-4 mx-auto border border-[#f59e0b]/30">
-            <Trophy className="w-10 h-10 text-[#f59e0b]" />
+    <div className="space-y-12 animate-in fade-in duration-700">
+      {/* Score Overview Card */}
+      <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
+        
+        <div className="flex flex-col items-center text-center">
+          <div className="w-20 h-20 rounded-full bg-divider/10 flex items-center justify-center mb-8 border border-divider/20 relative">
+            <Trophy className="w-10 h-10 text-accent" />
+            <div className="absolute -inset-2 border border-accent/20 rounded-full animate-pulse-slow"></div>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-            Quiz Results
+          
+          <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground uppercase tracking-tight mb-8">
+            Interview <span className="text-accent">Summary</span>
           </h1>
-        </div>
 
-        <div className="backdrop-blur-xl bg-[#1a1815]/30 rounded-2xl p-8 border border-[#f59e0b]/20 text-center mb-6">
-          <div className={`text-6xl font-bold mb-2 ${getScoreColor(result.quizScore)}`}>
-            {result.quizScore.toFixed(1)}%
+          <div className="w-full max-w-sm border border-border bg-divider/5 rounded-sm p-10 mb-8 shadow-inner">
+            <div className="text-7xl md:text-8xl font-clash font-bold text-accent mb-2 tracking-tighter">
+              {score.toFixed(1)}%
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">Overall Score</p>
           </div>
-          <p className="text-[#b0b0b0] font-medium text-lg">Your Score</p>
-          <Award className="w-10 h-10 mx-auto mt-4 text-[#f59e0b]" />
-        </div>
 
-        {result.improvementTip && (
-          <div className="backdrop-blur-xl bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-2xl p-6">
-            <div className="flex items-start gap-3">
-              <TrendingUp className="w-6 h-6 text-[#f59e0b] flex-shrink-0 mt-1" />
-              <div>
-                <p className="font-semibold text-[#fbbf24] mb-2">Improvement Tip</p>
-                <p className="text-[#b0b0b0] leading-relaxed">{result.improvementTip}</p>
+          {result.improvementTip && (
+            <div className="max-w-2xl border border-accent/30 bg-accent/5 rounded-sm p-8 text-left shadow-sm">
+              <div className="flex items-start gap-4">
+                <TrendingUp className="w-5 h-5 text-accent flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-[10px] font-bold tracking-[0.2em] text-accent uppercase mb-3 text-left">Career Buddy Insight</p>
+                  <p className="text-muted-foreground font-general font-light leading-relaxed">{result.improvementTip}</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5">
-        <h3 className="text-2xl font-semibold text-white mb-6 flex items-center">
-          <Target className="w-6 h-6 text-[#f59e0b] mr-3" />
-          Question Review
+      {/* Review Section */}
+      <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl">
+        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase mb-12 flex items-center gap-4">
+          <Target className="w-4 h-4 text-accent" />
+          Question-by-Question Review
         </h3>
-        <div className="space-y-4">
+        
+        <div className="grid grid-cols-1 gap-8">
           {result.questions.map((q, index) => (
             <div 
               key={index} 
-              className={`backdrop-blur-xl rounded-2xl p-6 border-2 transition-all duration-300 ${
+              className={`border rounded-sm p-8 transition-editorial shadow-sm hover:shadow-md ${
                 q.isCorrect 
-                  ? 'bg-gradient-to-br from-[#f59e0b]/10 to-[#fbbf24]/10 border-[#fbbf24]/30' 
-                  : 'bg-gradient-to-br from-[#1a1815]/50 to-[#252218]/50 border-[#f59e0b]/20'
+                  ? 'border-accent/30 bg-accent/[0.02]' 
+                  : 'border-divider bg-divider/[0.02]'
               }`}
             >
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <p className="font-semibold text-white text-lg flex-1">
-                  {index + 1}. {q.question}
-                </p>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+              <div className="flex items-start justify-between gap-6 mb-8">
+                <div className="flex-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Question {index + 1}</span>
+                  <h4 className="text-xl md:text-2xl font-clash font-bold text-foreground uppercase tracking-tight leading-tight">
+                    {q.question}
+                  </h4>
+                </div>
+                <div className={`w-12 h-12 rounded-sm border flex items-center justify-center flex-shrink-0 ${
                   q.isCorrect 
-                    ? 'bg-[#fbbf24]/20 border-2 border-[#fbbf24]/40' 
-                    : 'bg-[#f59e0b]/20 border-2 border-[#f59e0b]/40'
+                    ? 'border-accent/40 bg-accent/10' 
+                    : 'border-destructive/40 bg-destructive/10'
                 }`}>
                   {q.isCorrect ? (
-                    <CheckCircle2 className="w-6 h-6 text-[#fbbf24]" />
+                    <CheckCircle2 className="w-6 h-6 text-accent" />
                   ) : (
-                    <XCircle className="w-6 h-6 text-[#f59e0b]" />
+                    <XCircle className="w-6 h-6 text-destructive" />
                   )}
                 </div>
               </div>
 
-              <div className="space-y-3 mb-4">
-                <div className="backdrop-blur-xl bg-[#1a1815]/50 rounded-xl p-4 border border-[#6b7280]">
-                  <p className="text-sm text-[#b0b0b0] mb-1">Your answer:</p>
-                  <p className={`font-medium ${q.isCorrect ? 'text-[#fbbf24]' : 'text-[#f59e0b]'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="border border-divider bg-divider/10 rounded-sm p-5">
+                  <p className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase mb-3">Your Answer:</p>
+                  <p className={`text-sm font-medium ${q.isCorrect ? 'text-accent' : 'text-destructive'}`}>
                     {q.userAnswer}
                   </p>
                 </div>
                 {!q.isCorrect && (
-                  <div className="backdrop-blur-xl bg-[#1a1815]/50 rounded-xl p-4 border border-[#fbbf24]/30">
-                    <p className="text-sm text-[#b0b0b0] mb-1">Correct answer:</p>
-                    <p className="font-medium text-[#fbbf24]">{q.answer}</p>
+                  <div className="border border-accent bg-accent/5 rounded-sm p-5 shadow-sm">
+                    <p className="text-[9px] font-bold tracking-widest text-accent uppercase mb-3">Suggested Answer:</p>
+                    <p className="text-sm font-medium text-foreground">{q.answer}</p>
                   </div>
                 )}
               </div>
 
-              <div className="backdrop-blur-xl bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-xl p-4">
-                <div className="flex items-start gap-2">
-                  <Sparkles className="w-5 h-5 text-[#f59e0b] flex-shrink-0 mt-0.5" />
+              <div className="p-6 bg-divider/5 border border-divider/30 rounded-sm">
+                <div className="flex items-start gap-4">
+                  <Sparkles className="w-4 h-4 text-accent flex-shrink-0 mt-1" />
                   <div>
-                    <p className="font-semibold text-[#fbbf24] text-sm mb-1">Explanation:</p>
-                    <p className="text-[#b0b0b0] text-sm leading-relaxed">{q.explanation}</p>
+                    <p className="text-[9px] font-bold tracking-widest text-accent uppercase mb-2">Coach&apos;s Feedback:</p>
+                    <p className="text-muted-foreground text-sm leading-relaxed font-general font-light">{q.explanation}</p>
                   </div>
                 </div>
               </div>
@@ -120,13 +116,13 @@ export default function QuizResult({
       </div>
 
       {!hideStartNew && (
-        <button
+        <Button
           onClick={onStartNew}
-          className="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-4 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 flex items-center justify-center gap-3"
+          className="w-full h-16 text-xs font-bold tracking-[0.3em] uppercase shadow-lg"
         >
-          <RefreshCw className="w-5 h-5" />
-          Start New Quiz
-        </button>
+          <RefreshCw className="w-4 h-4 mr-4" />
+          Start New Practice Interview
+        </Button>
       )}
     </div>
   );

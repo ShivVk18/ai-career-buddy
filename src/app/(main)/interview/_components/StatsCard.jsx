@@ -23,51 +23,41 @@ export default function StatsCards({ assessments }) {
     );
   };
 
-  const avgScore = parseFloat(getAverageScore());
-  const latestScore = getLatestAssessment()?.quizScore || 0;
-
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'from-[#1a1815]/80 to-[#252218]/60 border-[#fbbf24]/30';
-    if (score >= 80) return 'from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/30';
-    if (score >= 70) return 'from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/25';
-    return 'from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/20';
-  };
-
   return (
     <div className="grid gap-6 md:grid-cols-3">
-      <div className={`backdrop-blur-xl bg-gradient-to-br ${getScoreColor(avgScore)} rounded-2xl border-2 p-6 shadow-xl shadow-[#f59e0b]/5 transform hover:scale-105 transition-all duration-300`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-[#b0b0b0]">Average Score</h3>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-            <Trophy className="w-6 h-6 text-[#f59e0b]" />
+      <div className="border border-border bg-background rounded-sm p-8 shadow-sm transition-editorial hover:border-accent hover:bg-divider/5">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Average Score</h3>
+          <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
+            <Trophy className="w-5 h-5 text-accent" />
           </div>
         </div>
-        <div className="text-4xl font-bold text-white mb-1">{getAverageScore()}%</div>
-        <p className="text-sm text-[#b0b0b0]">Across all assessments</p>
+        <div className="text-4xl md:text-5xl font-clash font-bold text-foreground mb-2">{getAverageScore()}%</div>
+        <p className="text-xs text-muted-foreground font-light">Across all assessments</p>
       </div>
 
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-2xl border-2 border-[#f59e0b]/20 p-6 shadow-xl shadow-[#f59e0b]/5 transform hover:scale-105 transition-all duration-300">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-[#b0b0b0]">Questions Practiced</h3>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-            <Brain className="w-6 h-6 text-[#f59e0b]" />
+      <div className="border border-border bg-background rounded-sm p-8 shadow-sm transition-editorial hover:border-accent hover:bg-divider/5">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Questions Practiced</h3>
+          <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
+            <Brain className="w-5 h-5 text-accent" />
           </div>
         </div>
-        <div className="text-4xl font-bold text-white mb-1">{getTotalQuestions()}</div>
-        <p className="text-sm text-[#b0b0b0]">Total questions</p>
+        <div className="text-4xl md:text-5xl font-clash font-bold text-foreground mb-2">{getTotalQuestions()}</div>
+        <p className="text-xs text-muted-foreground font-light">Total questions</p>
       </div>
 
-      <div className={`backdrop-blur-xl bg-gradient-to-br ${getScoreColor(latestScore)} rounded-2xl border-2 p-6 shadow-xl shadow-[#f59e0b]/5 transform hover:scale-105 transition-all duration-300`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-[#b0b0b0]">Latest Score</h3>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-            <Target className="w-6 h-6 text-[#f59e0b]" />
+      <div className="border border-border bg-background rounded-sm p-8 shadow-sm transition-editorial hover:border-accent hover:bg-divider/5">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Latest Score</h3>
+          <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
+            <Target className="w-5 h-5 text-accent" />
           </div>
         </div>
-        <div className="text-4xl font-bold text-white mb-1">
+        <div className="text-4xl md:text-5xl font-clash font-bold text-foreground mb-2">
           {getLatestAssessment()?.quizScore.toFixed(1) || 0}%
         </div>
-        <p className="text-sm text-[#b0b0b0]">Most recent quiz</p>
+        <p className="text-xs text-muted-foreground font-light">Most recent quiz</p>
       </div>
     </div>
   );

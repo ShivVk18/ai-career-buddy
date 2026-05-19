@@ -12,70 +12,92 @@ import {
   FileText,
   BrainCircuit,
   ClipboardList,
-  LineChart,
+  Mail,
 } from "lucide-react";
 
 const featuresCard = [
   {
-    icon: <ScrollText className="w-12 h-12 text-[#f59e0b]" />,
-    title: "Smart Resume Creation",
-    description: "Generate ATS-optimized resumes with AI assistance.",
+    icon: <ScrollText className="w-8 h-8 text-accent" />,
+    title: "Smart Resume Builder",
+    description:
+      "Create ATS-optimized resumes tailored to any job in minutes. Let AI do the heavy lifting.",
     link: "/resume",
   },
   {
-    icon: <Briefcase className="w-12 h-12 text-[#f59e0b]" />,
-    title: "Interview Preparation",
+    icon: <Briefcase className="w-8 h-8 text-accent" />,
+    title: "Interview Prep",
     description:
-      "Practice with role-specific questions and get instant feedback to improve your performance.",
+      "Practice with role-specific questions and get instant AI feedback to sharpen your answers.",
     link: "/interview",
   },
   {
-    icon: <FileText className="w-12 h-12 text-[#f59e0b]" />,
+    icon: <FileText className="w-8 h-8 text-accent" />,
     title: "Cover Letter Generator",
     description:
-      "Craft professional, job-specific cover letters in seconds using AI suggestions.",
+      "Write compelling, personalized cover letters for any role in seconds — no blank-page stress.",
     link: "/cover-letter",
   },
   {
-    icon: <BrainCircuit className="w-12 h-12 text-[#f59e0b]" />,
-    title: "AI-Powered Career Guidance",
+    icon: <BrainCircuit className="w-8 h-8 text-accent" />,
+    title: "Career Roadmap",
     description:
-      "Get personalized career advice and step-by-step roadmaps for your dream role.",
+      "Get a step-by-step AI-powered plan to move from where you are to where you want to be.",
     link: "/roadmap",
   },
   {
-    icon: <ClipboardList className="w-12 h-12 text-[#f59e0b]" />,
-    title: "Resume Parser",
+    icon: <ClipboardList className="w-8 h-8 text-accent" />,
+    title: "Resume Parser & ATS Score",
     description:
-      "Upload your resume and let AI extract key details to enhance your job profile.",
+      "Upload your resume and instantly see how it scores against job descriptions.",
     link: "/resume-parser",
   },
   {
-    icon: <FileText className="w-12 h-12 text-[#f59e0b]" />,
+    icon: <Mail className="w-8 h-8 text-accent" />,
     title: "Cold Email Generator",
     description:
-      "Craft professional, job-specific cover email in seconds using AI suggestions.",
+      "Craft professional outreach emails that get responses — personalized to every opportunity.",
     link: "/cold-email",
   },
 ];
 
+import Loader from "@/components/Loader";
+
 export default function DashboardPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
 
-  const userName = user?.firstName || "User";
+  if (!isLoaded) {
+    return <Loader />;
+  }
+
+  const userName = user?.firstName || "Friend";
 
   return (
-    <div className="min-h-screen bg-[#0f0e0a] relative">
-      {/* Ambient glow effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-32 -left-32 w-96 h-96 bg-[#f59e0b]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-32 -right-32 w-96 h-96 bg-[#fbbf24]/10 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-transparent relative">
       <div className="container mx-auto px-6 lg:px-8 py-16 relative z-10">
-        
 
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-16 border-b border-divider pb-12"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-8 h-[1px] bg-accent" />
+            <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
+              Your Career HQ
+            </span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-clash font-bold text-foreground uppercase tracking-tight leading-none">
+            Hey, <span className="text-accent">{userName} 👋</span>
+          </h1>
+          <p className="mt-6 text-lg md:text-xl text-muted-foreground font-light max-w-2xl leading-relaxed">
+            What would you like to work on today? Pick a tool and let your AI career coach take it from here.
+          </p>
+        </motion.div>
+
+        {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           {featuresCard.map((feature, idx) => (
             <FeatureCard
@@ -96,28 +118,22 @@ const FeatureCard = ({ feature, index, onClick }) => (
     onClick={onClick}
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: index * 0.1 }}
-    whileHover={{ scale: 1.02, y: -4 }}
-    className="group relative rounded-2xl overflow-hidden border border-[#f59e0b]/20 bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 backdrop-blur-xl shadow-xl shadow-[#f59e0b]/5 hover:shadow-2xl hover:shadow-[#f59e0b]/10 transition-all duration-300 text-left"
+    transition={{ delay: index * 0.05, duration: 0.5 }}
+    className="group relative flex flex-col justify-between text-left p-8 rounded-sm border border-border bg-background hover:bg-divider/20 hover:border-accent transition-editorial overflow-hidden"
   >
-    {/* Top gradient accent */}
-    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#f59e0b]/50 to-transparent" />
-    
-    {/* Glow effect on hover */}
-    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#f59e0b]/5 to-transparent" />
-    </div>
-
-    <div className="relative z-10 p-8">
-      <div className="group-hover:scale-110 transition-transform duration-300 mb-6">
+    <div className="relative z-10">
+      <div className="mb-8 p-3 w-fit border border-divider rounded-sm group-hover:border-accent transition-editorial bg-divider/10">
         {feature.icon}
       </div>
-      <h3 className="text-2xl font-semibold text-white mb-3 group-hover:text-[#fbbf24] transition-colors">
+      <h3 className="text-xl font-clash font-bold text-foreground mb-4 uppercase tracking-tight group-hover:text-accent transition-editorial">
         {feature.title}
       </h3>
-      <p className="text-[#b0b0b0] text-base leading-relaxed">
+      <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">
         {feature.description}
       </p>
     </div>
+
+    {/* Bottom accent line */}
+    <div className="absolute bottom-0 left-0 w-0 h-[2px] bg-accent group-hover:w-full transition-all duration-500" />
   </motion.button>
 );

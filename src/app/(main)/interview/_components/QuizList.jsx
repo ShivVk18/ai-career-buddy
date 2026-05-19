@@ -15,20 +15,6 @@ import { Clock, Trophy, TrendingUp, Plus, FileText, Sparkles, BarChart3 } from "
 export default function QuizList({ assessments, onStartNew }) {
   const [selectedQuiz, setSelectedQuiz] = useState(null);
 
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-[#fbbf24]';
-    if (score >= 80) return 'text-[#f59e0b]';
-    if (score >= 70) return 'text-[#f59e0b]';
-    return 'text-[#b0b0b0]';
-  };
-
-  const getScoreBgColor = (score) => {
-    if (score >= 90) return 'from-[#1a1815]/80 to-[#252218]/60 border-[#fbbf24]/30';
-    if (score >= 80) return 'from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/30';
-    if (score >= 70) return 'from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/25';
-    return 'from-[#1a1815]/80 to-[#252218]/60 border-[#f59e0b]/20';
-  };
-
   const getScoreBadge = (score) => {
     if (score >= 90) return { label: 'Excellent', icon: Trophy };
     if (score >= 80) return { label: 'Great', icon: TrendingUp };
@@ -38,47 +24,48 @@ export default function QuizList({ assessments, onStartNew }) {
 
   return (
     <>
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+      <div className="border border-border bg-background rounded-sm p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12 gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-                <FileText className="w-6 h-6 text-[#f59e0b]" />
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
+                <FileText className="w-5 h-5 text-accent" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
+              <h2 className="text-3xl font-clash font-bold text-foreground uppercase tracking-tight">
                 Quiz History
               </h2>
             </div>
-            <p className="text-[#b0b0b0] text-sm ml-15">
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest ml-14">
               {assessments?.length || 0} quiz{assessments?.length !== 1 ? 'zes' : ''} completed
             </p>
           </div>
-          <button
+          <Button
             onClick={onStartNew}
-            className="bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-3 px-6 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 flex items-center gap-2 whitespace-nowrap"
+            className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-lg"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 mr-3" />
             Start New Quiz
-          </button>
+          </Button>
         </div>
 
         {/* Empty State */}
         {!assessments || assessments.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#f59e0b]/10 to-[#fbbf24]/10 flex items-center justify-center mb-6 mx-auto border border-[#f59e0b]/20">
-              <FileText className="w-12 h-12 text-[#f59e0b]" />
+          <div className="text-center py-16 border border-divider bg-divider/5 rounded-sm">
+            <div className="w-16 h-16 rounded-sm bg-divider/20 flex items-center justify-center mb-6 mx-auto border border-divider/30">
+              <FileText className="w-8 h-8 text-accent" />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2">No Quizzes Yet</h3>
-            <p className="text-[#b0b0b0] mb-6 max-w-md mx-auto">
+            <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight mb-2">No Quizzes Yet</h3>
+            <p className="text-muted-foreground font-light mb-8 max-w-md mx-auto text-sm">
               Start your first quiz to test your technical knowledge and track your progress over time.
             </p>
-            <button
+            <Button
               onClick={onStartNew}
-              className="bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white py-3 px-8 rounded-2xl transition-all duration-300 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transform hover:scale-105 inline-flex items-center gap-2"
+              variant="outline"
+              className="h-12 px-8"
             >
-              <Sparkles className="w-5 h-5" />
+              <Sparkles className="w-4 h-4 mr-3 text-accent" />
               Take Your First Quiz
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -90,52 +77,52 @@ export default function QuizList({ assessments, onStartNew }) {
                 <div
                   key={assessment.id}
                   onClick={() => setSelectedQuiz(assessment)}
-                  className={`backdrop-blur-xl bg-gradient-to-br ${getScoreBgColor(assessment.quizScore)} rounded-2xl border-2 p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-[#f59e0b]/5 hover:shadow-2xl hover:shadow-[#f59e0b]/10`}
+                  className="border border-border bg-background rounded-sm p-6 cursor-pointer hover:border-accent hover:bg-divider/5 transition-editorial shadow-sm"
                 >
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                          <Trophy className="w-5 h-5 text-white" />
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
+                          <Trophy className="w-4 h-4 text-accent" />
                         </div>
                         <div>
-                          <h3 className="text-2xl font-bold text-white">
+                          <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight">
                             Quiz {assessments.length - i}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <BadgeIcon className="w-4 h-4 text-[#fbbf24]" />
-                            <span className="text-sm text-[#fbbf24] font-medium">
+                            <BadgeIcon className="w-3 h-3 text-accent" />
+                            <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
                               {badge.label}
                             </span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-[#b0b0b0]">
-                        <Clock className="w-4 h-4" />
+                      <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                        <Clock className="w-3 h-3" />
                         <span>
                           {format(new Date(assessment.createdAt), "MMMM dd, yyyy 'at' HH:mm")}
                         </span>
                       </div>
                     </div>
                     <div className="text-center sm:text-right">
-                      <div className={`text-5xl font-bold ${getScoreColor(assessment.quizScore)}`}>
+                      <div className="text-4xl md:text-5xl font-clash font-bold text-foreground">
                         {assessment.quizScore.toFixed(1)}%
                       </div>
-                      <p className="text-xs text-[#b0b0b0] mt-1 uppercase tracking-wide">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1">
                         Final Score
                       </p>
                     </div>
                   </div>
 
                   {assessment.improvementTip && (
-                    <div className="backdrop-blur-xl bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-xl p-4 mt-4">
+                    <div className="border border-accent/20 bg-accent/5 rounded-sm p-4 mt-6">
                       <div className="flex items-start gap-3">
-                        <Sparkles className="w-5 h-5 text-[#f59e0b] flex-shrink-0 mt-0.5" />
+                        <Sparkles className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-[#fbbf24] mb-1">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-accent mb-2">
                             Improvement Tip
                           </p>
-                          <p className="text-sm text-[#b0b0b0] leading-relaxed">
+                          <p className="text-xs text-muted-foreground font-light leading-relaxed">
                             {assessment.improvementTip}
                           </p>
                         </div>
@@ -143,11 +130,11 @@ export default function QuizList({ assessments, onStartNew }) {
                     </div>
                   )}
 
-                  <div className="mt-4 pt-4 border-t border-[#f59e0b]/10 flex items-center justify-between text-sm">
-                    <span className="text-[#b0b0b0]">
+                  <div className="mt-6 pt-4 border-t border-divider flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
+                    <span className="text-muted-foreground/50">
                       Click to view detailed results
                     </span>
-                    <span className="text-[#f59e0b] font-medium">
+                    <span className="text-accent group-hover:underline">
                       View Details →
                     </span>
                   </div>
@@ -159,18 +146,20 @@ export default function QuizList({ assessments, onStartNew }) {
       </div>
 
       <Dialog open={!!selectedQuiz} onOpenChange={() => setSelectedQuiz(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#1a1815] border-[#f59e0b]/20">
-          <DialogHeader>
-            <DialogTitle className="sr-only">Quiz Results</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-border rounded-sm p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Quiz Results</DialogTitle>
           </DialogHeader>
-          <QuizResult
-            result={selectedQuiz}
-            hideStartNew={false}
-            onStartNew={() => {
-              setSelectedQuiz(null);
-              onStartNew();
-            }}
-          />
+          <div className="p-6 md:p-10">
+            <QuizResult
+              result={selectedQuiz}
+              hideStartNew={false}
+              onStartNew={() => {
+                setSelectedQuiz(null);
+                onStartNew();
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>

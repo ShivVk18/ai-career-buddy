@@ -11,27 +11,23 @@ import {
   CheckCircle2, 
   Eye,
   Sparkles,
-  Zap
+  Zap,
+  Save,
+  FileDown
 } from "lucide-react";
 import { toast } from "sonner";
 
 const CoverLetterPreview = ({ content }) => {
-  const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [previewMode, setPreviewMode] = useState("preview");
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(editedContent);
-      toast.success("Cover letter copied to clipboard!");
+      toast.success("Cover letter copied to clipboard! ✨");
     } catch (error) {
       toast.error("Failed to copy to clipboard");
     }
-  };
-
-  const handleSave = () => {
-    setIsEditing(false);
-    toast.success("Changes saved successfully!");
   };
 
   const handleDownload = () => {
@@ -42,34 +38,35 @@ const CoverLetterPreview = ({ content }) => {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
-    toast.success("Cover letter downloaded!");
+    toast.success("Cover letter downloaded! 📄");
   };
 
   return (
-   <div className="space-y-8">
-      {/* Header Section */}
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-              <FileText className="h-8 w-8 text-[#f59e0b]" />
+    <div className="space-y-12 pb-20">
+      {/* Action Bar */}
+      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-6">
+            <div className="w-12 h-12 rounded-sm border border-divider bg-divider/10 flex items-center justify-center transition-editorial shadow-sm">
+              <FileText className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">Your Cover Letter</h2>
-              <p className="text-[#b0b0b0] text-sm">AI-generated and ready for customization</p>
+              <h2 className="text-lg font-clash font-bold text-foreground uppercase tracking-tight">Preview & Edit</h2>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Ready to download</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1 p-1 rounded-xl bg-[#1a1815]/50 border border-[#f59e0b]/20">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="flex items-center gap-1 p-1 border border-divider bg-divider/5 rounded-sm">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setPreviewMode("edit")}
-                className={`h-9 px-4 text-sm rounded-lg transition-all duration-300 ${
+                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-sm ${
                   previewMode === "edit" 
-                    ? "bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 text-[#f59e0b] border border-[#f59e0b]/30" 
-                    : "text-[#b0b0b0] hover:text-white hover:bg-[#1a1815]/70"
+                    ? "bg-accent text-accent-foreground border border-accent hover:bg-accent/90" 
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Edit3 className="h-4 w-4 mr-2" />
@@ -79,10 +76,10 @@ const CoverLetterPreview = ({ content }) => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setPreviewMode("preview")}
-                className={`h-9 px-4 text-sm rounded-lg transition-all duration-300 ${
+                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-sm ${
                   previewMode === "preview" 
-                    ? "bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/30" 
-                    : "text-[#b0b0b0] hover:text-white hover:bg-[#1a1815]/70"
+                    ? "bg-accent text-accent-foreground border border-accent hover:bg-accent/90" 
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Eye className="h-4 w-4 mr-2" />
@@ -91,40 +88,37 @@ const CoverLetterPreview = ({ content }) => {
             </div>
 
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="h-10 px-5 bg-[#1a1815]/50 border border-[#f59e0b]/20 hover:border-[#f59e0b]/50 hover:bg-[#f59e0b]/20 text-gray-300 hover:text-[#f59e0b] transition-all duration-300 rounded-xl"
+              className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase transition-editorial"
             >
-              <Copy className="h-4 w-4 mr-2" />
-              Copy
+              <Copy className="h-4 w-4 mr-3" />
+              Copy Text
             </Button>
 
             <Button
-              variant="ghost"
-              size="sm"
               onClick={handleDownload}
-              className="h-10 px-5 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 transition-all duration-300 rounded-xl shadow-lg shadow-[#f59e0b]/30 hover:shadow-[#f59e0b]/50"
+              className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-lg"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Download
+              <FileDown className="h-4 w-4 mr-3" />
+              Download TXT
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Editor/Preview Section */}
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 overflow-hidden shadow-2xl shadow-[#f59e0b]/5">
-        <div className="border-b border-[#f59e0b]/10 p-5 bg-[#1a1815]/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-[#f59e0b]/60 rounded-full"></div>
-                <div className="w-3 h-3 bg-[#fbbf24]/60 rounded-full"></div>
-                <div className="w-3 h-3 bg-emerald-500/60 rounded-full"></div>
-              </div>
-              <span className="text-sm text-[#b0b0b0] font-mono">cover-letter.md</span>
+      {/* Editor Container */}
+      <div className="border border-border bg-background rounded-sm overflow-hidden shadow-2xl relative">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
+        <div className="border-b border-divider p-6 bg-divider/5 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-accent/60 rounded-full"></div>
+              <div className="w-2 h-2 bg-accent/40 rounded-full"></div>
+              <div className="w-2 h-2 bg-accent/20 rounded-full"></div>
             </div>
+            <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">cover-letter.md</span>
           </div>
         </div>
 
@@ -135,93 +129,88 @@ const CoverLetterPreview = ({ content }) => {
             preview={previewMode}
             hideToolbar={previewMode === "preview"}
             visibleDragbar={false}
-            height={700}
+            height={600}
             data-color-mode="dark"
             className="custom-md-editor"
             style={{
               backgroundColor: 'transparent',
             }}
             textareaProps={{
-              className: "bg-transparent text-white placeholder:text-gray-500 border-none outline-none resize-none",
+              className: "bg-transparent text-foreground placeholder:text-muted border-none outline-none resize-none font-general text-sm leading-relaxed p-10",
               style: {
-                fontSize: '14px',
-                lineHeight: '1.6',
-                fontFamily: 'Inter, system-ui, sans-serif',
                 backgroundColor: 'transparent',
-                color: '#ffffff',
+                color: 'var(--foreground)',
               }
             }}
             previewOptions={{
-              className: "prose prose-invert max-w-none p-8",
+              className: "prose prose-invert max-w-none p-12",
               style: {
                 backgroundColor: 'transparent',
-                color: '#ffffff',
+                color: 'var(--foreground)',
               }
             }}
           />
         </div>
       </div>
 
-      {/* Tips Section */}
-      <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 rounded-3xl border border-[#f59e0b]/10 p-8 shadow-2xl shadow-[#f59e0b]/5">
-        <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#fbbf24]/20 to-[#f59e0b]/20 flex items-center justify-center border border-[#fbbf24]/30 mr-4">
-            <Sparkles className="h-6 w-6 text-[#fbbf24]" />
-          </div>
-          Customization Tips
+      {/* Optimization Tips */}
+      <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl">
+        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase mb-10 flex items-center gap-4">
+          <Sparkles className="h-4 w-4 text-accent" />
+          Pro Tips from your Buddy
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="backdrop-blur-xl bg-[#1a1815]/30 p-5 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30 flex-shrink-0 mt-1">
-                <Zap className="h-4 w-4 text-[#f59e0b]" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <Zap className="h-4 w-4 text-accent" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-[#f59e0b] mb-2">Personalize Your Letter</h4>
-                <p className="text-xs text-[#b0b0b0] leading-relaxed">
-                  Add specific examples from your experience that match the job requirements
+                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Personalize It</h4>
+                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
+                  Add a specific project or achievement that directly addresses the company&apos;s pain points.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl bg-[#1a1815]/30 p-5 rounded-2xl border border-[#fbbf24]/10 hover:border-[#fbbf24]/20 transition-all duration-300">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#fbbf24]/20 to-[#f59e0b]/20 flex items-center justify-center border border-[#fbbf24]/30 flex-shrink-0 mt-1">
-                <FileText className="h-4 w-4 text-[#fbbf24]" />
+          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <FileText className="h-4 w-4 text-accent" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-[#fbbf24] mb-2">Tailor the Content</h4>
-                <p className="text-xs text-[#b0b0b0] leading-relaxed">
-                  Adjust the tone and emphasis based on the company culture and role level
+                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Check the Tone</h4>
+                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
+                  Match the company&apos;s culture. Use a more formal tone for finance/law, and a friendlier tone for startups.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl bg-[#1a1815]/30 p-5 rounded-2xl border border-[#f59e0b]/10 hover:border-[#f59e0b]/20 transition-all duration-300">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30 flex-shrink-0 mt-1">
-                <Edit3 className="h-4 w-4 text-[#f59e0b]" />
+          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <Edit3 className="h-4 w-4 text-accent" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-[#f59e0b] mb-2">Review and Edit</h4>
-                <p className="text-xs text-[#b0b0b0] leading-relaxed">
-                  Check for any placeholder text and ensure all details are accurate
+                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Final Proofread</h4>
+                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
+                  Make sure all placeholders (like [Company Name]) are filled in correctly.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl bg-[#1a1815]/30 p-5 rounded-2xl border border-emerald-500/10 hover:border-emerald-500/20 transition-all duration-300">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-emerald-500/20 to-green-500/20 flex items-center justify-center border border-emerald-500/30 flex-shrink-0 mt-1">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <CheckCircle2 className="h-4 w-4 text-accent" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-emerald-300 mb-2">Final Check</h4>
-                <p className="text-xs text-[#b0b0b0] leading-relaxed">
-                  Proofread for grammar and ensure the letter flows naturally
+                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Ready to Go</h4>
+                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
+                  Once you&apos;re happy, copy the text or download it and attach it to your application.
                 </p>
               </div>
             </div>
@@ -232,45 +221,41 @@ const CoverLetterPreview = ({ content }) => {
       <style jsx global>{`
         .custom-md-editor {
           background: transparent !important;
+          border: none !important;
         }
         
         .custom-md-editor .w-md-editor-text-pre,
         .custom-md-editor .w-md-editor-text-textarea {
           background: transparent !important;
-          color: #ffffff !important;
+          color: var(--foreground) !important;
         }
         
         .custom-md-editor .w-md-editor-text {
-          background: rgba(0, 0, 0, 0.2) !important;
-          border: 1px solid rgba(245, 158, 11, 0.1) !important;
+          background: rgba(var(--accent-rgb), 0.05) !important;
         }
         
         .custom-md-editor .wmde-markdown {
           background: transparent !important;
-          color: #ffffff !important;
-        }
-        
-        .custom-md-editor .wmde-markdown h1,
-        .custom-md-editor .wmde-markdown h2,
-        .custom-md-editor .wmde-markdown h3 {
-          color: #ffffff !important;
-        }
-        
-        .custom-md-editor .wmde-markdown p {
-          color: #e5e5e5 !important;
-          line-height: 1.7;
-        }
-        
-        .custom-md-editor .wmde-markdown strong {
-          color: #ffffff !important;
-        }
-        
-        .custom-md-editor .wmde-markdown ul,
-        .custom-md-editor .wmde-markdown ol {
-          color: #e5e5e5 !important;
+          color: var(--foreground) !important;
+          font-family: 'General Sans', sans-serif !important;
         }
         
         .custom-md-editor .w-md-editor-preview {
+          background: transparent !important;
+          border-left: 1px solid var(--divider) !important;
+        }
+
+        .custom-md-editor .w-md-editor-toolbar {
+          background: var(--background) !important;
+          border-bottom: 1px solid var(--divider) !important;
+          color: var(--foreground) !important;
+        }
+
+        .custom-md-editor .w-md-editor-toolbar button {
+          color: var(--foreground) !important;
+        }
+
+        .custom-md-editor .w-md-editor-content {
           background: transparent !important;
         }
       `}</style>

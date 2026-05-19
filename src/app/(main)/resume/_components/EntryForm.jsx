@@ -6,20 +6,28 @@ import { parse, format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { entrySchema } from "@/app/lib/schema";
-import { Sparkles, PlusCircle, X, Pencil, Save, Loader2, Calendar, MapPin, CheckCircle } from "lucide-react";
+import { Sparkles, PlusCircle, X, Loader2, Calendar, CheckCircle2, Trash2 } from "lucide-react";
 import { improveWithAI } from "@/actions/Resume";
 import { toast } from "sonner";
 import useFetch from "@/hooks/use-fetch";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import { Mic } from "lucide-react";
 
 const formatDisplayDate = (dateString) => {
   if (!dateString) return "";
-  const date = parse(dateString, "yyyy-MM", new Date());
-  return format(date, "MMM yyyy");
+  try {
+    const date = parse(dateString, "yyyy-MM", new Date());
+    return format(date, "MMM yyyy");
+  } catch (e) {
+    return dateString;
+  }
 };
 
 export function EntryForm({ type, entries, onChange }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [initialDescription, setInitialDescription] = useState("");
 
   const {
     register,
@@ -42,6 +50,15 @@ export function EntryForm({ type, entries, onChange }) {
 
   const current = watch("current");
 
+  const { isRecording, toggleRecording, isSupported } = useSpeechToText((text) => {
+    setValue("description", initialDescription + (initialDescription && text ? " " : "") + text);
+  });
+
+  const handleToggleRecording = () => {
+    if (!isRecording) setInitialDescription(watch("description") || "");
+    toggleRecording();
+  };
+
   const handleAdd = handleValidation((data) => {
     const formattedEntry = {
       ...data,
@@ -60,22 +77,7 @@ export function EntryForm({ type, entries, onChange }) {
     onChange(newEntries);
   };
 
-  const {
-    loading: isImproving,
-    fn: improveWithAIFn,
-    data: improvedContent,
-    error: improveError,
-  } = useFetch(improveWithAI);
-
-  useEffect(() => {
-    if (improvedContent && !isImproving) {
-      setValue("description", improvedContent);
-      toast.success("Description improved successfully!");
-    }
-    if (improveError) {
-      toast.error(improveError.message || "Failed to improve description");
-    }
-  }, [improvedContent, improveError, isImproving, setValue]);
+  const [isImproving, setIsImproving] = useState(false);
 
   const handleImproveDescription = async () => {
     const description = watch("description");
@@ -84,33 +86,43 @@ export function EntryForm({ type, entries, onChange }) {
       return;
     }
 
-    await improveWithAIFn({
-      current: description,
-      type: type.toLowerCase(),
-    });
+    setIsImproving(true);
+    try {
+      const improvedContent = await improveWithAI({
+        current: description,
+        type: type.toLowerCase(),
+      });
+      setValue("description", improvedContent);
+      toast.success("Description improved by AI! ✨");
+    } catch (error) {
+      toast.error(error.message || "Failed to improve description");
+    } finally {
+      setIsImproving(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
+    <div className="space-y-8">
+      {/* List of existing entries */}
+      <div className="space-y-6">
         {entries.map((item, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="backdrop-blur-xl bg-slate-800/50 border border-orange-500/20 rounded-2xl p-6 hover:border-orange-500/40 transition-all duration-300 group"
+            exit={{ opacity: 0, y: -10 }}
+            className="border border-border bg-divider/10 rounded-sm p-6 relative group hover:border-accent transition-editorial shadow-sm"
           >
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h4 className="text-lg font-semibold text-white mb-1">
+                <h4 className="text-lg font-clash font-bold text-foreground uppercase tracking-tight mb-1">
                   {item.title}
                 </h4>
-                <p className="text-orange-300 font-medium mb-2">
+                <p className="text-accent text-xs font-bold uppercase tracking-widest mb-3">
                   {item.organization}
                 </p>
-                <div className="flex items-center text-sm text-gray-400">
-                  <Calendar className="h-4 w-4 mr-2" />
+                <div className="flex items-center text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em]">
+                  <Calendar className="h-3.5 w-3.5 mr-3 text-accent" />
                   {item.current
                     ? `${item.startDate} - Present`
                     : `${item.startDate} - ${item.endDate}`}
@@ -119,14 +131,17 @@ export function EntryForm({ type, entries, onChange }) {
               <button
                 type="button"
                 onClick={() => handleDelete(index)}
-                className="backdrop-blur-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 hover:border-rose-500/50 text-rose-300 p-2 rounded-xl transition-all duration-300"
+                className="opacity-0 group-hover:opacity-100 transition-editorial text-muted-foreground hover:text-destructive p-2"
+                title="Delete Entry"
               >
-                <X className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
-            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-              {item.description}
-            </p>
+            {item.description && (
+              <div className="mt-6 pt-6 border-t border-divider text-sm text-muted-foreground font-general font-light leading-relaxed whitespace-pre-wrap">
+                {item.description}
+              </div>
+            )}
           </motion.div>
         ))}
       </div>
@@ -137,81 +152,81 @@ export function EntryForm({ type, entries, onChange }) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="backdrop-blur-xl bg-slate-800/50 border border-orange-500/20 rounded-3xl overflow-hidden shadow-2xl"
+            className="border border-accent/50 bg-background rounded-sm overflow-hidden shadow-xl"
           >
             <div className="p-8">
-              <h4 className="text-2xl font-semibold text-white mb-6 flex items-center">
-                <PlusCircle className="h-6 w-6 text-orange-400 mr-3" />
-                Add {type}
+              <h4 className="text-xs font-bold tracking-[0.3em] text-accent uppercase mb-10 flex items-center gap-3">
+                <PlusCircle className="h-4 w-4" />
+                Add New {type}
               </h4>
               
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">
-                      Title/Position
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                      {type === "Education" ? "Degree / Certificate" : "Job Title / Role"}
                     </label>
                     <Input
-                      placeholder="e.g., Software Engineer"
+                      placeholder={type === "Education" ? "e.g. Bachelor of Science" : "e.g. Software Engineer"}
                       {...register("title")}
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white placeholder-gray-500"
+                      className="h-12"
                     />
                     {errors.title && (
-                      <p className="text-sm text-rose-400">{errors.title.message}</p>
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">{errors.title.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">
-                      Organization/Company
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                      {type === "Education" ? "School / University" : "Company / Organization"}
                     </label>
                     <Input
-                      placeholder="e.g., Tech Company Inc."
+                      placeholder={type === "Education" ? "e.g. Harvard University" : "e.g. Google"}
                       {...register("organization")}
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white placeholder-gray-500"
+                      className="h-12"
                     />
                     {errors.organization && (
-                      <p className="text-sm text-rose-400">
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
                         {errors.organization.message}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
                       Start Date
                     </label>
                     <Input
                       type="month"
                       {...register("startDate")}
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white"
+                      className="h-12"
                     />
                     {errors.startDate && (
-                      <p className="text-sm text-rose-400">
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
                         {errors.startDate.message}
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
                       End Date
                     </label>
                     <Input
                       type="month"
                       {...register("endDate")}
                       disabled={current}
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`h-12 ${current ? "opacity-30" : ""}`}
                     />
                     {errors.endDate && (
-                      <p className="text-sm text-rose-400">
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
                         {errors.endDate.message}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-4 group cursor-pointer w-fit">
                   <input
                     type="checkbox"
                     id="current"
@@ -222,68 +237,81 @@ export function EntryForm({ type, entries, onChange }) {
                         setValue("endDate", "");
                       }
                     }}
-                    className="w-4 h-4 rounded border-orange-500/30 bg-slate-900/50 text-orange-500 focus:ring-orange-500/50 focus:ring-offset-slate-900 cursor-pointer"
+                    className="w-4 h-4 rounded-sm border-divider bg-background text-accent focus:ring-accent focus:ring-offset-0 cursor-pointer"
                   />
-                  <label htmlFor="current" className="text-gray-300 font-medium cursor-pointer">
-                    Current {type}
+                  <label htmlFor="current" className="text-[10px] font-bold tracking-widest text-muted-foreground group-hover:text-foreground transition-colors uppercase cursor-pointer">
+                    I currently {type === "Education" ? "study" : "work"} here
                   </label>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-300">
-                    Description
-                  </label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                      Description & Achievements
+                    </label>
+                    <div className="flex gap-4">
+                      {isSupported && (
+                        <button
+                          type="button"
+                          onClick={handleToggleRecording}
+                          className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-accent hover:text-foreground'}`}
+                        >
+                          <Mic className={`h-3.5 w-3.5 ${!isRecording && 'group-hover:scale-110 transition-transform'}`} />
+                          <span>{isRecording ? "Recording..." : "Dictate"}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleImproveDescription}
+                        disabled={isImproving || !watch("description")}
+                        className="text-[9px] font-bold tracking-widest text-accent hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
+                      >
+                      {isImproving ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Improving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                          <span>Improve with AI</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  </div>
                   <Textarea
-                    placeholder={`Describe your ${type.toLowerCase()} responsibilities and achievements...`}
-                    className="h-32 w-full px-4 py-3 bg-slate-900/50 border border-orange-500/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 text-white placeholder-gray-500 resize-none"
+                    placeholder={`Tell us about your impact and key wins in this role...`}
+                    className="h-40 w-full px-4 py-4 bg-divider/5 border border-divider/40 rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30"
                     {...register("description")}
                   />
                   {errors.description && (
-                    <p className="text-sm text-rose-400">
+                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
                       {errors.description.message}
                     </p>
                   )}
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={handleImproveDescription}
-                  disabled={isImproving || !watch("description")}
-                  className="backdrop-blur-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border border-purple-500/30 hover:border-purple-500/50 text-purple-300 hover:text-purple-200 py-2 px-6 rounded-xl transition-all duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isImproving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Improving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      <span>Improve with AI</span>
-                    </>
-                  )}
-                </button>
               </div>
               
-              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-orange-500/20">
-                <button
+              <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-divider/30">
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => {
                     reset();
                     setIsAdding(false);
                   }}
-                  className="backdrop-blur-xl bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 hover:border-slate-500/50 text-gray-300 hover:text-white py-2 px-6 rounded-xl transition-all duration-300 font-medium"
+                  className="h-12 px-8 text-xs text-muted-foreground hover:text-foreground"
                 >
                   Cancel
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
                   onClick={handleAdd}
-                  className="bg-gradient-to-r from-orange-600 via-rose-600 to-orange-600 hover:from-orange-500 hover:via-rose-500 hover:to-orange-500 text-white py-2 px-6 rounded-xl transition-all duration-300 flex items-center space-x-2 font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40"
+                  className="h-12 px-10 shadow-lg"
                 >
-                  <PlusCircle className="h-4 w-4" />
-                  <span>Add Entry</span>
-                </button>
+                  <CheckCircle2 className="h-4 w-4 mr-3" />
+                  Add to Resume
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -293,10 +321,12 @@ export function EntryForm({ type, entries, onChange }) {
       {!isAdding && (
         <button
           onClick={() => setIsAdding(true)}
-          className="w-full backdrop-blur-xl bg-slate-800/50 hover:bg-slate-800/70 border-2 border-dashed border-orange-500/30 hover:border-orange-500/50 text-orange-300 hover:text-orange-200 py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 font-medium group"
+          className="w-full border border-divider border-dashed bg-divider/5 hover:border-accent hover:bg-accent/5 py-10 rounded-sm transition-editorial flex items-center justify-center gap-4 group shadow-sm"
         >
-          <PlusCircle className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
-          <span>Add {type}</span>
+          <PlusCircle className="h-5 w-5 text-muted-foreground group-hover:text-accent transition-editorial" />
+          <span className="text-xs font-bold tracking-[0.3em] text-muted-foreground group-hover:text-foreground uppercase transition-editorial">
+            Add {type}
+          </span>
         </button>
       )}
     </div>

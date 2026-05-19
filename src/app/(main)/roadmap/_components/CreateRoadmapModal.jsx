@@ -1,17 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Sparkles, Zap, Brain } from "lucide-react";
+import { Loader2, Sparkles, Brain, Zap } from "lucide-react";
 import { generateCareerRoadmap } from "@/actions/CareerRoadmap";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -32,155 +31,160 @@ const CreateRoadmapModal = ({ open, onClose }) => {
 
     try {
       const roadmap = await generateCareerRoadmap(formData);
-      toast.success("Career roadmap generated successfully!");
-      router.refresh();
+      toast.success("Your roadmap is ready! 🎉");
+      setFormData({ currentRole: "", targetRole: "", industry: "", timeline: "" });
       onClose();
       router.push(`/roadmap/${roadmap.id}`);
     } catch (error) {
-      toast.error(error.message || "Failed to generate roadmap");
+      console.error("Roadmap generation error:", error);
+      toast.error(error.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl border-0 bg-transparent p-0 sm:rounded-3xl">
-        <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/95 via-[#252218]/95 to-[#1a1815]/95 rounded-3xl border-2 border-[#f59e0b]/30 p-8 shadow-2xl shadow-[#f59e0b]/10">
-          <AnimatePresence>
-            {open && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
+      <DialogContent className="max-w-2xl border border-divider bg-background p-0 rounded-sm overflow-hidden shadow-2xl">
+        <div className="p-10 space-y-10">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-[1px] bg-accent" />
+              <span className="text-[10px] font-bold tracking-[0.3em] text-accent uppercase">
+                AI Career Roadmap
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <DialogTitle asChild>
+                <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground uppercase tracking-tight leading-none">
+                  Build Your <span className="text-muted-foreground">Plan</span>
+                </h2>
+              </DialogTitle>
+              <DialogDescription asChild>
+                <p className="text-muted-foreground text-sm font-general font-light leading-relaxed max-w-md">
+                  Tell us where you are and where you want to go — your AI coach
+                  will map out every step to get there.
+                </p>
+              </DialogDescription>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <Label
+                  htmlFor="currentRole"
+                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+                >
+                  Current Role
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="currentRole"
+                    name="currentRole"
+                    placeholder="e.g. Software Engineer"
+                    value={formData.currentRole}
+                    onChange={handleChange}
+                    required
+                    className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                  />
+                  <Brain className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label
+                  htmlFor="targetRole"
+                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+                >
+                  Target Role
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="targetRole"
+                    name="targetRole"
+                    placeholder="e.g. Engineering Manager"
+                    value={formData.targetRole}
+                    onChange={handleChange}
+                    required
+                    className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                  />
+                  <Zap className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <Label
+                  htmlFor="industry"
+                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+                >
+                  Industry
+                </Label>
+                <Input
+                  id="industry"
+                  name="industry"
+                  placeholder="e.g. Technology, Finance"
+                  value={formData.industry}
+                  onChange={handleChange}
+                  required
+                  className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label
+                  htmlFor="timeline"
+                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+                >
+                  Timeline (optional)
+                </Label>
+                <Input
+                  id="timeline"
+                  name="timeline"
+                  placeholder="e.g. 12 months, 2 years"
+                  value={formData.timeline}
+                  onChange={handleChange}
+                  className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 pt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1 h-14 border-divider text-[10px] font-bold tracking-widest uppercase hover:bg-divider/20 rounded-sm transition-editorial"
+                disabled={loading}
               >
-                <DialogHeader className="text-center pb-6 space-y-4">
-                  <motion.div
-                    animate={{ rotate: [0, 360] }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                    className="inline-block"
-                  >
-                    <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-[#f59e0b]/20 to-[#fbbf24]/20 flex items-center justify-center border border-[#f59e0b]/30">
-                      <Sparkles className="h-8 w-8 text-[#f59e0b]" />
-                    </div>
-                  </motion.div>
-                  <DialogTitle className="text-3xl font-bold bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-                    Create Your Career Roadmap
-                  </DialogTitle>
-                  <p className="text-[#b0b0b0] flex items-center justify-center gap-2">
-                    <Brain className="h-4 w-4 text-[#f59e0b]" />
-                    Let AI design a personalized path to your dream role
-                  </p>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentRole" className="text-sm font-medium text-[#b0b0b0]">
-                        Current Role
-                      </Label>
-                      <Input
-                        id="currentRole"
-                        name="currentRole"
-                        placeholder="e.g. Software Engineer"
-                        value={formData.currentRole}
-                        onChange={handleChange}
-                        required
-                        className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="targetRole" className="text-sm font-medium text-[#b0b0b0]">
-                        Target Role
-                      </Label>
-                      <Input
-                        id="targetRole"
-                        name="targetRole"
-                        placeholder="e.g. Senior Software Architect"
-                        value={formData.targetRole}
-                        onChange={handleChange}
-                        required
-                        className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="industry" className="text-sm font-medium text-[#b0b0b0]">
-                      Industry
-                    </Label>
-                    <Input
-                      id="industry"
-                      name="industry"
-                      placeholder="e.g. Technology, Healthcare, Finance"
-                      value={formData.industry}
-                      onChange={handleChange}
-                      required
-                      className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="timeline" className="text-sm font-medium text-[#b0b0b0]">
-                      Desired Timeline (Optional)
-                    </Label>
-                    <Input
-                      id="timeline"
-                      name="timeline"
-                      placeholder="e.g. 12 months, 2 years"
-                      value={formData.timeline}
-                      onChange={handleChange}
-                      className="bg-[#1a1815]/50 border border-[#f59e0b]/20 focus:border-[#f59e0b]/50 focus:ring-2 focus:ring-[#f59e0b]/20 rounded-xl text-white placeholder-[#6b7280]"
-                    />
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={onClose}
-                      className="flex-1 backdrop-blur-xl bg-[#1a1815]/50 border border-[#f59e0b]/30 hover:border-[#f59e0b]/50 hover:bg-[#1a1815]/70 rounded-xl text-white transition-all duration-300"
-                      disabled={loading}
-                    >
-                      Cancel
-                    </Button>
-                    <motion.div
-                      whileHover={{ scale: loading ? 1 : 1.02 }}
-                      whileTap={{ scale: loading ? 1 : 0.98 }}
-                      className="flex-1"
-                    >
-                      <Button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-white border-0 rounded-xl disabled:opacity-50 font-semibold shadow-lg shadow-[#f59e0b]/30 hover:shadow-xl hover:shadow-[#f59e0b]/40 transition-all duration-300"
-                      >
-                        {loading ? (
-                          <>
-                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="h-5 w-5 mr-2" />
-                            Generate Roadmap
-                          </>
-                        )}
-                      </Button>
-                    </motion.div>
-                  </div>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="flex-1 h-14 text-[10px] font-bold tracking-widest uppercase rounded-sm transition-editorial"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    Building your roadmap...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-3" />
+                    Generate My Roadmap
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
       </DialogContent>
     </Dialog>

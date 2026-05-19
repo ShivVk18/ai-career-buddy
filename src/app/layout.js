@@ -1,44 +1,34 @@
 import "./globals.css";
 
-import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
-import { dark } from "@clerk/themes";
 import { ThemeProvider } from "@/components/Theme-Provider";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata = {
-  title: "AI Career Coach",
+  title: "AscendAI — AI Career Coach",
   description: "Your AI-powered career growth platform",
 };
 
-export default function RootLayout({
-  children,
-}) {
+export default function RootLayout({ children }) {
   return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-      }}
-      afterSignOutUrl="/"
-    >
+    <ClerkProvider afterSignOutUrl="/">
       <html lang="en" suppressHydrationWarning>
         <head>
           <link rel="icon" href="/logo.png" sizes="any" />
+          <link
+            href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@200,300,400,500,600,700&f[]=general-sans@200,300,400,500,600,700&display=swap"
+            rel="stylesheet"
+          />
         </head>
-        <body className={inter.className}>
+        <body className="font-general antialiased">
           <ThemeProvider
             attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange={false}
           >
-           
             <main className="min-h-screen">{children}</main>
             <Toaster richColors />
-
-            
           </ThemeProvider>
         </body>
       </html>

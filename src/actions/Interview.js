@@ -66,32 +66,35 @@ export async function generateQuiz(skills) {
 
     // Prompt for the AI
     const prompt = `
-You are an AI that outputs ONLY valid JSON.
+You are an expert technical interviewer and AI content generator.
 
-Generate exactly 10 high-quality multiple-choice interview questions for a 
-${user.industry} professional${formattedSkills}.
+Generate exactly 10 high-quality multiple-choice interview questions focused SPECIFICALLY on the following technical skills:
+SKILLS TO ASSESS: ${sanitizedSkills.join(", ")}
 
-Each question must follow this schema:
-{
-  "question": "string",
-  "options": ["string", "string", "string", "string"],
-  "correctAnswer": "string",
-  "explanation": "string"
-}
+CONTEXT:
+- Target Industry: ${user.industry}
+- Candidate Level: Professional
 
-Output format:
+RULES FOR QUESTION GENERATION:
+1. Every question MUST directly relate to at least one of the provided skills.
+2. Ensure a mix of theoretical knowledge and practical scenario-based questions.
+3. Questions should be challenging and suitable for a professional level.
+4. Output MUST be valid JSON and follow the schema below.
+5. Do NOT include any markdown formatting, explanations outside the JSON, or extra text.
+
+OUTPUT SCHEMA:
 {
   "questions": [
-    { ... }, { ... }, ... 10 items
+    {
+      "question": "string",
+      "options": ["string", "string", "string", "string"],
+      "correctAnswer": "string",
+      "explanation": "1-2 sentences explaining why the answer is correct"
+    }
   ]
 }
 
-Rules:
-1. Output MUST be valid JSON.
-2. No Markdown, no extra text.
-3. Explanation must be 1–2 sentences.
-4. All options must be unique.
-5. "correctAnswer" MUST match one of the options.
+Ensure all 10 questions are unique and the correctAnswer exactly matches one of the provided options.
 `;
 
     // Gemini API call
@@ -213,8 +216,14 @@ export async function getLatestQuiz() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const quiz = await db.assessment.findFirst({
+  const user = await db.user.findUnique({
     where: { clerkUserId: userId },
+  });
+
+  if (!user) throw new Error("User not found");
+
+  const quiz = await db.assessment.findFirst({
+    where: { userId: user.id },
     orderBy: { createdAt: "desc" }
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Download,
@@ -21,7 +21,11 @@ import {
   EyeOff,
   AlertCircle,
   ChevronRight,
+  GraduationCap,
   CheckCircle2,
+  Layers,
+  PlusCircle,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -32,8 +36,10 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { saveResume } from "@/actions/Resume";
 import { EntryForm } from "./EntryForm";
+import { AITextarea } from "./AITextarea";
 import useFetch from "@/hooks/use-fetch";
 import { useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 
 import {
   ModernProTemplate,
@@ -46,7 +52,7 @@ import {
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas-pro';
 
-// Enhanced Schema with better validation
+
 const resumeSchema = z.object({
   contactInfo: z.object({
     fullName: z.string().min(2, "Name must be at least 2 characters").max(100, "Name too long"),
@@ -54,6 +60,10 @@ const resumeSchema = z.object({
     mobile: z.string().min(10, "Mobile number must be at least 10 digits"),
     linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
     twitter: z.string().url("Invalid Twitter URL").optional().or(z.literal("")),
+    socialLinks: z.array(z.object({
+      name: z.string().min(1, "Name is required"),
+      url: z.string().url("Invalid URL")
+    })).optional().default([]),
   }),
   summary: z.string()
     .min(50, "Summary must be at least 50 characters")
@@ -149,6 +159,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
         mobile: initialResume?.contactInfo?.mobile || "",
         linkedin: initialResume?.contactInfo?.linkedin || "",
         twitter: initialResume?.contactInfo?.twitter || "",
+        socialLinks: initialResume?.contactInfo?.socialLinks || [],
       },
       summary: initialResume?.summary || "",
       skills: initialResume?.skills || "",
@@ -159,6 +170,11 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       photo: initialResume?.photoUrl || "",
     },
     mode: "onChange",
+  });
+
+  const { fields: socialFields, append: appendSocial, remove: removeSocial } = useFieldArray({
+    control,
+    name: "contactInfo.socialLinks",
   });
 
   const {
@@ -178,7 +194,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   useEffect(() => {
     if (saveResult && !isSaving) {
       toast.success("Resume saved successfully!", {
-        description: "Your changes have been saved.",
+        description: "Your changes are now safe and sound.",
       });
     }
     if (saveError) {
@@ -197,7 +213,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     }, 3000);
 
     return () => clearTimeout(timeoutId);
-  }, [formValues, autoSaveEnabled, isDirty]);
+  }, [formValues, autoSaveEnabled, isDirty, handleSubmit]);
 
   // Photo upload with validation
   const handlePhotoUpload = useCallback((e) => {
@@ -240,10 +256,10 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     
     if (!TemplateComponent) {
       return (
-        <div className="flex flex-col items-center justify-center h-96 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
-          <Layout className="h-16 w-16 text-gray-300 mb-4" />
-          <p className="text-gray-600 text-lg font-medium">Select a template to preview</p>
-          <p className="text-gray-400 text-sm mt-2">Choose from our professional templates</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "480px", background: "var(--divider)", border: "1px dashed var(--border)", opacity: 0.5 }}>
+          <Layout className="h-16 w-16 text-muted-foreground mb-6" />
+          <p className="text-foreground text-lg font-clash font-bold uppercase tracking-tight">Select a Template</p>
+          <p className="text-muted-foreground text-sm mt-2 font-general font-light">Choose from 6 professional designs above</p>
         </div>
       );
     }
@@ -273,186 +289,46 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   const generatePDF = async () => {
     if (!selectedTemplate) return toast.error("Select a template first");
 
-    const loadingToast = toast.loading("Generating PDF...");
+    const loadingToast = toast.loading("Preparing your download...");
 
     try {
+      // Find the element to capture
+      const element = document.getElementById("resume-print-container");
+      if (!element) {
+        throw new Error("Preview container not found");
+      }
+
+      const canvas = await html2canvas(element, {
+        scale: 2, // Higher quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
       });
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      const contentWidth = pageWidth - (2 * margin);
-      let yPos = margin;
-
-      const addText = (text, fontSize, isBold = false, color = [0, 0, 0], indent = 0) => {
-        pdf.setFontSize(fontSize);
-        pdf.setFont("helvetica", isBold ? "bold" : "normal");
-        pdf.setTextColor(...color);
-        
-        const lines = pdf.splitTextToSize(text, contentWidth - indent);
-        
-        if (yPos + (lines.length * fontSize * 0.35) > pageHeight - margin) {
-          pdf.addPage();
-          yPos = margin;
-        }
-        
-        lines.forEach(line => {
-          pdf.text(line, margin + indent, yPos);
-          yPos += fontSize * 0.35;
-        });
-      };
-
-      const addSpace = (space = 5) => {
-        yPos += space;
-      };
-
-      const addLine = () => {
-        pdf.setDrawColor(200, 200, 200);
-        pdf.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 3;
-      };
-
-      addText(formValues.contactInfo.fullName.toUpperCase(), 24, true, [0, 0, 0]);
-      addSpace(3);
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      const contactInfo = [
-        formValues.contactInfo.email,
-        formValues.contactInfo.mobile,
-        formValues.contactInfo.linkedin,
-      ].filter(Boolean).join(" | ");
+      pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
       
-      addText(contactInfo, 9, false, [60, 60, 60]);
-      addSpace(5);
-      addLine();
-      addSpace(3);
-
-      if (formValues.summary) {
-        addText("PROFESSIONAL SUMMARY", 12, true, [0, 0, 0]);
-        addSpace(3);
-        addText(formValues.summary, 10, false, [40, 40, 40]);
-        addSpace(5);
-        addLine();
-        addSpace(3);
-      }
-
-      if (formValues.skills) {
-        addText("SKILLS", 12, true, [0, 0, 0]);
-        addSpace(3);
-        addText(formValues.skills, 10, false, [40, 40, 40]);
-        addSpace(5);
-        addLine();
-        addSpace(3);
-      }
-
-      if (formValues.experience && formValues.experience.length > 0) {
-        addText("WORK EXPERIENCE", 12, true, [0, 0, 0]);
-        addSpace(3);
-        
-        formValues.experience.forEach((exp, index) => {
-          addText(exp.title, 11, true, [0, 0, 0]);
-          addSpace(2);
-          
-          const dateRange = exp.current 
-            ? `${exp.startDate} - Present` 
-            : `${exp.startDate} - ${exp.endDate}`;
-          addText(`${exp.organization} | ${dateRange}`, 9, false, [80, 80, 80]);
-          addSpace(2);
-          
-          if (exp.description) {
-            const descLines = exp.description.split('\n').filter(Boolean);
-            descLines.forEach(line => {
-              if (line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*')) {
-                addText(line.trim(), 10, false, [40, 40, 40], 5);
-              } else {
-                addText(`• ${line.trim()}`, 10, false, [40, 40, 40], 5);
-              }
-              addSpace(1);
-            });
-          }
-          
-          if (index < formValues.experience.length - 1) {
-            addSpace(3);
-          }
-        });
-        
-        addSpace(5);
-        addLine();
-        addSpace(3);
-      }
-
-      if (formValues.education && formValues.education.length > 0) {
-        addText("EDUCATION", 12, true, [0, 0, 0]);
-        addSpace(3);
-        
-        formValues.education.forEach((edu, index) => {
-          addText(edu.title, 11, true, [0, 0, 0]);
-          addSpace(2);
-          
-          const dateRange = edu.current 
-            ? `${edu.startDate} - Present` 
-            : `${edu.startDate} - ${edu.endDate}`;
-          addText(`${edu.organization} | ${dateRange}`, 9, false, [80, 80, 80]);
-          addSpace(2);
-          
-          if (edu.description) {
-            addText(edu.description, 10, false, [40, 40, 40], 5);
-          }
-          
-          if (index < formValues.education.length - 1) {
-            addSpace(3);
-          }
-        });
-        
-        addSpace(5);
-        addLine();
-        addSpace(3);
-      }
-
-      if (formValues.projects && formValues.projects.length > 0) {
-        addText("PROJECTS", 12, true, [0, 0, 0]);
-        addSpace(3);
-        
-        formValues.projects.forEach((project, index) => {
-          addText(project.title, 11, true, [0, 0, 0]);
-          addSpace(2);
-          
-          const dateRange = project.current 
-            ? `${project.startDate} - Present` 
-            : `${project.startDate} - ${project.endDate}`;
-          addText(dateRange, 9, false, [80, 80, 80]);
-          addSpace(2);
-          
-          if (project.description) {
-            const descLines = project.description.split('\n').filter(Boolean);
-            descLines.forEach(line => {
-              if (line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*')) {
-                addText(line.trim(), 10, false, [40, 40, 40], 5);
-              } else {
-                addText(`• ${line.trim()}`, 10, false, [40, 40, 40], 5);
-              }
-              addSpace(1);
-            });
-          }
-          
-          if (index < formValues.projects.length - 1) {
-            addSpace(3);
-          }
-        });
-      }
-
-      const fileName = `${formValues.contactInfo?.fullName?.replace(/\s+/g, '_') || 'resume'}_${new Date().getTime()}.pdf`;
+      const fileName = `${formValues.contactInfo?.fullName?.replace(/\s+/g, "_") || "resume"}_AscendAI.pdf`;
       pdf.save(fileName);
       
       toast.dismiss(loadingToast);
-      toast.success("PDF downloaded successfully!");
+      toast.success("Resume downloaded! 📄");
     } catch (error) {
       console.error("PDF generation error:", error);
       toast.dismiss(loadingToast);
-      toast.error("Failed to generate PDF. Please try again.");
+      toast.error("Download failed", {
+        description: "Something went wrong while generating the PDF.",
+      });
     }
   };
 
@@ -462,7 +338,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     setValue("template", templateId, { shouldDirty: true });
     setActiveTab("form");
     toast.success("Template selected", {
-      description: "Fill in your information to complete your resume",
+      description: "Now let's fill in your details!",
     });
   }, [setValue]);
 
@@ -484,110 +360,109 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   }, [formValues, selectedTemplate]);
 
   return (
-    <div className="min-h-screen  py-8 md:py-12">
-      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 px-4 md:px-6 lg:px-8">
-        {/* Enhanced Header */}
-        <div className="text-center mb-8 md:mb-12 animate-fadeIn">
-          <div className="inline-flex items-center px-6 py-2.5 rounded-full bg-gradient-to-r from-[#f59e0b]/10 via-[#fbbf24]/10 to-[#f59e0b]/10 border border-[#f59e0b]/20 backdrop-blur-xl mb-6 shadow-lg">
-            <Sparkles className="h-4 w-4 text-[#f59e0b] mr-2 animate-pulse" />
-            <span className="text-sm font-semibold bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
-              Professional Resume Builder
+    <div className="min-h-screen py-8 md:py-12 bg-transparent">
+      <div className="max-w-7xl mx-auto space-y-12 px-4 md:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-16 border-b border-divider pb-12">
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="w-8 h-[1px] bg-accent"></div>
+            <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
+              Resume Builder
             </span>
-            <FileText className="h-4 w-4 text-[#f59e0b] ml-2" />
+            <div className="w-8 h-[1px] bg-accent"></div>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 bg-gradient-to-r from-[#fbbf24] via-[#f59e0b] to-[#fbbf24] bg-clip-text text-transparent animate-gradient">
-            Create Your Perfect Resume
+          <h1 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none mb-6">
+            Your Professional <span className="text-accent">Story</span>
           </h1>
-          <p className="text-base md:text-lg lg:text-xl text-[#b0b0b0] max-w-3xl mx-auto px-4 leading-relaxed">
-            Choose from professional templates and build your resume in minutes
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
+            Choose a premium template and let AI help you craft a resume that gets you hired.
           </p>
           
           {/* Progress Indicator */}
-          <div className="mt-8 max-w-md mx-auto">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-[#b0b0b0]">Profile Completion</span>
-              <span className="text-[#f59e0b] font-semibold">{formCompletion}%</span>
+          <div className="mt-12 max-w-md mx-auto">
+            <div className="flex items-center justify-between text-[10px] font-bold tracking-widest uppercase mb-3">
+              <span className="text-muted-foreground">Resume Completion</span>
+              <span className="text-accent">{formCompletion}%</span>
             </div>
-            <div className="h-2 bg-[#1a1815] rounded-full overflow-hidden border border-[#f59e0b]/10">
+            <div className="h-1 bg-divider rounded-full overflow-hidden border border-divider/20">
               <div 
-                className="h-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] transition-all duration-500 ease-out"
+                className="h-full bg-accent transition-all duration-700 ease-editorial"
                 style={{ width: `${formCompletion}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Action Buttons - Enhanced */}
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-8">
-          <button
+        {/* Action Buttons */}
+        <div className="flex flex-wrap justify-center gap-6 mb-12">
+          <Button
             onClick={handleSubmit(onSubmit)}
             disabled={isSaving || !isDirty}
-            className="group relative bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] hover:from-[#fbbf24] hover:via-[#f59e0b] hover:to-[#fbbf24] text-[#0f0e0a] py-3 px-8 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 font-bold shadow-lg shadow-[#f59e0b]/30 hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all duration-300 transform hover:scale-105 active:scale-95 min-w-[160px]"
+            className="min-w-[200px] shadow-lg"
           >
             {isSaving ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Saving...</span>
+                <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                Saving...
               </>
             ) : (
               <>
-                <Save className="h-5 w-5 group-hover:rotate-12 transition-transform" />
-                <span>{isDirty ? "Save Changes" : "Saved"}</span>
-                {!isDirty && <CheckCircle2 className="h-4 w-4" />}
+                <Save className="h-5 w-5 mr-3" />
+                {isDirty ? "Save Changes" : "Resume Saved"}
               </>
             )}
-          </button>
+          </Button>
           
-          <button
+          <Button
             onClick={generatePDF}
             disabled={!selectedTemplate}
-            className="backdrop-blur-xl bg-[#1a1815]/80 border-2 border-[#f59e0b]/30 hover:border-[#f59e0b]/60 text-[#fff4ed] py-3 px-8 rounded-2xl transition-all duration-300 font-bold hover:bg-[#252218] flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shadow-lg min-w-[160px]"
+            variant="outline"
+            className="min-w-[200px] border-divider hover:border-accent"
           >
-            <Download className="h-5 w-5" />
-            <span>Export PDF</span>
-          </button>
+            <Download className="h-5 w-5 mr-3" />
+            Download PDF
+          </Button>
           
-          <button
+          <Button
             onClick={() => setShowPreview(!showPreview)}
-            className="backdrop-blur-xl bg-[#1a1815]/80 border-2 border-[#f59e0b]/30 hover:border-[#f59e0b]/60 text-[#fff4ed] py-3 px-8 rounded-2xl transition-all duration-300 font-bold hover:bg-[#252218] flex items-center justify-center space-x-3 hover:scale-105 active:scale-95 shadow-lg"
+            variant="ghost"
+            className="border border-divider min-w-[200px]"
           >
-            {showPreview ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            <span className="hidden sm:inline">{showPreview ? "Hide" : "Show"} Preview</span>
-            <span className="sm:hidden">{showPreview ? "Hide" : "Show"}</span>
-          </button>
+            {showPreview ? <EyeOff className="h-5 w-5 mr-3" /> : <Eye className="h-5 w-5 mr-3" />}
+            {showPreview ? "Hide Preview" : "Show Preview"}
+          </Button>
         </div>
 
         {/* Auto-save and Status */}
-        <div className="flex justify-center items-center gap-4 text-sm flex-wrap">
-          <label className="flex items-center gap-2 cursor-pointer text-[#b0b0b0] hover:text-[#fff4ed] transition-colors backdrop-blur-sm bg-[#1a1815]/40 px-4 py-2 rounded-full border border-[#f59e0b]/10">
+        <div className="flex justify-center items-center gap-6 text-[10px] font-bold tracking-widest uppercase flex-wrap">
+          <label className="flex items-center gap-3 cursor-pointer text-muted-foreground hover:text-foreground transition-editorial bg-divider/10 px-6 py-2 rounded-sm border border-divider/20">
             <input
               type="checkbox"
               checked={autoSaveEnabled}
               onChange={(e) => setAutoSaveEnabled(e.target.checked)}
-              className="w-4 h-4 rounded border-[#f59e0b]/30 bg-[#1a1815]/50 text-[#f59e0b] focus:ring-[#f59e0b] focus:ring-offset-0"
+              className="w-4 h-4 rounded-sm border-divider bg-background text-accent focus:ring-accent focus:ring-offset-0"
             />
-            <span className="font-medium">Auto-save enabled</span>
+            <span>Auto-save Changes</span>
           </label>
           {isDirty && autoSaveEnabled && (
-            <span className="text-[#f59e0b] flex items-center gap-2 backdrop-blur-sm bg-[#f59e0b]/10 px-4 py-2 rounded-full border border-[#f59e0b]/20 animate-pulse">
+            <span className="text-accent flex items-center gap-3 bg-accent/5 px-6 py-2 rounded-sm border border-accent/20 animate-pulse">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="font-medium">Saving changes...</span>
+              <span>Saving...</span>
             </span>
           )}
         </div>
 
-        {/* Error Alert - Enhanced */}
+        {/* Error Alert */}
         {hasErrors && (
-          <div className="backdrop-blur-xl bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-4 flex items-start gap-3 animate-shake shadow-lg">
-            <AlertCircle className="h-6 w-6 text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-6 flex items-start gap-4 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="text-red-300 font-bold mb-2 text-lg">Validation Errors</h3>
-              <ul className="text-sm text-red-400 space-y-1.5">
+              <h3 className="text-destructive font-clash font-bold uppercase tracking-tight mb-2">Oops! Check these fields</h3>
+              <ul className="text-[10px] font-bold uppercase tracking-widest text-destructive/80 space-y-1">
                 {Object.entries(errors).map(([key, error]) => (
                   <li key={key} className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                    {error.message || `Invalid ${key}`}
+                    {error.message || `Invalid input: ${key}`}
                   </li>
                 ))}
               </ul>
@@ -595,125 +470,130 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
           </div>
         )}
 
-        {/* Enhanced Tabs */}
+        {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-center mb-8">
-            <TabsList className="backdrop-blur-xl bg-[#1a1815]/90 border-2 border-[#f59e0b]/20 p-1.5 rounded-2xl shadow-2xl">
+          <div className="flex justify-center mb-12">
+            <TabsList className="bg-background border border-border p-1 rounded-sm gap-1">
               <TabsTrigger 
                 value="template"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#f59e0b] data-[state=active]:to-[#fbbf24] data-[state=active]:text-[#0f0e0a] data-[state=active]:shadow-lg rounded-xl px-8 py-3 transition-all duration-300 font-bold text-[#b0b0b0] hover:text-[#fff4ed] flex items-center gap-2"
+                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-sm px-10 py-3 transition-editorial font-clash font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
               >
-                <Layout className="h-5 w-5" />
-                <span>Templates</span>
-                {selectedTemplate && <CheckCircle2 className="h-4 w-4" />}
+                <Layout className="h-4 w-4" />
+                Templates
               </TabsTrigger>
               <TabsTrigger 
                 value="form"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#f59e0b] data-[state=active]:to-[#fbbf24] data-[state=active]:text-[#0f0e0a] data-[state=active]:shadow-lg rounded-xl px-8 py-3 transition-all duration-300 font-bold text-[#b0b0b0] hover:text-[#fff4ed] flex items-center gap-2"
+                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-sm px-10 py-3 transition-editorial font-clash font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
               >
-                <FileText className="h-5 w-5" />
-                <span>Content</span>
-                {formCompletion > 50 && <CheckCircle2 className="h-4 w-4" />}
+                <FileText className="h-4 w-4" />
+                Edit Details
               </TabsTrigger>
             </TabsList>
           </div>
 
-          {/* Template Selection - Enhanced */}
-          <TabsContent value="template" className="animate-fadeIn">
-            <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-3xl font-bold text-[#fff4ed] flex items-center gap-3">
-                  <Palette className="h-8 w-8 text-[#f59e0b]" />
-                  Choose Your Template
-                </h2>
+          {/* Template Selection */}
+          <TabsContent value="template" className="animate-in fade-in duration-500">
+            <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-divider pb-8">
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-accent uppercase tracking-[0.3em]">Step 1</span>
+                  <h2 className="text-2xl md:text-3xl font-clash font-bold text-foreground flex items-center gap-3 uppercase tracking-tight">
+                    <Palette className="h-6 w-6 text-accent" />
+                    Select a Template
+                  </h2>
+                </div>
                 {selectedTemplate && (
-                  <button
+                  <Button
                     onClick={() => setActiveTab("form")}
-                    className="flex items-center gap-2 text-[#f59e0b] hover:text-[#fbbf24] transition-colors font-semibold"
+                    variant="outline"
+                    className="h-12 px-8 border-divider"
                   >
-                    <span>Continue to Content</span>
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
+                    <span>Next: Edit Details</span>
+                    <ChevronRight className="h-4 w-4 ml-3" />
+                  </Button>
                 )}
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {TEMPLATES.map((template) => (
-                  <div
-                    key={template.id}
-                    onClick={() => handleTemplateSelect(template.id)}
-                    className={`group cursor-pointer backdrop-blur-xl bg-[#252218]/60 rounded-2xl p-6 border-2 transition-all duration-300 hover:scale-105 hover:-translate-y-1 ${
-                      selectedTemplate === template.id
-                        ? "border-[#f59e0b] shadow-2xl shadow-[#f59e0b]/30 ring-4 ring-[#f59e0b]/20"
-                        : "border-[#f59e0b]/20 hover:border-[#f59e0b]/50 hover:shadow-xl"
-                    }`}
-                  >
-                    <div className="mb-6 h-48 bg-gradient-to-br from-[#252218] to-[#1a1815] rounded-xl flex items-center justify-center overflow-hidden relative">
-                      <div className="text-center p-4 transition-transform duration-300 group-hover:scale-110">
-                        <div className="text-6xl mb-3 animate-bounce-slow">{template.icon}</div>
-                        <p className="text-xs text-[#b0b0b0] font-medium">Click to select</p>
-                      </div>
-                      {selectedTemplate === template.id && (
-                        <div className="absolute inset-0 bg-[#f59e0b]/20 backdrop-blur-sm flex items-center justify-center">
-                          <div className="bg-[#0f0e0a] rounded-full p-3">
-                            <CheckCircle className="h-12 w-12 text-[#f59e0b] animate-pulse" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-[#fff4ed] mb-2 group-hover:text-[#fbbf24] transition-colors">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {TEMPLATES.map((template) => {
+                  const TemplatePreview = template.component;
+                  return (
+                    <div
+                      key={template.id}
+                      onClick={() => handleTemplateSelect(template.id)}
+                      className={`group cursor-pointer rounded-sm border transition-editorial overflow-hidden shadow-sm hover:shadow-md ${
+                        selectedTemplate === template.id
+                          ? "border-accent ring-1 ring-accent/20"
+                          : "border-divider/50 hover:border-accent"
+                      }`}
+                    >
+                      {/* Live Template Thumbnail */}
+                      <div className="relative h-52 bg-white overflow-hidden">
+                        <div
+                          className="scale-[0.28] origin-top-left w-[357%] h-[357%] pointer-events-none"
+                        >
+                          <TemplatePreview
+                            data={{
+                              contactInfo: { fullName: "Alex Morgan", email: "alex@example.com", mobile: "+1 555 0100" },
+                              summary: "Strategic professional with a track record of delivering exceptional results across complex initiatives.",
+                              skills: "Leadership · Strategy · Communication · Analytics · Innovation",
+                              experience: [{ title: "Senior Manager", organization: "Acme Corp", startDate: "2022", endDate: "2024", current: false, description: "Led cross-functional teams." }],
+                              education: [{ title: "MBA", organization: "State University", startDate: "2018", endDate: "2020", current: false }],
+                              projects: [],
+                            }}
+                            photo={null}
+                          />
+                        </div>
+                        {selectedTemplate === template.id && (
+                          <div className="absolute inset-0 bg-accent/20 flex items-center justify-center animate-in fade-in">
+                            <div className="bg-background rounded-full p-2 shadow-lg">
+                              <CheckCircle className="h-8 w-8 text-accent" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Info */}
+                      <div className="p-5 bg-divider/5 border-t border-divider/30 space-y-3">
+                        <div>
+                          <h3 className="text-sm font-clash font-bold text-foreground group-hover:text-accent transition-editorial uppercase tracking-tight">
                             {template.name}
                           </h3>
-                          <p className="text-sm text-[#b0b0b0] leading-relaxed">
+                          <p className="text-[11px] text-muted-foreground leading-relaxed font-general font-light mt-1">
                             {template.description}
                           </p>
                         </div>
-                        {selectedTemplate === template.id && (
-                          <CheckCircle className="h-6 w-6 text-[#f59e0b] flex-shrink-0 animate-pulse" />
+                        {template.requiresPhoto && (
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-accent bg-accent/5 px-3 py-1 rounded-sm border border-accent/20 uppercase tracking-widest w-fit">
+                            <ImageIcon className="h-3 w-3" />
+                            <span>Photo Supported</span>
+                          </div>
                         )}
                       </div>
-                      
-                      {template.requiresPhoto && (
-                        <div className="flex items-center gap-2 text-xs text-[#f59e0b] bg-[#f59e0b]/10 px-3 py-2 rounded-lg border border-[#f59e0b]/20">
-                          <ImageIcon className="h-4 w-4" />
-                          <span className="font-medium">Photo required</span>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-              {errors.template && (
-                <div className="mt-6 flex items-center gap-2 text-red-400 bg-red-500/10 px-4 py-3 rounded-xl border border-red-500/20">
-                  <AlertCircle className="h-5 w-5" />
-                  <span className="font-medium">{errors.template.message}</span>
-                </div>
-              )}
             </div>
+
           </TabsContent>
 
-          {/* Form Tab - Enhanced */}
-          <TabsContent value="form" className="animate-fadeIn">
+          {/* Form Tab */}
+          <TabsContent value="form" className="animate-in fade-in duration-500">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Photo Upload - Enhanced */}
+              {/* Photo Upload */}
               {currentTemplate?.requiresPhoto && (
-                <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                  <h3 className="text-2xl font-bold text-[#fff4ed] mb-6 flex items-center gap-3">
-                    <ImageIcon className="h-7 w-7 text-[#f59e0b]" />
-                    <span>Profile Photo</span>
-                    <span className="text-sm font-normal text-[#f59e0b] bg-[#f59e0b]/10 px-3 py-1 rounded-full">
-                      Required
-                    </span>
+                <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                  <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+                    <ImageIcon className="h-4 w-4 text-accent" />
+                    Your Photo
                   </h3>
-                  <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <label className="cursor-pointer backdrop-blur-xl bg-[#f59e0b]/10 hover:bg-[#f59e0b]/20 border-2 border-dashed border-[#f59e0b]/40 hover:border-[#f59e0b]/60 rounded-2xl p-8 transition-all duration-300 flex flex-col items-center justify-center w-full sm:w-auto min-w-[200px] hover:scale-105 active:scale-95 group">
-                      <Upload className="h-12 w-12 text-[#f59e0b] mb-3 group-hover:scale-110 transition-transform" />
-                      <span className="text-[#fbbf24] font-bold text-base">Upload Photo</span>
-                      <span className="text-xs text-[#b0b0b0] mt-2">Max 5MB • JPG, PNG</span>
+                  <div className="flex flex-col sm:flex-row items-center gap-8">
+                    <label className="cursor-pointer border-2 border-dashed border-divider hover:border-accent bg-divider/5 rounded-sm p-10 transition-editorial flex flex-col items-center justify-center min-w-[200px] group">
+                      <Upload className="h-10 w-10 text-muted-foreground group-hover:text-accent transition-editorial mb-4" />
+                      <span className="text-foreground font-clash font-bold uppercase tracking-widest text-xs">Upload Photo</span>
+                      <span className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest">Drag or select</span>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/jpg"
@@ -723,16 +603,16 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                     </label>
                     {photoPreview && (
                       <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#f59e0b]/20 to-[#fbbf24]/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
+                        <div className="absolute inset-0 bg-accent/20 rounded-sm blur-xl group-hover:blur-2xl transition-editorial"></div>
                         <img
                           src={photoPreview}
                           alt="Preview"
-                          className="relative w-40 h-40 rounded-2xl object-cover border-4 border-[#f59e0b]/50 shadow-2xl"
+                          className="relative w-40 h-40 rounded-sm object-cover border border-accent/50 shadow-2xl"
                         />
                         <button
                           type="button"
                           onClick={handleRemovePhoto}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-all opacity-0 group-hover:opacity-100 hover:scale-110 shadow-lg"
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-2 transition-editorial opacity-0 group-hover:opacity-100 hover:scale-110 shadow-lg"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -742,158 +622,209 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                 </div>
               )}
 
-              {/* Contact Information - Enhanced */}
-              <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 flex items-center text-[#fff4ed] gap-3">
-                  <User className="h-7 w-7 text-[#f59e0b]" />
+              {/* Contact Information */}
+              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+                  <User className="h-4 w-4 text-accent" />
                   Contact Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#b0b0b0] flex items-center gap-2">
-                      Full Name <span className="text-red-400">*</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                      Full Name <span className="text-destructive/50">*</span>
                     </label>
                     <Input
                       {...register("contactInfo.fullName")}
-                      placeholder="John Doe"
-                      className="w-full px-4 py-3.5 bg-[#252218]/60 border-2 border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b] transition-all duration-300 text-[#fff4ed] placeholder-[#6b6b6b] font-medium hover:border-[#f59e0b]/40"
+                      placeholder="e.g. John Doe"
                     />
                     {errors.contactInfo?.fullName && (
-                      <p className="text-sm text-red-400 flex items-center gap-2 font-medium">
-                        <AlertCircle className="h-4 w-4" />
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3" />
                         {errors.contactInfo.fullName.message}
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#b0b0b0] flex items-center gap-2">
-                      Email <span className="text-red-400">*</span>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                      Email Address <span className="text-destructive/50">*</span>
                     </label>
                     <Input
                       {...register("contactInfo.email")}
                       type="email"
-                      placeholder="your@email.com"
-                      className="w-full px-4 py-3.5 bg-[#252218]/60 border-2 border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b] transition-all duration-300 text-[#fff4ed] placeholder-[#6b6b6b] font-medium hover:border-[#f59e0b]/40"
+                      placeholder="hello@example.com"
                     />
                     {errors.contactInfo?.email && (
-                      <p className="text-sm text-red-400 flex items-center gap-2 font-medium">
-                        <AlertCircle className="h-4 w-4" />
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3" />
                         {errors.contactInfo.email.message}
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#b0b0b0] flex items-center gap-2">
-                      Mobile Number <span className="text-red-400">*</span>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                      Phone Number <span className="text-destructive/50">*</span>
                     </label>
                     <Input
                       {...register("contactInfo.mobile")}
                       type="tel"
-                      placeholder="+1 234 567 8900"
-                      className="w-full px-4 py-3.5 bg-[#252218]/60 border-2 border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b] transition-all duration-300 text-[#fff4ed] placeholder-[#6b6b6b] font-medium hover:border-[#f59e0b]/40"
+                      placeholder="+1 234 567 890"
                     />
                     {errors.contactInfo?.mobile && (
-                      <p className="text-sm text-red-400 flex items-center gap-2 font-medium">
-                        <AlertCircle className="h-4 w-4" />
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3" />
                         {errors.contactInfo.mobile.message}
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#b0b0b0]">LinkedIn URL</label>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">LinkedIn Profile</label>
                     <Input
                       {...register("contactInfo.linkedin")}
                       type="url"
-                      placeholder="https://linkedin.com/in/your-profile"
-                      className="w-full px-4 py-3.5 bg-[#252218]/60 border-2 border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b] transition-all duration-300 text-[#fff4ed] placeholder-[#6b6b6b] font-medium hover:border-[#f59e0b]/40"
+                      placeholder="https://linkedin.com/in/johndoe"
                     />
                     {errors.contactInfo?.linkedin && (
-                      <p className="text-sm text-red-400 flex items-center gap-2 font-medium">
-                        <AlertCircle className="h-4 w-4" />
+                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3" />
                         {errors.contactInfo.linkedin.message}
                       </p>
                     )}
                   </div>
                 </div>
+
+                {/* Additional Social Links */}
+                <div className="mt-8 pt-8 border-t border-divider border-dashed">
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Additional Social Links</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => appendSocial({ name: "", url: "" })}
+                      className="text-accent hover:text-foreground h-auto p-0 hover:bg-transparent"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Add Link</span>
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {socialFields.map((field, index) => (
+                      <div key={field.id} className="flex gap-4 items-start">
+                        <div className="flex-1 space-y-3">
+                          <Input
+                            {...register(`contactInfo.socialLinks.${index}.name`)}
+                            placeholder="Platform (e.g. GitHub, Portfolio)"
+                            className="h-10"
+                          />
+                          {errors.contactInfo?.socialLinks?.[index]?.name && (
+                            <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">
+                              {errors.contactInfo.socialLinks[index].name.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex-[2] space-y-3">
+                          <Input
+                            {...register(`contactInfo.socialLinks.${index}.url`)}
+                            placeholder="URL"
+                            className="h-10"
+                          />
+                          {errors.contactInfo?.socialLinks?.[index]?.url && (
+                            <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">
+                              {errors.contactInfo.socialLinks[index].url.message}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => removeSocial(index)}
+                          className="h-10 px-3 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Summary - Enhanced */}
-              <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 flex items-center justify-between text-[#fff4ed]">
+              {/* Summary */}
+              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <FileText className="h-7 w-7 text-[#f59e0b]" />
+                    <FileText className="h-4 w-4 text-accent" />
                     Professional Summary
                   </span>
-                  <span className={`text-sm font-bold px-4 py-2 rounded-full ${
-                    (watch("summary")?.length || 0) < 50 ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                    (watch("summary")?.length || 0) > 450 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                    'bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20'
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-sm border ${
+                    (watch("summary")?.length || 0) < 50 ? 'bg-destructive/5 text-destructive border-destructive/20' :
+                    (watch("summary")?.length || 0) > 450 ? 'bg-accent/10 text-accent border-accent/20' :
+                    'bg-divider/10 text-muted-foreground border-divider/20'
                   }`}>
-                    {watch("summary")?.length || 0}/500
+                    {watch("summary")?.length || 0} / 500
                   </span>
                 </h3>
                 <Controller
                   name="summary"
                   control={control}
                   render={({ field }) => (
-                    <Textarea
+                    <AITextarea
                       {...field}
-                      className="h-40 w-full px-4 py-4 bg-[#252218]/60 border-2 border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b] transition-all duration-300 text-[#fff4ed] placeholder-[#6b6b6b] resize-none font-medium leading-relaxed hover:border-[#f59e0b]/40"
-                      placeholder="Write a compelling professional summary that highlights your expertise, achievements, and career goals..."
+                      type="summary"
+                      placeholder="Write a brief overview of your career, key achievements, and what you're looking for next..."
                     />
                   )}
                 />
                 {errors.summary && (
-                  <p className="text-sm text-red-400 mt-3 flex items-center gap-2 font-medium bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
-                    <AlertCircle className="h-4 w-4" />
+                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-sm">
+                    <AlertCircle className="h-3 w-3" />
                     {errors.summary.message}
                   </p>
                 )}
               </div>
 
-              {/* Skills - Enhanced */}
-              <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 flex items-center justify-between text-[#fff4ed]">
+              {/* Skills */}
+              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Sparkles className="h-7 w-7 text-[#f59e0b]" />
-                    Skills
+                    <Sparkles className="h-4 w-4 text-accent" />
+                    Your Skills
                   </span>
-                  <span className={`text-sm font-bold px-4 py-2 rounded-full ${
-                    (watch("skills")?.length || 0) < 10 ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                    (watch("skills")?.length || 0) > 900 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                    'bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20'
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-sm border ${
+                    (watch("skills")?.length || 0) < 10 ? 'bg-destructive/5 text-destructive border-destructive/20' :
+                    (watch("skills")?.length || 0) > 900 ? 'bg-accent/10 text-accent border-accent/20' :
+                    'bg-divider/10 text-muted-foreground border-divider/20'
                   }`}>
-                    {watch("skills")?.length || 0}/1000
+                    {watch("skills")?.length || 0} / 1000
                   </span>
                 </h3>
                 <Controller
                   name="skills"
                   control={control}
                   render={({ field }) => (
-                    <Textarea
+                    <AITextarea
                       {...field}
-                      className="h-40 w-full px-4 py-4 bg-[#252218]/60 border-2 border-[#f59e0b]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/50 focus:border-[#f59e0b] transition-all duration-300 text-[#fff4ed] placeholder-[#6b6b6b] resize-none font-medium leading-relaxed hover:border-[#f59e0b]/40"
-                      placeholder="List your technical skills, soft skills, tools, and technologies (e.g., JavaScript, React, Node.js, Team Leadership, Project Management)"
+                      type="skills"
+                      placeholder="List your key skills, tools, and expertise (separated by commas or on new lines)..."
                     />
                   )}
                 />
                 {errors.skills && (
-                  <p className="text-sm text-red-400 mt-3 flex items-center gap-2 font-medium bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
-                    <AlertCircle className="h-4 w-4" />
+                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-sm">
+                    <AlertCircle className="h-3 w-3" />
                     {errors.skills.message}
                   </p>
                 )}
               </div>
 
-              {/* Experience - Enhanced */}
-              <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 flex items-center justify-between text-[#fff4ed]">
+              {/* Experience */}
+              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Briefcase className="h-7 w-7 text-[#f59e0b]" />
+                    <Briefcase className="h-4 w-4 text-accent" />
                     Work Experience
                   </span>
-                  <span className="text-sm font-bold px-4 py-2 rounded-full bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20">
-                    {formValues.experience?.length || 0} {formValues.experience?.length === 1 ? 'entry' : 'entries'}
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-sm bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
+                    {formValues.experience?.length || 0} Entries
                   </span>
                 </h3>
                 <Controller
@@ -909,15 +840,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                 />
               </div>
 
-              {/* Education - Enhanced */}
-              <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 flex items-center justify-between text-[#fff4ed]">
+              {/* Education */}
+              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <FileText className="h-7 w-7 text-[#f59e0b]" />
+                    <GraduationCap className="h-4 w-4 text-accent" />
                     Education
                   </span>
-                  <span className="text-sm font-bold px-4 py-2 rounded-full bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20">
-                    {formValues.education?.length || 0} {formValues.education?.length === 1 ? 'entry' : 'entries'}
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-sm bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
+                    {formValues.education?.length || 0} Entries
                   </span>
                 </h3>
                 <Controller
@@ -933,15 +864,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                 />
               </div>
 
-              {/* Projects - Enhanced */}
-              <div className="backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 flex items-center justify-between text-[#fff4ed]">
+              {/* Projects */}
+              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Sparkles className="h-7 w-7 text-[#f59e0b]" />
-                    Projects
+                    <Layers className="h-4 w-4 text-accent" />
+                    Personal Projects
                   </span>
-                  <span className="text-sm font-bold px-4 py-2 rounded-full bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20">
-                    {formValues.projects?.length || 0} {formValues.projects?.length === 1 ? 'entry' : 'entries'}
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-sm bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
+                    {formValues.projects?.length || 0} Entries
                   </span>
                 </h3>
                 <Controller
@@ -949,7 +880,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                   control={control}
                   render={({ field }) => (
                     <EntryForm
-                      type="Project"
+                      type="Projects"
                       entries={field.value}
                       onChange={field.onChange}
                     />
@@ -959,144 +890,45 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
             </form>
           </TabsContent>
         </Tabs>
+      </div>
 
-        {/* Live Preview - Enhanced */}
-        <div 
-          className={`backdrop-blur-xl bg-[#1a1815]/90 rounded-3xl border-2 border-[#f59e0b]/20 p-8 shadow-2xl ${!showPreview ? 'hidden print:block' : 'animate-fadeIn'}`}
-        >
-          {showPreview && (
-            <div className="flex items-center justify-between mb-6 print:hidden">
-              <h3 className="text-2xl font-bold text-[#fff4ed] flex items-center gap-3">
-                <Eye className="h-7 w-7 text-[#f59e0b]" />
-                Live Preview
-              </h3>
-              <button
-                onClick={() => setShowPreview(false)}
-                className="text-[#b0b0b0] hover:text-[#fff4ed] transition-colors hover:scale-110 active:scale-95 p-2"
-              >
-                <X className="h-6 w-6" />
-              </button>
+      {/* Hidden container for PDF generation (used when preview is closed) */}
+      {!showPreview && (
+        <div className="absolute top-[200vh] left-[-9999px] pointer-events-none">
+          <div id="resume-print-container" className="bg-white w-[210mm] min-h-[297mm] flex flex-col [&>div]:flex-1">
+            {renderTemplate()}
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-divider bg-background shadow-sm relative z-10">
+            <h2 className="text-xl md:text-2xl font-clash font-bold uppercase tracking-tight flex items-center gap-3">
+              <Eye className="h-6 w-6 text-accent" />
+              Resume Preview
+            </h2>
+            <div className="flex items-center gap-3">
+              <Button onClick={generatePDF} className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg">
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+              <Button onClick={() => setShowPreview(false)} variant="ghost" className="text-muted-foreground hover:text-foreground h-10 w-10 p-0 rounded-full bg-divider/10 hover:bg-divider/20">
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-          )}
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden resume-print-container">
-            <div className={showPreview ? "transform origin-top transition-transform duration-300" : ""} style={{ transform: showPreview ? 'scale(0.85)' : 'scale(1)' }}>
-              {renderTemplate()}
+          </div>
+          <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center bg-divider/10">
+            {/* Wrapper to handle scaling nicely without cutting off content in some browsers */}
+            <div className="h-fit w-fit origin-top scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100 transition-transform duration-300 shadow-2xl ring-1 ring-black/5 bg-white">
+              <div id="resume-print-container" className="bg-white w-[210mm] min-h-[297mm] flex flex-col [&>div]:flex-1">
+                {renderTemplate()}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
-
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-out;
-        }
-
-        .animate-shake {
-          animation: shake 0.3s ease-in-out;
-        }
-
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 3s ease infinite;
-        }
-
-        .animate-bounce-slow {
-          animation: bounce-slow 2s ease-in-out infinite;
-        }
-
-        @media print {
-          body > *:not(#__next) {
-            display: none !important;
-          }
-          
-          #__next > *:not(main) {
-            display: none !important;
-          }
-          
-          main > *:not(.resume-print-container) {
-            display: none !important;
-          }
-          
-          .resume-print-container {
-            display: block !important;
-            visibility: visible !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          
-          .resume-print-container * {
-            visibility: visible !important;
-          }
-          
-          .resume-print-container > div {
-            transform: none !important;
-            scale: 1 !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            margin: 0 !important;
-          }
-          
-          @page {
-            margin: 0;
-            size: A4 portrait;
-          }
-        }
-
-        /* Smooth scrolling */
-        html {
-          scroll-behavior: smooth;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-          width: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: #1a1815;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #f59e0b, #fbbf24);
-          border-radius: 5px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #fbbf24, #f59e0b);
-        }
-      `}</style>
+      )}
     </div>
   );
 }

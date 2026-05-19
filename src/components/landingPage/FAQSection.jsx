@@ -1,4 +1,4 @@
-// FAQSection.tsx
+// FAQSection.jsx
 'use client'
 
 import React from "react";
@@ -8,74 +8,91 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { AnimatedSection, AnimatedCard, AnimatedText } from "@/components/AnimatedSection";
+import { motion } from "framer-motion";
 
 const FAQSection = () => {
   const faqs = [
     {
       question: "How does the career assessment work?",
-      answer: "Our assessment evaluates your current skills, experience, and interests through a series of questions and exercises. It then provides insights into potential career paths and areas for development."
+      answer:
+        "Our AI evaluates your current skills, experience, and goals through a short set of questions. It then gives you personalized insights — highlighting your strengths, pinpointing gaps, and suggesting a clear next step.",
     },
     {
-      question: "What makes this different from other career platforms?",
-      answer: "We focus on personalized guidance using AI to analyze industry trends and match them with your unique profile. Our approach is data-driven yet human-centered."
+      question: "What makes AscendAI different from other career platforms?",
+      answer:
+        "Most tools do one thing. AscendAI does it all — resume building, interview prep, cover letters, cold emails, ATS scoring, and career roadmaps — all powered by the same AI that understands your unique profile.",
     },
     {
-      question: "Do I need to pay to get started?",
-      answer: "You can begin with our free tier that includes basic assessments and recommendations. Premium features are available for users who want more detailed insights and advanced tools."
+      question: "Is it free to get started?",
+      answer:
+        "Yes! You can start using AscendAI for free right away. No credit card needed. Premium features are available if you want to go deeper with advanced AI tools.",
     },
     {
-      question: "How often is the content updated?",
-      answer: "We continuously update our database with the latest industry trends, job market insights, and skill requirements to ensure you receive current and relevant guidance."
+      question: "How up-to-date is the career advice?",
+      answer:
+        "Our AI is continuously trained on current job market data, real hiring trends, and industry shifts — so the advice you get is relevant to today's job market, not last year's.",
     },
     {
       question: "Can I use this if I'm just starting my career?",
-      answer: "Absolutely! Our platform is designed for professionals at all stages - from students and recent graduates to experienced professionals looking to pivot or advance."
-    }
+      answer:
+        "Absolutely. AscendAI is built for everyone — whether you're a fresh graduate looking for your first role, a mid-career professional making a pivot, or a senior leader aiming for the next level.",
+    },
+    {
+      question: "Will the AI actually help me get more interviews?",
+      answer:
+        "Yes — and that's the whole point. Our resume builder is ATS-optimized, our cold email generator gets responses, and our interview prep builds real confidence. Thousands of users have used AscendAI to land interviews at top companies.",
+    },
   ];
 
   return (
-    <section className="py-32 px-6 lg:px-8 relative bg-[#0f0e0a]">
-      {/* Subtle amber glow */}
-      <div className="absolute top-1/2 left-0 w-96 h-96 bg-[#f59e0b]/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#f59e0b]/30 to-transparent" />
-      
+    <section className="py-32 px-6 md:px-12 relative bg-background">
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-divider opacity-30" />
+
       <div className="max-w-4xl mx-auto relative z-10">
-        <AnimatedSection className="text-center mb-20">
-          <AnimatedText>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white tracking-tight">
-              Frequently Asked Questions
-            </h2>
-          </AnimatedText>
-          <AnimatedText delay={0.2}>
-            <p className="text-xl md:text-2xl text-[#b0b0b0] max-w-3xl mx-auto font-light leading-relaxed">
-              Everything you need to know about getting started
-            </p>
-          </AnimatedText>
-        </AnimatedSection>
+        <div className="mb-20">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-8 h-[1px] bg-accent" />
+            <span className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+              Common Questions
+            </span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-clash font-bold text-foreground uppercase tracking-tight mb-6">
+            Got questions? <br />
+            <span className="text-accent">We've got answers.</span>
+          </h2>
+          <p className="text-xl text-muted-foreground font-light leading-relaxed max-w-2xl">
+            Everything you need to know before you get started.
+          </p>
+        </div>
 
-        <AnimatedSection>
-          <Accordion type="single" collapsible className="w-full space-y-4">
-            {faqs.map((faq, index) => (
-              <AnimatedCard key={index} delay={index * 0.1}>
-                <AccordionItem 
-                  value={`item-${index}`}
-                  className="relative border border-[#f59e0b]/20 rounded-2xl px-8 hover:border-[#f59e0b]/40 transition-all duration-300 backdrop-blur-sm bg-[#1a1815]/50 hover:bg-[#1a1815]/70"
-                >
-                  <AccordionTrigger className="text-left text-white hover:text-[#fbbf24] transition-colors py-6 text-lg font-medium">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-[#b0b0b0] pb-6 leading-relaxed font-light">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              </AnimatedCard>
-            ))}
-          </Accordion>
-        </AnimatedSection>
+        <Accordion type="single" collapsible className="w-full space-y-4">
+          {faqs.map((faq, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.08 }}
+            >
+              <AccordionItem
+                value={`item-${index}`}
+                className="border border-border bg-background px-8 rounded-sm transition-editorial hover:border-accent"
+              >
+                <AccordionTrigger className="text-left text-foreground hover:text-accent transition-colors py-8 text-lg font-clash font-bold uppercase tracking-tight">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-8 leading-relaxed font-general font-light text-base">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            </motion.div>
+          ))}
+        </Accordion>
       </div>
-    </section>
-  )
-}
 
-export default FAQSection
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-divider opacity-30" />
+    </section>
+  );
+};
+
+export default FAQSection;
