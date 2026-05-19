@@ -71,7 +71,7 @@ class aiServices {
       }
 
       const defaultOptions = {
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         maxOutputTokens: 1000,
         temperature: 0.7,
       };
@@ -733,7 +733,7 @@ Respond ONLY in **valid JSON** with the following schema (no markdown, no extra 
 
     try {
       return await this.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents,
         config: {
           maxOutputTokens: 4000,
