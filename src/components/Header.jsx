@@ -5,6 +5,7 @@ import { SignInButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { LayoutDashboard } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import AscendLogo from "@/components/AscendLogo";
 
 export default function Header() {
   const { isSignedIn } = useUser();
@@ -15,8 +16,11 @@ export default function Header() {
 
         {/* Left: Brand */}
         <div className="flex items-center gap-5">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-accent" />
+          <Link href="/" className="flex items-center gap-2 group">
+            <AscendLogo
+              size={22}
+              className="text-accent transition-transform duration-300 group-hover:scale-110"
+            />
             <span className="text-[10px] md:text-xs font-bold tracking-[0.25em] text-foreground uppercase">
               AscendAI
             </span>

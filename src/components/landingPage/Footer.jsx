@@ -2,6 +2,7 @@
 'use client'
 
 import Link from "next/link";
+import AscendLogo from "@/components/AscendLogo";
 
 const Footer = () => {
   return (
@@ -11,9 +12,12 @@ const Footer = () => {
 
           {/* Brand */}
           <div className="text-center md:text-left space-y-2">
-            <span className="text-sm font-clash font-bold tracking-[0.2em] text-foreground uppercase">
-              AscendAI
-            </span>
+            <div className="flex items-center gap-2 justify-center md:justify-start">
+              <AscendLogo size={18} className="text-accent" />
+              <span className="text-sm font-clash font-bold tracking-[0.2em] text-foreground uppercase">
+                AscendAI
+              </span>
+            </div>
             <p className="text-[10px] text-muted-foreground tracking-widest uppercase">
               Your AI-powered career coach
             </p>

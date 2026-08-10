@@ -15,16 +15,47 @@ export async function updateUser(data) {
   if (!user) throw new Error("User not found");
 
   try {
-    const updatedUser = await db.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        industry: data.industry,
-        experience: data.experience,
-        bio: data.bio,
-        skills: data.skills,
-      },
+    const updatedUser = await db.$transaction(async (tx) => {
+      // Ensure the IndustryInsight record exists to satisfy foreign key constraints
+      let industryInsight = await tx.industryInsight.findUnique({
+        where: {
+          industry: data.industry,
+        },
+      });
+
+      if (!industryInsight) {
+        await tx.industryInsight.create({
+          data: {
+            industry: data.industry,
+            salaryRanges: [],
+            growthRate: 0.0,
+            demandLevel: "Medium",
+            topSkills: [],
+            marketOutlook: "Neutral",
+            keyTrends: [],
+            recommendedSkills: [],
+            jobAvailability: [],
+            hiringTrends: [],
+            hybridWorkTrends: [],
+            nextUpdate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Far future update
+          },
+        });
+      }
+
+      // Update the user details
+      return await tx.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          industry: data.industry,
+          experience: data.experience,
+          bio: data.bio,
+          skills: data.skills,
+        },
+      });
+    }, {
+      timeout: 10000,
     });
 
     revalidatePath("/");

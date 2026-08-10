@@ -6,7 +6,29 @@ import { ThemeProvider } from "@/components/Theme-Provider";
 
 export const metadata = {
   title: "AscendAI — AI Career Coach",
-  description: "Your AI-powered career growth platform",
+  description: "Your AI-powered career growth platform. Land your dream job with AI-driven resume analysis, interview coaching, and career roadmaps.",
+
+  openGraph: {
+    title: "AscendAI — AI Career Coach",
+    description: "Your AI-powered career growth platform.",
+    url: "https://ascendai.app",
+    siteName: "AscendAI",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1024,
+        height: 1024,
+        alt: "AscendAI Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "AscendAI — AI Career Coach",
+    description: "Your AI-powered career growth platform.",
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -14,7 +36,6 @@ export default function RootLayout({ children }) {
     <ClerkProvider afterSignOutUrl="/">
       <html lang="en" suppressHydrationWarning>
         <head>
-          <link rel="icon" href="/logo.png" sizes="any" />
           <link
             href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@200,300,400,500,600,700&f[]=general-sans@200,300,400,500,600,700&display=swap"
             rel="stylesheet"
