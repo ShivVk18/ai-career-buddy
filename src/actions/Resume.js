@@ -510,6 +510,16 @@ export async function listResumeVersions() {
     const { user, resume } = await loadOwner(userId);
     if (!user) return NO_PROFILE;
     if (!resume) return [];
+    // Opportunistic cleanup of expired (24 h) tailoring drafts; failures must not break the list.
+    await db.resumeVersion
+      .deleteMany({
+        where: {
+          resumeId: resume.id,
+          tailoredContent: { startsWith: DRAFT_PREFIX },
+          createdAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      })
+      .catch((e) => console.error("draft purge failed:", safeErr(e)));
     const rows = await db.resumeVersion.findMany({
       where: { resumeId: resume.id, NOT: { tailoredContent: { startsWith: DRAFT_PREFIX } } },
       orderBy: { createdAt: "desc" },
@@ -831,17 +841,19 @@ OUTPUT: valid JSON only, no markdown fences:
     const proposals = good.map((p, i) => ({ proposalId: `p${i + 1}`, ...p }));
 
     // One pending draft per user: drop older drafts, then store this one.
-    await db.resumeVersion.deleteMany({
-      where: { resumeId: resume.id, tailoredContent: { startsWith: DRAFT_PREFIX } },
-    });
-    const draft = await db.resumeVersion.create({
-      data: {
-        resumeId: resume.id,
-        jobTitle,
-        companyName,
-        jobDescription,
-        tailoredContent: encodeVersion("draft", { label: "Pending tailoring (not saved)", proposals }),
-      },
+    const draft = await db.$transaction(async (tx) => {
+      await tx.resumeVersion.deleteMany({
+        where: { resumeId: resume.id, tailoredContent: { startsWith: DRAFT_PREFIX } },
+      });
+      return tx.resumeVersion.create({
+        data: {
+          resumeId: resume.id,
+          jobTitle,
+          companyName,
+          jobDescription,
+          tailoredContent: encodeVersion("draft", { label: "Pending tailoring (not saved)", proposals }),
+        },
+      });
     });
 
     return {

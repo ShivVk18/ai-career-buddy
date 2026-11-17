@@ -6,7 +6,7 @@ import { db } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 import { runAIStructured } from "@/lib/ai";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { weightsPromptText } from "@/lib/ats/weights";
@@ -357,6 +357,7 @@ export async function getUserATSScores() {
         }
       },
       orderBy: { createdAt: 'desc' },
+      take: 50, // newest 50 only: Prisma can't select inside Json, so evidence (incl. resumeText) is still loaded
       select: {
         id: true,
         atsScore: true,
@@ -546,7 +547,8 @@ const NEEDS_REUPLOAD_MSG =
 const FIX_MAX = 600;
 const FIX_TTL_MS = 24 * 60 * 60 * 1000;
 
-const fixFail = (code, error) => ({ error, code });
+const fixFail = (code, error, newScoreId) => (newScoreId ? { error, code, newScoreId } : { error, code });
+const ALREADY_APPLIED_MSG = "You've already applied this fix. Opening the result you got.";
 const collapse = (t) => String(t ?? "").replace(/\s+/g, " ").trim();
 const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -574,10 +576,25 @@ function lineAround(text, span) {
   return { start: span.start, end: span.end, text: text.slice(span.start, span.end) };
 }
 
+let cachedKey;
+let warnedEphemeral = false;
+/** Purpose-derived HMAC key from ATS_FIX_SIGNING_SECRET. Prod: required (>=32 chars) or null (fail closed). Dev: ephemeral key. */
 function signingKey() {
-  const k = process.env.CLERK_SECRET_KEY;
-  return k ? `ats-fix:${k}` : null;
+  if (cachedKey) return cachedKey;
+  const secret = process.env.ATS_FIX_SIGNING_SECRET;
+  if (secret && secret.length >= 32) {
+    cachedKey = createHmac("sha256", secret).update("ai-career-buddy/ats-fix/v1").digest();
+    return cachedKey;
+  }
+  if (process.env.NODE_ENV === "production") return null;
+  if (!warnedEphemeral) {
+    warnedEphemeral = true;
+    console.warn("ATS_FIX_SIGNING_SECRET is missing or shorter than 32 chars; using an ephemeral per-process key (dev only). Fix tokens will not survive a restart.");
+  }
+  cachedKey = randomBytes(32);
+  return cachedKey;
 }
+const FIX_UNAVAILABLE_MSG = "Fixes are temporarily unavailable. Please try again later.";
 const sign = (userId, payload) => createHmac("sha256", signingKey()).update(`${userId}.${payload}`).digest("base64url");
 
 function makeFixId(userId, data) {
@@ -623,7 +640,7 @@ export async function proposeAtsFix(scoreId, weaknessIndex) {
   if (!input.success) return fixFail("INVALID", "We couldn't tell which point to fix. Please try again.");
 
   try {
-    if (!signingKey()) return fixFail("FAILED", "We couldn't prepare a fix right now. Please try again later.");
+    if (!signingKey()) return fixFail("FIX_UNAVAILABLE", FIX_UNAVAILABLE_MSG);
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fixFail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const score = await db.aTSScore.findFirst({ where: { id: input.data.scoreId, userId: user.id } });
@@ -711,6 +728,8 @@ OUTPUT: valid JSON only, no markdown fences:
       w: input.data.weaknessIndex,
       o: original,
       p: res.proposed,
+      a: line.start,
+      n: randomBytes(12).toString("base64url"),
       t: Date.now(),
     });
     return { fixId, original, proposed: res.proposed, sources, weakness: weakness.text };
@@ -739,8 +758,9 @@ export async function applyAtsFix(scoreId, fixId) {
   if (!input.success) return fixFail("INVALID", "We couldn't apply that fix. Please propose it again.");
 
   try {
+    if (!signingKey()) return fixFail("FIX_UNAVAILABLE", FIX_UNAVAILABLE_MSG);
     const fix = readFixId(userId, input.data.fixId);
-    if (!fix || fix.s !== input.data.scoreId || typeof fix.o !== "string" || typeof fix.p !== "string") {
+    if (!fix || fix.s !== input.data.scoreId || typeof fix.o !== "string" || typeof fix.p !== "string" || !Number.isInteger(fix.a) || fix.a < 0 || typeof fix.n !== "string" || !fix.n) {
       return fixFail("INVALID", "We couldn't apply that fix. Please propose it again.");
     }
     if (!Number.isFinite(fix.t) || Date.now() - fix.t > FIX_TTL_MS || fix.t > Date.now() + 60_000) {
@@ -757,11 +777,23 @@ export async function applyAtsFix(scoreId, fixId) {
     if (!resumeText) return fixFail("NEEDS_REUPLOAD", NEEDS_REUPLOAD_MSG);
 
     // Re-verify against the stored text and job description; do not rely on the token alone.
-    const at = resumeText.indexOf(fix.o);
-    if (at === -1 || checkFixText(fix.o, fix.p, score.jobDescription)) {
+    const at = fix.a;
+    if (!resumeText.startsWith(fix.o, at) || checkFixText(fix.o, fix.p, score.jobDescription)) {
       return fixFail("STALE", "This suggestion no longer matches the analyzed resume. Please propose the fix again.");
     }
     const newText = resumeText.slice(0, at) + fix.p + resumeText.slice(at + fix.o.length);
+
+    const existing = await db.aTSScore.findFirst({
+      where: {
+        userId: user.id,
+        AND: [
+          { evidence: { path: ["previousScoreId"], equals: score.id } },
+          { evidence: { path: ["appliedFix", "nonce"], equals: fix.n } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (existing) return fixFail("ALREADY_APPLIED", ALREADY_APPLIED_MSG, existing.id);
 
     const jobTitle = score.jobTitle ?? "";
     const companyName = score.companyName ?? "";
@@ -771,6 +803,19 @@ export async function applyAtsFix(scoreId, fixId) {
     const scored = await scoreResume({ userId, resumeText: newText, jobDescription, jobTitle, companyName });
     if (scored.empty) return fixFail("NO_SOURCES", NO_SOURCES_MSG);
     const { result, raw, evidence } = scored;
+
+    // Re-check right before the write (the AI call is slow); a tiny race window remains, which is acceptable.
+    const again = await db.aTSScore.findFirst({
+      where: {
+        userId: user.id,
+        AND: [
+          { evidence: { path: ["previousScoreId"], equals: score.id } },
+          { evidence: { path: ["appliedFix", "nonce"], equals: fix.n } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (again) return fixFail("ALREADY_APPLIED", ALREADY_APPLIED_MSG, again.id);
 
     const created = await db.aTSScore.create({
       data: {
@@ -783,7 +828,7 @@ export async function applyAtsFix(scoreId, fixId) {
         relevantSkills: raw.relevantSkills,
         missingSkills: raw.missingSkills,
         recommendations: result.recommendations.map(stripRec).map(({ text, ...r }) => r),
-        evidence: { ...evidence, previousScoreId: score.id, appliedFix: { original: fix.o, proposed: fix.p } },
+        evidence: { ...evidence, previousScoreId: score.id, appliedFix: { original: fix.o, proposed: fix.p, nonce: fix.n } },
         finalSummary: raw.finalSummary,
         analyzedBy: "AI",
         jobTitle: score.jobTitle,
