@@ -2,7 +2,7 @@
 
 Phase 5 review: see commit 2293ce1 (`git show 2293ce1:docs/ai/REVIEW.md`).
 
-Summary: FAIL, 3 must-fix. `npm run lint` passes (0 errors, 1 pre-existing font warning), `npm run build` passes (no /tools routes), `node scripts/selfcheck-matching.mjs` prints "all self-checks passed".
+Summary (original): FAIL, 3 must-fix (all RESOLVED in fix round 1, see end). `npm run lint` passes (0 errors, 1 pre-existing font warning), `npm run build` passes (no /tools routes), `node scripts/selfcheck-matching.mjs` prints "all self-checks passed".
 
 ## MUST-FIX
 
@@ -44,3 +44,20 @@ Summary: FAIL, 3 must-fix. `npm run lint` passes (0 errors, 1 pre-existing font 
 2. /tools/* redirects, mock.ts and tools folder gone: PASS.
 3. Landing has no unlabelled fake data or contradicting claims: FAIL (must-fix #2).
 4. Build passes and all 6 tools (MCQ kept) still work: PASS.
+
+## Fix round 1 (diff f457547..HEAD)
+
+Summary: PASS, 0 must-fix. `npm run lint` 0 errors (1 pre-existing font warning), `npm run build` passes, `node scripts/selfcheck-matching.mjs` prints "all self-checks passed".
+
+Resolved: MUST-FIX #1 (speech hook: `finalRef` accumulates finals from `resultIndex`, interim is only appended to the callback value and never stored, reset on start; the three callers use base + full transcript, with base captured in the toggle handler so no double-append; callbackRef avoids stale closures; recognition is created once), #2 (landing claims reworded, figures labelled "sample", FAQ accurate; remaining "time of day = progress" claim is backed by DashboardView), #3 (source terms must also appear in the step's own title/description/skill; Figma false positive gone, selfcheck updated). Nice-to-have #1, #2, #3, #4, #5, #6, #8 resolved; #7 intentionally skipped.
+
+New findings (none must-fix):
+
+| Severity | File:line | Problem | Fix |
+|---|---|---|---|
+| nit | src/app/(main)/(gated)/interview/practice/page.jsx:256 | Submit is enabled for answers under 20 chars (server returns an INVALID message; no UI hint). | Disable below ANSWER_MIN_CHARS or show a hint. |
+| nit | src/app/page.js:101 | "1-click fixes that count up live" is vague marketing. | Reword. |
+| nit | src/lib/roadmap/derive.js (titlePhrases) | Title phrases of 2-3 non-stopwords can still be generic (e.g. "customer facing"). | Acceptable; extend GENERIC lists if observed. |
+| nit | src/hooks/use-speech-to-text.js | If the user edits the textarea during recording, the next result overwrites those edits with base + transcript. | Stop recording on manual edit. |
+
+Done-when: 1 PASS, 2 PASS, 3 PASS, 4 PASS.
