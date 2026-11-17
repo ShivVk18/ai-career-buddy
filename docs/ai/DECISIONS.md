@@ -28,3 +28,12 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | # | Topic | Decision |
 |---|-------|----------|
 | D11 | Target | **Both:** Vercel for production, Docker for local runs. Fix the Docker setup: compose port 3000, a migrate step, and `.env` in `.dockerignore`. |
+
+## Phase 1 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D12 | Phase 1 scope | No BUILD-PLAN.md exists, so Phase 1 uses the proposed scope: security fixes (route guards, removing resume-content logs), the `runAI()` layer in `src/lib/ai` (Gemini, LangChain, zod), and the Docker fixes. **Done when:** every AI call goes through `runAI()`, the app routes redirect signed-out users, `npm run build` passes, and all 6 tools still work. |
+| D13 | Owner WIP | The uncommitted work was committed as one baseline (`725f52d`) before the agents ran. |
+| D14 | Logging | Remove raw content logs. Add a redacted logger that records only metadata (task, provider, model, ms, ok/error). Full content is logged only when `AI_DEBUG` is set, outside production. |
+| D15 | Migration | All 7 Gemini call sites move to `runAI()` in Phase 1. Dead `AiServices` methods may be removed only if nothing references them, since no feature is removed. |
