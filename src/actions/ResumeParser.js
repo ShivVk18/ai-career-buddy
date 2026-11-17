@@ -277,6 +277,10 @@ const yearsOf = (v) => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : null);
 const PURGE_DAYS = 90;
 const PURGE_BATCH = 50;
 
+/** One cutoff for the purge and the fix rules: results created before this have no usable resume text (D42). */
+const resumeTextCutoff = () => new Date(Date.now() - PURGE_DAYS * 24 * 60 * 60 * 1000);
+const isPastResumeTextLimit = (createdAt) => !(createdAt instanceof Date) || createdAt < resumeTextCutoff();
+
 /**
  * D42: removes ONLY evidence.resumeText from this user's results older than 90 days, at most 50 rows per
  * call (oldest first), in one atomic statement, and marks evidence.resumePurgedAt. Opportunistic (there
@@ -284,7 +288,7 @@ const PURGE_BATCH = 50;
  */
 async function purgeOldResumeText(userDbId) {
   try {
-    const cutoff = new Date(Date.now() - PURGE_DAYS * 24 * 60 * 60 * 1000);
+    const cutoff = resumeTextCutoff();
     await db.$executeRaw`
       UPDATE "ATSScore"
       SET "evidence" = ("evidence" - 'resumeText') || jsonb_build_object('resumePurgedAt', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
@@ -682,7 +686,7 @@ export async function proposeAtsFix(scoreId, weaknessIndex) {
 
     const ev = score.evidence && typeof score.evidence === "object" ? score.evidence : null;
     const resumeText = typeof ev?.resumeText === "string" ? ev.resumeText : "";
-    if (!resumeText) return fixFail("NEEDS_REUPLOAD", NEEDS_REUPLOAD_MSG);
+    if (!resumeText || isPastResumeTextLimit(score.createdAt)) return fixFail("NEEDS_REUPLOAD", NEEDS_REUPLOAD_MSG);
 
     const weakness = Array.isArray(ev.weaknesses) ? ev.weaknesses[input.data.weaknessIndex] : null;
     if (!weakness) return fixFail("INVALID", "We couldn't find that point in this result.");
@@ -836,7 +840,7 @@ async function applyAtsFixInner(userId, input) {
 
     const ev = score.evidence && typeof score.evidence === "object" ? score.evidence : null;
     const resumeText = typeof ev?.resumeText === "string" ? ev.resumeText : "";
-    if (!resumeText) return fixFail("NEEDS_REUPLOAD", NEEDS_REUPLOAD_MSG);
+    if (!resumeText || isPastResumeTextLimit(score.createdAt)) return fixFail("NEEDS_REUPLOAD", NEEDS_REUPLOAD_MSG);
 
     // Re-verify against the stored text and job description; do not rely on the token alone.
     const at = fix.a;
@@ -869,6 +873,13 @@ async function applyAtsFixInner(userId, input) {
     // Serialize on (scoreId, nonce) across instances, re-check, and create only if none exists.
     const outcome = await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${advisoryKey(`${score.id}:${fix.n}`)})`;
+      // Re-read the source row with a row lock (blocks a concurrent purge until we commit): the text must
+      // still be present and the row still within 90 days, otherwise create nothing (D42).
+      const src = await tx.$queryRaw`
+        SELECT "createdAt", ("evidence" -> 'resumeText') IS NOT NULL AND jsonb_typeof("evidence" -> 'resumeText') = 'string' AS "hasText"
+        FROM "ATSScore" WHERE "id" = ${score.id} AND "userId" = ${user.id} FOR UPDATE`;
+      const row = src[0];
+      if (!row || !row.hasText || isPastResumeTextLimit(new Date(row.createdAt))) return { reupload: true };
       const again = await tx.aTSScore.findFirst({
         where: {
           userId: user.id,
@@ -902,6 +913,7 @@ async function applyAtsFixInner(userId, input) {
       });
       return { created };
     });
+    if (outcome.reupload) return fixFail("NEEDS_REUPLOAD", NEEDS_REUPLOAD_MSG);
     if (outcome.duplicateId) return fixFail("ALREADY_APPLIED", ALREADY_APPLIED_MSG, outcome.duplicateId);
     const { created } = outcome;
 

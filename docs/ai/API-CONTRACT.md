@@ -427,7 +427,7 @@ Returned to the client (the `resumeText` is stripped everywhere):
 
 `applyAtsFix(scoreId: string, fixId: string)`: run ONLY on the user's click. Accepts only the id: `fixId` is an opaque server-signed token (HMAC, 24 h) that carries the proposed text, so it can't be edited or forged, and the server still re-verifies it against the stored text and JD. It replaces `original` with `proposed` in the stored analyzed text (not the main resume), runs a real `fast` re-score with the same prompt and validation as a fresh analysis (1-2 AI calls against the cap), and saves a NEW `ATSScore` with `evidence.previousScoreId` and `evidence.appliedFix`. Returns `{ newScoreId, before: { atsScore, matchPercentage }, after: { atsScore, matchPercentage } }` (`after` comes from the real call; the delta can be negative) or `{ error, code: "INVALID" | "NOT_FOUND" | "NEEDS_REUPLOAD" | "STALE" | "ALREADY_APPLIED" | "FIX_UNAVAILABLE" | "NO_SOURCES" | "AI_LIMIT" | "AI_UNAVAILABLE" | "FAILED" }`. The token is single-use (random nonce stored in `evidence.appliedFix.nonce`) and carries the character offset of the quoted line; a text mismatch at that offset gives `STALE`. The old score, `updateATSScore` and the main resume are never changed. Open the result via `getATSScoreById(newScoreId)`.
 
-Legacy scores (no stored text) return `NEEDS_REUPLOAD` from both; use `hasResumeText` to hide or disable "Propose fix" up front.
+Legacy scores (no stored text) return `NEEDS_REUPLOAD` from both; use `hasResumeText` to hide or disable "Propose fix" up front. Fixes are unavailable for results older than 90 days (`NEEDS_REUPLOAD` even if the text has not been purged yet; `applyAtsFix` also re-checks this under a row lock right before saving).
 
 ### 7.8 Cap behaviour (section 4 amended)
 
