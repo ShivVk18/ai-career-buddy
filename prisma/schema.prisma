@@ -361,3 +361,18 @@ model ColdEmail {
 
   @@index([userId])
 }   
+
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String?
+  task      String
+  provider  String
+  model     String
+  ok        Boolean
+  latencyMs Int
+  errorCode String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

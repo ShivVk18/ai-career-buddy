@@ -2,43 +2,8 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import AiServices  from "@/services/AiServices";
-import { GoogleGenAI } from "@google/genai";
-
-
-
-const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });  
-
-function cleanJsonResponse(response) {
-    // Remove markdown code blocks
-    let cleaned = response.replace(/```(?:json)?\n?/g, "").trim();
-
-    // Remove any trailing text after the JSON
-    const jsonStart = cleaned.indexOf("{");
-    const jsonEnd = cleaned.lastIndexOf("}") + 1;
-
-    if (jsonStart !== -1 && jsonEnd > jsonStart) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd);
-    }
-
-    return cleaned;
-  }
-
-
-function safeJsonParse(jsonString, fallbackData = null) {
-    try {
-      return JSON.parse(jsonString);
-    } catch (error) {
-      console.error("JSON Parse Error:", error.message);
-      console.error("Problematic JSON:", jsonString.substring(0, 500) + "...");
-
-      if (fallbackData) {
-        return fallbackData;
-      }
-
-      throw new Error(`Invalid JSON response: ${error.message}`);
-    }
-  }
+import { runAIStructured, runAIText } from "@/lib/ai";
+import { quizSchema } from "@/lib/ai/schemas";
 
 export async function generateQuiz(skills) {
   try {
@@ -97,44 +62,39 @@ OUTPUT SCHEMA:
 Ensure all 10 questions are unique and the correctAnswer exactly matches one of the provided options.
 `;
 
-    // Gemini API call
-    const result = await client.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.3 },
+    const parsed = await runAIStructured("fast", quizSchema, () => [["user", prompt]], {
+      userId,
     });
 
-    const rawText =
-      result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-
-    if (!rawText) {
-      console.error("❌ Empty Gemini response:", JSON.stringify(result, null, 2));
-      throw new Error("AI returned no content");
-    }
-
-    console.log("🔍 Raw Gemini Output:", rawText);
-
-    // Clean invalid JSON (removes ```json, trailing commas, etc.)
-    const cleaned = cleanJsonResponse(rawText);
-    const parsed = safeJsonParse(cleaned);
-
-    if (!parsed || !Array.isArray(parsed.questions)) {
-      throw new Error("Invalid quiz format from AI");
-    }
-
-    // Validate exactly 10 questions
-    if (parsed.questions.length !== 10) {
-      console.warn("⚠ AI returned wrong number of questions. Cutting to 10.");
-      parsed.questions = parsed.questions.slice(0, 10);
-    }
-
-    return parsed.questions;
+    return parsed.questions.slice(0, 10);
   } catch (error) {
-    console.error("🔥 Quiz Generation Error:", error);
+    console.error("Quiz generation failed:", error?.code || error?.name || "error");
     throw new Error("Failed to generate quiz. Please try again.");
   }
 }
 
+
+async function generateImprovementTip(industry, wrongAnswers, userId) {
+  const wrongQuestionsText = wrongAnswers
+    .map(
+      (q) =>
+        `Question: "${q.question}"\nCorrect Answer: "${q.answer}"\nUser Answer: "${q.userAnswer}"`
+    )
+    .join("\n\n");
+
+  const prompt = `
+      The user got the following ${industry} technical interview questions wrong:
+
+      ${wrongQuestionsText}
+
+      Based on these mistakes, provide a concise, specific improvement tip.
+      Focus on the knowledge gaps revealed by these wrong answers.
+      Keep the response under 2 sentences and make it encouraging.
+      Don't explicitly mention the mistakes, instead focus on what to learn/practice.
+    `;
+
+  return runAIText("write", () => [["user", prompt]], { userId });
+}
 
 export async function saveQuizResult(questions, answers, score) {
   const { userId } = await auth();
@@ -161,9 +121,9 @@ export async function saveQuizResult(questions, answers, score) {
   let improvementTip = null;
   if (wrongAnswers.length > 0) {
     try {
-      improvementTip = await AiServices.generateImprovementTip(user.industry, wrongAnswers);
-    } catch (error) {
-      console.error("Error generating improvement tip:", error);
+      improvementTip = await generateImprovementTip(user.industry, wrongAnswers, userId);
+    } catch {
+      console.error("Error generating improvement tip");
     }
   }
 

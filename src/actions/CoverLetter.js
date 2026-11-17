@@ -2,12 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import AiServices from "@/services/AiServices";
-import { GoogleGenAI } from "@google/genai";
-
-const client = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import { runAIText } from "@/lib/ai";
 
 export async function generateCoverLetter(data) {
   const { userId } = await auth();
@@ -71,17 +66,11 @@ Write like a strategic candidate, not a generic applicant.
 `;
 
   try {
-    const content = await client.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.3,
-      },
-    });
+    const text = await runAIText("write", () => [["user", prompt]], { userId });
 
     const coverLetter = await db.coverLetter.create({
       data: {
-        content: content.text,
+        content: text,
         jobDescription: data.jobDescription,
         companyName: data.companyName,
         jobTitle: data.jobTitle,
@@ -92,9 +81,8 @@ Write like a strategic candidate, not a generic applicant.
 
     return coverLetter;
   } catch (error) {
-    console.error("Error generating cover letter:", error.message);
-    console.error("COVER LETTER ERROR:", error);
-  throw error;
+    console.error("Error generating cover letter:", error?.code || error?.name || "error");
+    throw new Error("Failed to generate cover letter");
   }
 }
 

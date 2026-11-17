@@ -2,35 +2,8 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenAI } from "@google/genai" 
-import AiServices  from "@/services/AiServices";
-
-/* ---------- Initialize Gemini Client ---------- */
-const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-/* ---------- Utility: Clean JSON ---------- */
-function cleanJsonResponse(response) {
-  let cleaned = response.replace(/```(?:json)?\n?/g, "").trim();
-  const jsonStart = cleaned.indexOf("{");
-  const jsonEnd = cleaned.lastIndexOf("}") + 1;
-  if (jsonStart !== -1 && jsonEnd > jsonStart) {
-    cleaned = cleaned.substring(jsonStart, jsonEnd);
-  }
-  return cleaned;
-}
-
-/* ---------- Utility: Safe Parse ---------- */
-function safeJsonParse(jsonString, fallbackData = null) {
-  try {
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error("JSON Parse Error:", error.message);
-    console.error("Problematic JSON:", jsonString.substring(0, 500) + "...");
-    if (fallbackData) return fallbackData;
-    throw new Error(`Invalid JSON response: ${error.message}`);
-  }
-}
-
+import { runAIStructured, runAIText } from "@/lib/ai";
+import { roadmapSchema } from "@/lib/ai/schemas";
 
 export async function generateCareerRoadmap(data) {
   const { userId } = await auth();
@@ -137,31 +110,9 @@ Return ONLY JSON.
 `;
 
   try {
-    const result = await client.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.4 },
+    const roadmapData = await runAIStructured("write", roadmapSchema, () => [["user", prompt]], {
+      userId,
     });
-
-    // ✅ Correctly access Gemini output
-    const rawText =
-  result?.candidates?.[0]?.content?.parts
-    ?.map(p => p.text)
-    ?.join("")
-    ?.trim();
-    if (!rawText) {
-      console.error("Empty response from Gemini:", JSON.stringify(result, null, 2));
-      throw new Error("No content received from AI");
-    }
-
-    console.log("Raw AI Output:", rawText);
-    const cleaned = cleanJsonResponse(rawText);
-    const roadmapData = safeJsonParse(cleaned);
-
-    // ✅ Validate
-    if (!roadmapData.steps || !Array.isArray(roadmapData.steps)) {
-      throw new Error("Invalid roadmap format received from AI");
-    }
 
     // ✅ Ensure timeline is properly formatted as a JSON object
     const timelineData = roadmapData.timeline || {
@@ -187,7 +138,7 @@ Return ONLY JSON.
 
     return careerPath;
   } catch (error) {
-    console.error("Error generating career roadmap:", error);
+    console.error("Error generating career roadmap:", error?.code || error?.name || "error");
     throw new Error("Failed to generate career roadmap");
   }
 }
@@ -342,15 +293,34 @@ export async function generateProgressRecommendations(id) {
     const completedSteps = careerPath.steps.filter(step => step.completed);
 
 
-    const recommendations = await AiServices.generateProgressUpdate(
-      careerPath,
-      completedSteps,
-      "User is making good progress"
-    );
+    const prompt = `
+Analyze the career roadmap progress and provide personalized recommendations.
+
+Current roadmap progress:
+- Total steps: ${careerPath.steps.length}
+- Completed steps: ${completedSteps.length}
+- Current step: ${careerPath.currentStep}
+- Overall progress: ${careerPath.progress}%
+
+User feedback on completed steps:
+User is making good progress
+
+Provide specific, actionable advice for the next 2-3 steps and any adjustments needed.
+Keep the response encouraging and practical.
+Maximum 200 words.
+`;
+
+    let recommendations;
+    try {
+      recommendations = await runAIText("write", () => [["user", prompt]], { userId });
+    } catch {
+      recommendations =
+        "Continue following your roadmap. Focus on the next step and track your progress regularly.";
+    }
 
     return recommendations;
   } catch (error) {
-    console.error("Error generating recommendations:", error);
+    console.error("Error generating recommendations");
     throw new Error("Failed to generate recommendations");
   }
 }

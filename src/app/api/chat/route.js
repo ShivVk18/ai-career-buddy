@@ -1,12 +1,35 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 import { MOCK_JOBS, MOCK_INTERVIEW_QUESTIONS, MOCK_ATS_REQUIREMENTS, MOCK_WEEKLY_ROADMAP } from "@/lib/mock";
 
 export const runtime = "nodejs";
 
+const bodySchema = z.object({
+  message: z.string().max(4000).optional(),
+}).passthrough();
+
 export async function POST(req) {
   try {
-    const { message } = await req.json();
-    const prompt = (message || "").toLowerCase();
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let raw;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const parsed = bodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request: 'message' must be a string up to 4000 characters" },
+        { status: 400 }
+      );
+    }
+    const prompt = (parsed.data.message || "").toLowerCase();
 
     const encoder = new TextEncoder();
 

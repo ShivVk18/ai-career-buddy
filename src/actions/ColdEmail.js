@@ -3,10 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
-import { GoogleGenAI } from "@google/genai";
-
-
-const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });  
+import { runAIText } from "@/lib/ai";
 
 export async function generateColdEmail(data) {
   const { userId } = await auth();
@@ -78,19 +75,11 @@ Write like a smart, ambitious candidate reaching out strategically.
   
 
   try {
-    const content = await client.models.generateContent({
-       model:'gemini-2.5-flash',
-       contents:prompt,
-       config:{
-        temperature:0.3
-       }
-    })  
-
-    
+    const text = await runAIText("write", () => [["user", prompt]], { userId });
 
     const coldEmail = await db.coldEmail.create({
       data: {
-        content:content.text,
+        content: text,
         jobDescription: data.jobDescription,
         companyName: data.companyName,
         jobTitle: data.jobTitle,
@@ -101,7 +90,7 @@ Write like a smart, ambitious candidate reaching out strategically.
 
     return coldEmail;
   } catch (error) {
-    console.error("Error generating cold email:", error.message);
+    console.error("Error generating cold email:", error?.code || error?.name || "error");
     throw new Error("Failed to generate cold email");
   }
 }

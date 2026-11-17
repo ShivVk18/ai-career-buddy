@@ -3,9 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { GoogleGenAI } from "@google/genai";
-
-const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { runAIText } from "@/lib/ai";
 
 // Helper function to validate and sanitize resume data
 async function validateResumeData(data) {
@@ -201,29 +199,12 @@ Requirements:
 7. Return only the improved content without any explanations or introductory text.`;
     }
 
-    const response = await client.models.generateContent({
-      model:'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 300,
-      },
-    });
-
-    const improvedText =
-  response?.candidates?.[0]?.content?.parts
-    ?.map(p => p.text)
-    ?.join("")
-    ?.trim();
-    
-    if (!improvedText) {
-      throw new Error("No response from AI");
-    }
+    const improvedText = await runAIText("write", () => [["user", prompt]], { userId });
 
    return improvedText.replace(/^\d+:/gm, "").trim();
   } catch (error) {
-    console.error("Error improving content:", error);
-    throw new Error(error.message || "Failed to improve content");
+    console.error("Error improving content:", error?.code || error?.name || "error");
+    throw new Error("Failed to improve content");
   }
 }
 

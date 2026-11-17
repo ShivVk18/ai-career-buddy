@@ -5,11 +5,8 @@
 import { db } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import { runAIStructured, pdfPart } from "@/lib/ai";
+import { atsSchema } from "@/lib/ai/schemas";
 
 export async function createATSAnalysis(formData) {
   const { userId } = await auth();
@@ -42,9 +39,6 @@ export async function createATSAnalysis(formData) {
 
     if (!resumeBase64) throw new Error("Resume PDF missing");
 
-    console.log("=== DEBUG ===");
-    console.log("Base64 length:", resumeBase64.length);
-    
    const today = new Date().toISOString().split("T")[0];
 
 const prompt = `
@@ -165,51 +159,17 @@ OUTPUT JSON STRUCTURE:
 }
 `;
 
-    const contents = [
-      { text: prompt },
-      {
-        inlineData: {
-          mimeType: "application/pdf",
-          data: resumeBase64,
+    const analysisData = await runAIStructured(
+      "fast",
+      atsSchema,
+      () => [
+        {
+          role: "user",
+          content: [{ type: "text", text: prompt }, pdfPart(resumeBase64)],
         },
-      },
-    ];
-
-    console.log("🚀 Calling Gemini 2.5/3.0...");
-
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
-      contents,
-    });
-
-
-    console.log(result.text)
-    
-    const responseText = result.text;
-
-    console.log("📄 Raw Response:", responseText?.slice(0, 200));
-
-    if (!responseText) {
-      throw new Error("Empty response from Gemini");
-    }
-
-    
-    let analysisData;
-
-    try {
-      const cleaned = responseText
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
-
-      analysisData = JSON.parse(cleaned);
-
-      if (!analysisData.atsScore)
-        throw new Error("Missing atsScore field");
-    } catch (err) {
-      console.error("❌ PARSE ERROR:", err);
-      throw new Error("Invalid JSON returned by AI");
-    }
+      ],
+      { userId }
+    );
 
     // Save to DB
     const atsAnalysis = await db.aTSScore.create({
@@ -224,19 +184,25 @@ OUTPUT JSON STRUCTURE:
         missingSkills: analysisData.missingSkills,
         recommendations: analysisData.recommendations,
         finalSummary: analysisData.finalSummary,
-        analyzedBy: "Gemini-2.5-Flash",
+        analyzedBy: "AI",
         jobTitle,
         companyName,
         jobDescription,
       },
     });
 
-    revalidatePath("/ats-scores");
+    revalidatePath("/resume-parser");
 
     return { success: true, data: atsAnalysis };
   } catch (err) {
-    console.error("❌ Error in createATSAnalysis:", err);
-    return { success: false, message: err.message };
+    console.error("Error in createATSAnalysis:", err?.code || err?.name || "error");
+    const known = ["Resume PDF missing", "Unauthorized"];
+    return {
+      success: false,
+      message: known.includes(err?.message)
+        ? err.message
+        : "We couldn't analyze your resume right now. Please try again.",
+    };
   }
 }
 
@@ -321,7 +287,7 @@ export async function deleteATSScore(scoreId) {
       where: { id: scoreId }
     });
 
-    revalidatePath("/ats-scores");
+    revalidatePath("/resume-parser");
     return { success: true, message: "ATS score deleted successfully" };
 
   } catch (error) {
@@ -402,7 +368,7 @@ export async function updateATSScore(scoreId, updateData) {
       },
     });
 
-    revalidatePath("/ats-scores");
+    revalidatePath("/resume-parser");
     revalidatePath(`/ats-scores/${scoreId}`);
     
     return { success: true, message: "ATS score updated successfully", data: updated };
