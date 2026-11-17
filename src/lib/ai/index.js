@@ -2,7 +2,7 @@ import { getRoute, TASKS } from "./tasks.js";
 import { createModel, isSupportedProvider } from "./providers.js";
 import { nextKey, coolDown, getKeys } from "./keys.js";
 import { logAttempt, debugLog } from "./log.js";
-import { isOverDailyLimit } from "./limit.js";
+import { checkDailyLimit } from "./limit.js";
 
 const TIMEOUT_MS = 90_000;
 
@@ -53,8 +53,10 @@ export async function runAI(task, callback, { userId, temperature: tempOverride,
     throw new AIError(e.message, { code: "AI_CONFIG" });
   }
 
-  if (userId && (await isOverDailyLimit(userId))) {
-    throw new AIError("Daily AI limit reached", { code: "AI_LIMIT" });
+  if (userId) {
+    const cap = await checkDailyLimit(userId);
+    if (cap === "over") throw new AIError("Daily AI limit reached", { code: "AI_LIMIT" });
+    if (cap === "unavailable") throw new AIError("AI is temporarily unavailable", { code: "AI_UNAVAILABLE" });
   }
 
   const temperature = tempOverride ?? TASKS[task].temperature;

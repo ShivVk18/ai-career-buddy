@@ -3,11 +3,13 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { runAIText } from "@/lib/ai";
+import { runAIText, runAIStructured } from "@/lib/ai";
+import { tailorSchema } from "@/lib/ai/schemas";
+import { matchText, resumeToText } from "@/lib/match";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
-import { assignEntryIds, buildSources, snapshot } from "@/lib/ai/sources";
+import { assignEntryIds, buildSources, snapshot, validateSourceIds, formatCatalogForPrompt, normalizeText } from "@/lib/ai/sources";
 
 // Helper function to validate and sanitize resume data
 async function validateResumeData(data) {
@@ -46,6 +48,59 @@ async function validateResumeData(data) {
     projects: assignEntryIds(data.projects),
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Versions (D36). A version is a ResumeVersion row whose tailoredContent holds a small JSON envelope:
+//   { kind: "version" | "draft", v: 1, label, content?, applied?, proposals? }
+// "version" rows hold a full snapshot of the resume form JSON in `content`; "draft" rows hold the
+// pending tailoring proposals the server generated (never listed, never trusted from the client).
+// No migration: the label lives in the envelope. Rows written before Phase 4 hold a plain string.
+// ---------------------------------------------------------------------------------------------
+
+const DRAFT_PREFIX = '{"kind":"draft"';
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+const fail = (code, error) => ({ error, code });
+const dateLabel = (d = new Date()) => d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+const NO_RESUME_MSG = "Save your resume first, then try again.";
+const AI_LIMIT_MSG = "Daily AI limit reached. Please try again tomorrow.";
+const AI_UNAVAILABLE_MSG = "AI is temporarily unavailable. Please try again later.";
+
+function encodeVersion(kind, body) {
+  return JSON.stringify({ kind, v: 1, ...body });
+}
+
+/** Returns the envelope, or { kind: "legacy" } for plain-string rows from before Phase 4. */
+function decodeVersion(row) {
+  try {
+    const o = JSON.parse(row.tailoredContent);
+    if (o && typeof o === "object" && (o.kind === "version" || o.kind === "draft")) return o;
+  } catch {}
+  return { kind: "legacy" };
+}
+
+/** The resume form JSON, exactly what saveResume accepts (templateId is the templateKey). */
+function formSnapshot(r) {
+  return {
+    content: r.content ?? "",
+    templateId: r.template?.templateKey ?? null,
+    photoUrl: r.photoUrl ?? null,
+    contactInfo: r.contactInfo ?? null,
+    summary: r.summary ?? null,
+    skills: r.skills ?? null,
+    experience: Array.isArray(r.experience) ? r.experience : [],
+    education: Array.isArray(r.education) ? r.education : [],
+    projects: Array.isArray(r.projects) ? r.projects : [],
+  };
+}
+
+async function loadOwner(clerkUserId) {
+  const user = await db.user.findUnique({ where: { clerkUserId }, select: { id: true, industry: true, skills: true, bio: true, experience: true } });
+  if (!user) return { user: null, resume: null };
+  const resume = await db.resume.findUnique({ where: { userId: user.id }, include: { template: true } });
+  return { user, resume };
+}
+
+const NO_PROFILE = fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
 export async function saveResume(data) {
   try {
@@ -246,6 +301,7 @@ Requirements:
   } catch (error) {
     console.error("improveWithAI failed:", safeErr(error));
     if (error?.code === "AI_LIMIT") return { error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" };
+    if (error?.code === "AI_UNAVAILABLE") return { error: "AI is temporarily unavailable. Please try again later.", code: "AI_UNAVAILABLE" };
     return { error: "Failed to improve content. Please try again.", code: "FAILED" };
   }
 }
@@ -293,12 +349,13 @@ export async function duplicateResume() {
     if (!existingResume) throw new Error("No resume to duplicate");
 
     // Create a version instead of duplicating
+    const full = await db.resume.findUnique({ where: { id: existingResume.id }, include: { template: true } });
     const version = await db.resumeVersion.create({
       data: {
         resumeId: existingResume.id,
-        jobTitle: "Copy",
-        companyName: "Duplicate",
-        tailoredContent: existingResume.content,
+        jobTitle: "",
+        companyName: "",
+        tailoredContent: encodeVersion("version", { label: `Copy of resume (${dateLabel()})`, content: formSnapshot(full) }),
       },
     });
 
@@ -436,5 +493,473 @@ export async function seedResumeTemplates() {
   } catch (error) {
     console.error("seedResumeTemplates failed:", safeErr(error));
     throw new Error("Failed to seed templates");
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 4 actions
+// ---------------------------------------------------------------------------------------------
+
+const idSchema = z.string().trim().min(1).max(100);
+
+/** Returns [{ id, label, jobTitle, companyName, matchPercentage, createdAt }] (newest first), or { error, code }. */
+export async function listResumeVersions() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    if (!resume) return [];
+    const rows = await db.resumeVersion.findMany({
+      where: { resumeId: resume.id, NOT: { tailoredContent: { startsWith: DRAFT_PREFIX } } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return rows.map((r) => {
+      const env = decodeVersion(r);
+      const fallback = [r.jobTitle, r.companyName].filter(Boolean).join(" at ") || "Saved copy";
+      return {
+        id: r.id,
+        label: typeof env.label === "string" && env.label ? env.label : fallback,
+        jobTitle: r.jobTitle || null,
+        companyName: r.companyName || null,
+        matchPercentage: r.matchPercentage ?? null,
+        restorable: env.kind === "version",
+        createdAt: r.createdAt,
+      };
+    });
+  } catch (error) {
+    console.error("listResumeVersions failed:", safeErr(error));
+    return fail("FAILED", "We couldn't load your versions. Please try again.");
+  }
+}
+
+const saveVersionSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  jobTitle: z.string().trim().max(200).default(""),
+  companyName: z.string().trim().max(200).default(""),
+  jobDescription: z.string().trim().max(20000).nullish(),
+});
+
+/** Snapshots the CURRENT saved resume as a version. Returns { id, label, matchPercentage, createdAt } or { error, code }. */
+export async function saveResumeVersion(input) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const parsed = saveVersionSchema.safeParse(input ?? {});
+  if (!parsed.success) return fail("INVALID", "Please give this version a name (up to 120 characters).");
+  const { label, jobTitle, companyName, jobDescription } = parsed.data;
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    if (!resume) return fail("NOT_FOUND", NO_RESUME_MSG);
+    const matchPercentage = jobDescription ? matchText(jobDescription, resumeToText(resume)).percent : null;
+    const row = await db.resumeVersion.create({
+      data: {
+        resumeId: resume.id,
+        jobTitle,
+        companyName,
+        jobDescription: jobDescription || null,
+        matchPercentage,
+        tailoredContent: encodeVersion("version", { label, content: formSnapshot(resume) }),
+      },
+    });
+    revalidatePath("/resume");
+    return { id: row.id, label, matchPercentage, createdAt: row.createdAt };
+  } catch (error) {
+    console.error("saveResumeVersion failed:", safeErr(error));
+    return fail("FAILED", "We couldn't save this version. Please try again.");
+  }
+}
+
+/** Full detail of one version: { id, label, jobTitle, companyName, jobDescription, matchPercentage, createdAt, content, applied } or { error, code }. */
+export async function getResumeVersion(id) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const vid = idSchema.safeParse(id);
+  if (!vid.success) return fail("INVALID", "We couldn't find that version.");
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    const row = resume && (await db.resumeVersion.findFirst({ where: { id: vid.data, resumeId: resume.id } }));
+    if (!row) return fail("NOT_FOUND", "We couldn't find that version.");
+    const env = decodeVersion(row);
+    if (env.kind !== "version") return fail("NOT_FOUND", "We couldn't find that version.");
+    return {
+      id: row.id,
+      label: env.label || [row.jobTitle, row.companyName].filter(Boolean).join(" at ") || "Saved copy",
+      jobTitle: row.jobTitle || null,
+      companyName: row.companyName || null,
+      jobDescription: row.jobDescription ?? null,
+      matchPercentage: row.matchPercentage ?? null,
+      createdAt: row.createdAt,
+      content: env.content ?? null,
+      applied: Array.isArray(env.applied) ? env.applied : [],
+    };
+  } catch (error) {
+    console.error("getResumeVersion failed:", safeErr(error));
+    return fail("FAILED", "We couldn't load that version. Please try again.");
+  }
+}
+
+/**
+ * Restores a version into the main resume. The current resume is first saved as "Before restore <date>",
+ * then the version's snapshot is written through saveResume. Returns { success: true, backupVersionId } or { error, code }.
+ */
+export async function restoreResumeVersion(id) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const vid = idSchema.safeParse(id);
+  if (!vid.success) return fail("INVALID", "We couldn't find that version.");
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    const row = resume && (await db.resumeVersion.findFirst({ where: { id: vid.data, resumeId: resume.id } }));
+    if (!row) return fail("NOT_FOUND", "We couldn't find that version.");
+    const env = decodeVersion(row);
+    if (env.kind !== "version" || !env.content || typeof env.content !== "object") {
+      return fail("NOT_RESTORABLE", "This older copy only kept plain text, so it can't be restored. Your resume was not changed.");
+    }
+
+    const backup = await db.resumeVersion.create({
+      data: {
+        resumeId: resume.id,
+        jobTitle: "",
+        companyName: "",
+        tailoredContent: encodeVersion("version", { label: `Before restore ${dateLabel()}`, content: formSnapshot(resume) }),
+      },
+    });
+
+    await saveResume(env.content);
+    return { success: true, backupVersionId: backup.id };
+  } catch (error) {
+    console.error("restoreResumeVersion failed:", safeErr(error));
+    return fail("FAILED", "We couldn't restore this version. Your resume was not changed.");
+  }
+}
+
+const matchInput = z.object({
+  jobDescription: z.string().trim().min(1).max(20000),
+  versionId: idSchema.optional(),
+  resume: z
+    .object({
+      summary: z.string().max(20000).nullish(),
+      skills: z.string().max(20000).nullish(),
+      experience: z.array(z.object({ title: z.string().nullish(), organization: z.string().nullish(), description: z.string().max(10000).nullish() }).passthrough()).max(50).optional(),
+      education: z.array(z.object({ title: z.string().nullish(), organization: z.string().nullish(), description: z.string().max(10000).nullish() }).passthrough()).max(50).optional(),
+      projects: z.array(z.object({ title: z.string().nullish(), organization: z.string().nullish(), description: z.string().max(10000).nullish() }).passthrough()).max(50).optional(),
+    })
+    .optional(),
+});
+
+/**
+ * Deterministic keyword match, no AI (D37). Compares against `versionId`, else the optional unsaved `resume`
+ * form JSON, else the saved resume. Returns { percent, matched[], missing[], termCount } or { error, code }.
+ */
+export async function computeMatch(input) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const parsed = matchInput.safeParse(input ?? {});
+  if (!parsed.success) return fail("INVALID", "Paste the job description (up to 20,000 characters) to see your match.");
+  const { jobDescription, versionId, resume: formResume } = parsed.data;
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    let source = formResume ?? resume;
+    if (versionId) {
+      const row = resume && (await db.resumeVersion.findFirst({ where: { id: versionId, resumeId: resume.id } }));
+      const env = row ? decodeVersion(row) : null;
+      if (!env || env.kind !== "version" || !env.content) return fail("NOT_FOUND", "We couldn't find that version.");
+      source = env.content;
+    }
+    if (!source) return fail("NOT_FOUND", NO_RESUME_MSG);
+    return matchText(jobDescription, resumeToText(source));
+  } catch (error) {
+    console.error("computeMatch failed:", safeErr(error));
+    return fail("FAILED", "We couldn't compute the match. Please try again.");
+  }
+}
+
+// ---- Tailoring (D36) ----
+
+const BULLET_RE = /^(\s*(?:[-\u2022*\u25AA\u25CF]|\d+[.)])?\s*)(.*)$/;
+
+/** Non-empty lines of a description as bullets: [{ line, prefix, text }]. */
+function splitBullets(description) {
+  const out = [];
+  String(description ?? "")
+    .split("\n")
+    .forEach((l, line) => {
+      const m = BULLET_RE.exec(l.replace(/\r$/, ""));
+      if (m && m[2].trim()) out.push({ line, prefix: m[1], text: m[2].trim() });
+    });
+  return out;
+}
+
+/** Resolves a catalog id (exp:<id> or proj:<id>) to { list, index } in the resume, or null. */
+function resolveEntry(resume, entryId) {
+  const [kind, ...rest] = String(entryId).split(":");
+  const key = rest.join(":");
+  const list = kind === "exp" ? resume.experience : kind === "proj" ? resume.projects : null;
+  if (!Array.isArray(list)) return null;
+  const index = list.findIndex((e, i) => e && typeof e === "object" && (e.id ? String(e.id) === key : `i${i}` === key));
+  return index === -1 ? null : { list, index };
+}
+
+const tailorInput = z.object({
+  jobTitle: z.string().trim().max(200).default(""),
+  companyName: z.string().trim().max(200).default(""),
+  jobDescription: z.string().trim().min(1).max(20000),
+});
+
+const MAX_TAILOR_BULLETS = 40;
+const MAX_PROPOSALS = 8;
+const MAX_PROPOSED = 600;
+
+/**
+ * Proposes sourced rewrites of existing resume bullets for a job. Nothing is applied and the resume is
+ * not changed. The pending proposals are stored server-side in a short-lived draft row (ResumeVersion
+ * kind "draft"); saveTailoredVersion accepts only the draftId and proposal ids.
+ * Returns { draftId, jobTitle, companyName, matchBefore:{percent,matched,missing,termCount},
+ *   proposals:[{ proposalId, entryId, bulletIndex, original, proposed, reason, sources }] }
+ * or { error, code: INVALID | NOT_FOUND | NO_SOURCES | INVENTED_DETAIL | AI_LIMIT | AI_UNAVAILABLE | FAILED }.
+ */
+export async function tailorResume(input) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const parsed = tailorInput.safeParse(input ?? {});
+  if (!parsed.success) return fail("INVALID", "Paste the job description (up to 20,000 characters) to tailor your resume.");
+  const { jobTitle, companyName, jobDescription } = parsed.data;
+
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    if (!resume) return fail("NOT_FOUND", NO_RESUME_MSG);
+
+    const catalog = buildSources({ profile: user, resume, jobDescription });
+    const byId = new Map(catalog.map((c) => [c.id, c]));
+
+    // Eligible bullets: existing lines of experience and project descriptions.
+    const bullets = new Map(); // "exp:id#n" -> { entryId, bulletIndex, text }
+    const lines = [];
+    for (const [prefix, list] of [["exp", resume.experience], ["proj", resume.projects]]) {
+      (Array.isArray(list) ? list : []).forEach((e, i) => {
+        if (!e || typeof e !== "object") return;
+        const entryId = `${prefix}:${e.id ? String(e.id) : `i${i}`}`;
+        splitBullets(e.description).forEach((b, n) => {
+          // Only whole bullets of up to 400 characters, so "original" is exactly the line being replaced.
+          if (bullets.size >= MAX_TAILOR_BULLETS || !byId.has(entryId) || b.text.length > 400) return;
+          const text = b.text;
+          bullets.set(`${entryId}#${n}`, { entryId, bulletIndex: n, text });
+          lines.push(`[${entryId}#${n}] ${text}`);
+        });
+      });
+    }
+    if (bullets.size === 0) return fail("NO_SOURCES", "Add experience or project descriptions to your resume first, then try tailoring again.");
+
+    const prompt = `
+You are an expert resume writer tailoring a candidate's EXISTING resume bullets to one job.
+
+JOB: ${jobTitle || "position"} at ${companyName || "the company"}
+
+SOURCES (each line is [id] label: text):
+${formatCatalogForPrompt(catalog)}
+
+RESUME BULLETS YOU MAY REWRITE (each line is [entryId#bulletIndex] text):
+${lines.join("\n")}
+
+TASK: choose up to ${MAX_PROPOSALS} bullets that can better match the job and rewrite each one.
+RULES:
+- Use ONLY facts already in that bullet. Do NOT add any employer, tool, skill, technology, title, date, metric, number or result that the bullet does not already state.
+- You may reword, reorder and use the job description's terminology for things the bullet already says.
+- Every proposal needs at least one job description id (jd:...) in sourceIds that the rewrite responds to, copied exactly from SOURCES.
+- Each proposed bullet is one line, under ${MAX_PROPOSED} characters, no markdown, and must differ from the original.
+- "reason" is one short sentence explaining the change.
+
+OUTPUT: valid JSON only, no markdown fences:
+{ "proposals": [ { "entryId": "exp:...", "bulletIndex": 0, "proposed": "", "reason": "", "sourceIds": ["jd:1"] } ] }
+`;
+
+    let droppedNumbers = 0;
+    const verify = (out) => {
+      const seen = new Set();
+      const good = [];
+      for (const p of out.proposals) {
+        const key = `${String(p.entryId).trim()}#${p.bulletIndex}`;
+        const b = bullets.get(key);
+        if (!b || seen.has(key)) continue;
+        const proposed = String(p.proposed).replace(/\s+/g, " ").trim();
+        if (!proposed || proposed.length > MAX_PROPOSED || normalizeText(proposed) === normalizeText(b.text)) continue;
+        const jdIds = validateSourceIds(p.sourceIds, catalog).filter((id) => id.startsWith("jd:"));
+        if (jdIds.length === 0) continue;
+        if (inventedNumbers(proposed, `${b.text}\n${jobDescription}`).length > 0) {
+          droppedNumbers++;
+          continue;
+        }
+        seen.add(key);
+        good.push({
+          entryId: b.entryId,
+          bulletIndex: b.bulletIndex,
+          original: b.text,
+          proposed,
+          reason: String(p.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300),
+          sources: snapshot([b.entryId, ...jdIds], catalog),
+        });
+        if (good.length >= MAX_PROPOSALS) break;
+      }
+      return good;
+    };
+    const generate = async (note) => verify(await runAIStructured("write", tailorSchema, () => [["user", prompt + note]], { userId }));
+
+    let good = await generate("");
+    if (good.length < Math.min(2, bullets.size)) {
+      try {
+        const retry = await generate(
+          "\n\nIMPORTANT: your previous answer had too few valid proposals. Use entryId#bulletIndex pairs exactly as listed, include at least one valid jd id in sourceIds, and never add a number or fact that is not in the original bullet or the job description."
+        );
+        if (retry.length >= good.length) good = retry;
+      } catch (e) {
+        if (good.length === 0) throw e;
+        console.error("tailorResume retry failed, keeping first attempt:", safeErr(e));
+      }
+    }
+    if (good.length === 0) {
+      return droppedNumbers > 0
+        ? fail("INVENTED_DETAIL", "We couldn't tailor this without adding details you didn't write. Add the specifics you want to keep to your resume and try again.")
+        : fail("NO_SOURCES", "We couldn't ground any edits in your resume and this job description. Paste a fuller job description or add more detail to your bullets, then try again.");
+    }
+
+    const proposals = good.map((p, i) => ({ proposalId: `p${i + 1}`, ...p }));
+
+    // One pending draft per user: drop older drafts, then store this one.
+    await db.resumeVersion.deleteMany({
+      where: { resumeId: resume.id, tailoredContent: { startsWith: DRAFT_PREFIX } },
+    });
+    const draft = await db.resumeVersion.create({
+      data: {
+        resumeId: resume.id,
+        jobTitle,
+        companyName,
+        jobDescription,
+        tailoredContent: encodeVersion("draft", { label: "Pending tailoring (not saved)", proposals }),
+      },
+    });
+
+    return {
+      draftId: draft.id,
+      jobTitle,
+      companyName,
+      matchBefore: matchText(jobDescription, resumeToText(resume)),
+      proposals,
+    };
+  } catch (error) {
+    console.error("tailorResume failed:", safeErr(error));
+    if (error?.code === "AI_LIMIT") return fail("AI_LIMIT", AI_LIMIT_MSG);
+    if (error?.code === "AI_UNAVAILABLE") return fail("AI_UNAVAILABLE", AI_UNAVAILABLE_MSG);
+    return fail("FAILED", "We couldn't tailor your resume right now. Please try again.");
+  }
+}
+
+const saveTailoredSchema = z.object({
+  draftId: idSchema,
+  acceptedProposalIds: z.array(z.string().trim().min(1).max(20)).min(1).max(MAX_PROPOSALS),
+  label: z.string().trim().min(1).max(120).optional(),
+});
+
+/**
+ * Saves the accepted proposals as a ResumeVersion. Takes only ids: the proposal text comes from the
+ * server-side draft and is re-verified against the CURRENT resume and job description (bullet still
+ * identical, no invented numbers). The main resume is never modified.
+ * Returns { versionId, label, applied:[proposalId], skipped:[{proposalId, reason}], matchBefore, matchAfter }
+ * or { error, code: INVALID | NOT_FOUND | STALE | FAILED }.
+ */
+export async function saveTailoredVersion(input) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const parsed = saveTailoredSchema.safeParse(input ?? {});
+  if (!parsed.success) return fail("INVALID", "Accept at least one edit to save a version.");
+  const { draftId, acceptedProposalIds, label } = parsed.data;
+
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    if (!resume) return fail("NOT_FOUND", NO_RESUME_MSG);
+    const row = await db.resumeVersion.findFirst({ where: { id: draftId, resumeId: resume.id } });
+    const env = row ? decodeVersion(row) : null;
+    if (!row || env.kind !== "draft" || !Array.isArray(env.proposals)) {
+      return fail("NOT_FOUND", "These suggestions are no longer available. Please run tailoring again.");
+    }
+    if (Date.now() - row.createdAt.getTime() > DRAFT_TTL_MS) {
+      return fail("STALE", "These suggestions have expired. Please run tailoring again.");
+    }
+
+    const jd = row.jobDescription ?? "";
+    const snap = formSnapshot(resume);
+    const next = { ...snap, experience: structuredClone(snap.experience), projects: structuredClone(snap.projects) };
+    const applied = [];
+    const skipped = [];
+    const wanted = [...new Set(acceptedProposalIds)];
+
+    for (const pid of wanted) {
+      const p = env.proposals.find((x) => x.proposalId === pid);
+      if (!p) {
+        skipped.push({ proposalId: pid, reason: "UNKNOWN" });
+        continue;
+      }
+      // Re-verify against the current resume: the entry exists and the bullet is still the same text.
+      const target = resolveEntry(next, p.entryId);
+      const entry = target?.list[target.index];
+      const lines = String(entry?.description ?? "").split("\n");
+      const b = entry ? splitBullets(entry.description)[p.bulletIndex] : null;
+      if (!b || normalizeText(b.text) !== normalizeText(p.original)) {
+        skipped.push({ proposalId: pid, reason: "RESUME_CHANGED" });
+        continue;
+      }
+      if (
+        typeof p.proposed !== "string" || !p.proposed.trim() || p.proposed.length > MAX_PROPOSED ||
+        inventedNumbers(p.proposed, `${p.original}\n${jd}`).length > 0
+      ) {
+        skipped.push({ proposalId: pid, reason: "FAILED_CHECK" });
+        continue;
+      }
+      lines[b.line] = b.prefix + p.proposed.trim();
+      entry.description = lines.join("\n");
+      applied.push(p);
+    }
+
+    if (applied.length === 0) {
+      return fail("STALE", "Your resume changed since these suggestions were made. Please run tailoring again.");
+    }
+
+    const matchBefore = jd ? matchText(jd, resumeToText(snap)) : null;
+    const matchAfter = jd ? matchText(jd, resumeToText(next)) : null;
+    const finalLabel = label || `Tailored: ${[row.jobTitle, row.companyName].filter(Boolean).join(" at ") || "job"}`;
+
+    // The draft row becomes the saved version. The main Resume row is not touched.
+    await db.resumeVersion.update({
+      where: { id: row.id },
+      data: {
+        matchPercentage: matchAfter?.percent ?? null,
+        tailoredContent: encodeVersion("version", {
+          label: finalLabel,
+          content: next,
+          applied: applied.map(({ proposalId, entryId, bulletIndex, original, proposed, reason, sources }) => ({
+            proposalId, entryId, bulletIndex, original, proposed, reason, sources,
+          })),
+        }),
+      },
+    });
+
+    revalidatePath("/resume");
+    return {
+      versionId: row.id,
+      label: finalLabel,
+      applied: applied.map((p) => p.proposalId),
+      skipped,
+      matchBefore,
+      matchAfter,
+    };
+  } catch (error) {
+    console.error("saveTailoredVersion failed:", safeErr(error));
+    return fail("FAILED", "We couldn't save this version. Please try again.");
   }
 }

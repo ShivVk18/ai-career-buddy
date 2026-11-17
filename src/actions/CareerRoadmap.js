@@ -200,6 +200,7 @@ Return ONLY JSON.
   } catch (error) {
     console.error("generateCareerRoadmap failed:", safeErr(error));
     if (error?.code === "AI_LIMIT") return fail("AI_LIMIT", "Daily AI limit reached. Please try again tomorrow.");
+    if (error?.code === "AI_UNAVAILABLE") return fail("AI_UNAVAILABLE", "AI is temporarily unavailable. Please try again later.");
     return fail("FAILED", "Failed to generate career roadmap. Please try again.");
   }
 }

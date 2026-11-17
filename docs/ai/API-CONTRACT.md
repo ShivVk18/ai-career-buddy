@@ -334,3 +334,99 @@ Contract change: used to return a string and throw. Now returns
 
 ### 6.9 Schema changes (migration `20261118000000_phase3_sources`, NOT applied by the agent)
 `CoverLetter.sources Json?`, `ColdEmail.sources Json?`, `ATSScore.evidence Json?`, `User.email` becomes optional (the code no longer writes `""` or `...@placeholder.com`; email is the Clerk primary email or null). Until the migration is applied, generators that write `sources`/`evidence` will fail with `FAILED`.
+
+
+---
+
+## 7. Phase 4 (D32-D38): Resume + ATS parity
+
+No migration. All actions are `"use server"` actions: signed-out throws `Error("Unauthorized")`; every expected failure is RETURNED as `{ error: string, code }` (`error` is user-safe, show as is). All queries are owner-scoped. Check `result.error` before using a result.
+
+### 7.1 New and changed error codes
+
+| code | when | `error` text |
+|---|---|---|
+| `AI_UNAVAILABLE` | `NODE_ENV==="production"` and `AiUsage` can't be read (cap fails closed, D33), or every AI provider failed | "AI is temporarily unavailable. Please try again later." (the cap itself throws `AIError("AI is temporarily unavailable")`; `/api/chat` already maps `AI_UNAVAILABLE`). Now RETURNED by every generator (`generateCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `generateQuiz`, `improveWithAI`, `createATSAnalysis`, `tailorResume`, `proposeAtsFix`, `applyAtsFix`). In dev the cap fails open with a warning. |
+| `NEEDS_REUPLOAD` | `proposeAtsFix` / `applyAtsFix` on a score with no stored `resumeText` (anything analyzed before Phase 4) | "This result was saved before we kept the analyzed resume text, so we can't test a fix on it. Please upload your PDF again and re-run the analysis." |
+| `STALE` | tailoring draft expired (24 h) or the resume changed; fix token expired (24 h) or no longer matches the stored text | message says to run tailoring / propose the fix again |
+| `NOT_RESTORABLE` | `restoreResumeVersion` on a pre-Phase-4 copy that only kept plain text | "This older copy only kept plain text, so it can't be restored. Your resume was not changed." |
+| `AI_LIMIT`, `NO_SOURCES`, `INVENTED_DETAIL`, `INVALID`, `NOT_FOUND`, `FAILED` | as in section 6.3 | `NOT_FOUND` for a missing resume: "Save your resume first, then try again." |
+
+Frontend: map `AI_UNAVAILABLE` in `generationError.js`; `STALE` and `NEEDS_REUPLOAD` can show `error` as is.
+
+### 7.2 Saving letter and email edits
+
+`updateCoverLetter(id: string, content: string)` and `updateColdEmail(id, content)` (`src/actions/CoverLetter.js`, `ColdEmail.js`). `content` is trimmed, 1-10000 chars. Owner-scoped. Only `content` changes; the stored `sources` are kept as they are (apply the alignment rule from 6.5 in the UI). Returns the updated row (same shape as `getCoverLetter` / `getColdEmail`) or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
+
+### 7.3 Resume versions (`src/actions/Resume.js`)
+
+Stored in `ResumeVersion` with a JSON envelope in `tailoredContent` (the label lives there; there is no label column). Versions made before Phase 4 (`duplicateResume` "Copy"/"Duplicate") show as `label = "<jobTitle> at <companyName>"` or "Saved copy" and have `restorable: false`. `duplicateResume` now writes a real full snapshot labelled "Copy of resume (<UTC date>)".
+
+- `listResumeVersions()` returns `Array<{ id, label, jobTitle: string|null, companyName: string|null, matchPercentage: number|null, restorable: boolean, createdAt: Date }>`, newest first, max 100. No resume yet gives `[]`. Failure gives `{ error, code: "NOT_FOUND" | "FAILED" }` (not an array). Pending tailoring drafts are never listed.
+- `saveResumeVersion({ label (1-120), jobTitle?: string (<=200), companyName?: string (<=200), jobDescription?: string (<=20000) })` snapshots the CURRENT SAVED resume (not unsaved form state; save first). With a `jobDescription`, `matchPercentage` is computed (7.4). Returns `{ id, label, matchPercentage: number|null, createdAt }` or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
+- `getResumeVersion(id)` returns `{ id, label, jobTitle, companyName, jobDescription: string|null, matchPercentage, createdAt, content: ResumeForm, applied: AppliedEdit[] }` or `{ error, code }`. `applied` is empty for manual versions; for tailored ones it lists the accepted edits, each `{ proposalId, entryId, bulletIndex, original, proposed, reason, sources: Snapshot[] }` (feed `sources` to `SourceChips` for the Sources panel).
+- `restoreResumeVersion(id)` first saves the current resume as a version labelled "Before restore <UTC date>", then writes the version's snapshot through the existing `saveResume` path (so entry ids and template lookup behave as on any save). Returns `{ success: true, backupVersionId }` or `{ error, code: "INVALID" | "NOT_FOUND" | "NOT_RESTORABLE" | "FAILED" }`. Reload the resume form afterwards.
+
+`ResumeForm` = `{ content: string, templateId: string|null (templateKey), photoUrl, contactInfo, summary, skills, experience[], education[], projects[] }`, the shape `saveResume` accepts.
+
+### 7.4 Match % (no AI, D37)
+
+`computeMatch({ jobDescription (1-20000), versionId?: string, resume?: ResumeFormLike })` returns `{ percent: number (0-100, rounded), matched: string[], missing: string[], termCount: number }` or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`. Compares against `versionId` if given, else the optional unsaved `resume` form JSON (summary, skills, experience/education/projects with title, organization, description), else the saved resume. Terms are canonical lowercase names ("node.js", "ci/cd", "rest api") from a curated vocabulary (`src/lib/match.js`, exported `VOCAB`) plus capitalised acronyms from the JD. `termCount === 0` means no recognizable skills in the JD (percent is 0; say so instead of "0% match"). Label it "computed from keywords, not AI".
+
+### 7.5 Tailoring (D36)
+
+`tailorResume({ jobTitle?: string, companyName?: string, jobDescription: string (1-20000) })`: one `write` AI call (one retry if too few valid proposals; counts against the daily cap). Returns
+
+```ts
+{
+  draftId: string,              // server-held pending proposals, expires in 24 h
+  jobTitle: string, companyName: string,
+  matchBefore: { percent, matched, missing, termCount },
+  proposals: {
+    proposalId: string,         // "p1", "p2", ...
+    entryId: string,            // "exp:<id>" or "proj:<id>"
+    bulletIndex: number,        // n-th non-empty line of that entry's description
+    original: string,           // from the saved resume, never from the model
+    proposed: string, reason: string,
+    sources: Snapshot[]         // the resume entry first, then >=1 job description line
+  }[]                           // 1-8
+}
+```
+or `{ error, code: "INVALID" | "NOT_FOUND" | "NO_SOURCES" | "INVENTED_DETAIL" | "AI_LIMIT" | "AI_UNAVAILABLE" | "FAILED" }`. Server checks: entry and bullet exist in the saved resume; at least one valid `jd:` id; `proposed` differs from `original`, is <= 600 chars and every number in it appears in the original bullet or the JD (otherwise dropped). Bullets longer than 400 chars are not offered. Nothing is applied; the main resume is not touched.
+
+`saveTailoredVersion({ draftId: string, acceptedProposalIds: string[] (1-8), label?: string })`: accepts ONLY ids. The proposal text is read from the server-side draft and re-verified against the CURRENT saved resume and the stored JD (bullet unchanged, numbers still valid). Applies only the accepted proposals to a copy and turns the draft into a saved version (`matchPercentage` = match after). The main `Resume` row is never modified. Returns `{ versionId, label, applied: proposalId[], skipped: { proposalId, reason: "UNKNOWN" | "RESUME_CHANGED" | "FAILED_CHECK" }[], matchBefore, matchAfter }` or `{ error, code: "INVALID" | "NOT_FOUND" | "STALE" | "FAILED" }`. Striking a proposal = simply not sending its id. A new `tailorResume` call replaces any earlier unsaved draft of that user. To use the result the user calls `restoreResumeVersion(versionId)`.
+
+### 7.6 ATS evidence fields (`src/actions/ResumeParser.js`, `src/lib/ats/weights.js`)
+
+`ATSScore.evidence` now stores (version stays 1, fields are additive):
+
+```ts
+Evidence = null | {
+  version: 1,
+  strengths, weaknesses, recommendations,           // as in 6.4
+  requirements: { requirement: string, status: "matched" | "gap", sources: EvSource[] }[],  // 0-12
+  candidateLevel: string | null,                    // model's own label, e.g. "Junior (0-2 yrs)"
+  // resumeText: the analyzed PDF text (<= 30000 chars). STORED but NEVER returned to the client.
+  previousScoreId?: string,                         // set on scores created by applyAtsFix
+  appliedFix?: { original: string, proposed: string }
+}
+```
+Rules: `matched` has >= 1 verified `resume_quote`; `gap` has >= 1 `jd` source. Scores made before this phase have `requirements: []` (or evidence without the key) and `candidateLevel: null`; scores with `evidence === null` stay legacy (6.2).
+
+Returned to the client (the `resumeText` is stripped everywhere):
+- `createATSAnalysis` -> `data`, `getATSScoreById(id)` and `updateATSScore` -> `data`: the row plus `hasResumeText: boolean`, `candidateLevel: string|null`, `previousScoreId: string|null`; `evidence.requirements` is always an array when evidence exists.
+- `getUserATSScores()` rows (still no evidence arrays): `{ id, atsScore, matchPercentage, jobTitle, companyName, analyzedBy, createdAt, finalSummary, jobDescription, isLegacy, candidateLevel, previousScoreId, hasResumeText, requirementsMatched, requirementsTotal }`. Newest first. Link before/after pairs with `previousScoreId`. For "re-run with this job", pre-fill company, title and `jobDescription` from this row and ask for the PDF again.
+
+`src/lib/ats/weights.js` (import in the UI, plain JS): `CANDIDATE_LEVELS`, `WEIGHT_GROUPS` (`early` Student/Fresher 50/25/15/10, `junior` 40/40/20, `senior` Mid/Senior 50/30/20, each `{label, levels, weights:[{key,value}]}`), `normalizeLevel(raw)` -> "Student"|"Fresher"|"Junior"|"Mid"|"Senior"|null, `weightsForLevel(raw)` -> `{ level, label, weights }` or `null` (unknown level: show no weights), `weightsPromptText()`. The prompt is generated from the same data, so the panel always matches.
+
+### 7.7 ATS 1-click fix (D38)
+
+`proposeAtsFix(scoreId: string, weaknessIndex: number)` (index into `evidence.weaknesses` / `weaknesses[]`): one `write` AI call (one retry). Returns `{ fixId: string, original: string, proposed: string, sources: EvSource[], weakness: string }` or `{ error, code: "INVALID" | "NOT_FOUND" | "NEEDS_REUPLOAD" | "NO_SOURCES" | "INVENTED_DETAIL" | "AI_LIMIT" | "AI_UNAVAILABLE" | "FAILED" }`. `original` is the resume line (from the stored text) that the weakness's verified quote points to; `sources` = that line as a `resume_quote` plus >= 1 `jd` line. `proposed` is <= 600 chars and its numbers come from the original line or the JD. Nothing is saved or changed.
+
+`applyAtsFix(scoreId: string, fixId: string)`: run ONLY on the user's click. Accepts only the id: `fixId` is an opaque server-signed token (HMAC, 24 h) that carries the proposed text, so it can't be edited or forged, and the server still re-verifies it against the stored text and JD. It replaces `original` with `proposed` in the stored analyzed text (not the main resume), runs a real `fast` re-score with the same prompt and validation as a fresh analysis (1-2 AI calls against the cap), and saves a NEW `ATSScore` with `evidence.previousScoreId` and `evidence.appliedFix`. Returns `{ newScoreId, before: { atsScore, matchPercentage }, after: { atsScore, matchPercentage } }` (`after` comes from the real call; the delta can be negative) or `{ error, code: "INVALID" | "NOT_FOUND" | "NEEDS_REUPLOAD" | "STALE" | "NO_SOURCES" | "AI_LIMIT" | "AI_UNAVAILABLE" | "FAILED" }`. The old score, `updateATSScore` and the main resume are never changed. Open the result via `getATSScoreById(newScoreId)`.
+
+Legacy scores (no stored text) return `NEEDS_REUPLOAD` from both; use `hasResumeText` to hide or disable "Propose fix" up front.
+
+### 7.8 Cap behaviour (section 4 amended)
+
+In production, if the `AiUsage` count can't be read, `runAI` throws `AIError` code `AI_UNAVAILABLE` before any provider call. In dev it skips the cap with one console warning (as before).

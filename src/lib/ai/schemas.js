@@ -28,6 +28,10 @@ export const atsSchema = z.object({
   atsScore: z.number().min(0).max(100),
   matchPercentage: z.number().min(0).max(100).nullable().optional(),
   strengths: z.array(atsItem).default([]),
+  // Job requirements checked against the resume. The server verifies the sources (D32).
+  requirements: z
+    .array(z.object({ requirement: z.string().min(1), status: z.string().default(""), sources: z.array(atsSource).default([]) }))
+    .default([]),
   weaknesses: z.array(atsItem).default([]),
   improvements: strList,
   relevantSkills: strList,
@@ -93,4 +97,26 @@ export const paragraphsSchema = z.object({
       })
     )
     .min(2),
+});
+
+// Tailoring: the model picks an existing resume bullet and proposes a rewrite. The server supplies the
+// original text and checks entryId, bulletIndex, jd ids and numbers (D36).
+export const tailorSchema = z.object({
+  proposals: z
+    .array(
+      z.object({
+        entryId: z.string(),
+        bulletIndex: z.number().int().min(0),
+        proposed: z.string().min(1),
+        reason: z.string().default(""),
+        sourceIds: z.array(z.string()).default([]),
+      })
+    )
+    .default([]),
+});
+
+// ATS 1-click fix: one rewritten line plus the job description ids it responds to (D38).
+export const atsFixSchema = z.object({
+  proposed: z.string().min(1),
+  sourceIds: z.array(z.string()).default([]),
 });

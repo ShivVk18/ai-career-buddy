@@ -15,6 +15,7 @@ const submitSchema = z.object({
 
 const MESSAGES = {
   AI_LIMIT: "Daily AI limit reached. Please try again tomorrow.",
+  AI_UNAVAILABLE: "AI is temporarily unavailable. Please try again later.",
   ALREADY_SUBMITTED: "This quiz has already been submitted.",
   NOT_FOUND: "Quiz not found.",
   INVALID: "Invalid input. Please check your submission and try again.",
@@ -113,6 +114,7 @@ Ensure all 10 questions are unique and the correctAnswer exactly matches one of 
     if (error?.message === "Unauthorized") throw error;
     console.error("Quiz generation failed:", safeErr(error));
     if (error?.code === "AI_LIMIT") return fail("AI_LIMIT");
+    if (error?.code === "AI_UNAVAILABLE") return fail("AI_UNAVAILABLE");
     return fail("FAILED", "Failed to generate quiz. Please try again.");
   }
 }

@@ -1,5 +1,5 @@
 // Per-user daily AI cap (D21). Counts today's AiUsage rows (UTC day) for a user.
-// Fails open: if the table is missing or the count fails, the cap is skipped with one warning.
+// If usage can't be read: fails CLOSED in production (D33), fails open with one warning in dev.
 import { db } from "../prisma.js";
 
 let warned = false;
@@ -13,20 +13,34 @@ export function getDailyLimit() {
   return n === 0 ? null : n;
 }
 
-/** Returns true when the user is at or over today's limit. */
-export async function isOverDailyLimit(userId) {
+export const isProduction = () => process.env.NODE_ENV === "production";
+
+/**
+ * Returns "ok" | "over" | "unavailable".
+ * "unavailable" only in production when usage can't be read (D33); dev fails open with a warning.
+ */
+export async function checkDailyLimit(userId) {
   const limit = getDailyLimit();
-  if (!limit || !userId) return false;
+  if (!limit || !userId) return "ok";
   try {
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
     const used = await db.aiUsage.count({ where: { userId, createdAt: { gte: start } } });
-    return used >= limit;
+    return used >= limit ? "over" : "ok";
   } catch {
+    if (isProduction()) {
+      console.error("[ai] daily AI cap is active but AiUsage could not be read; blocking AI call (production)");
+      return "unavailable";
+    }
     if (!warned) {
       warned = true;
-      console.warn("[ai] daily AI cap is active but AiUsage could not be read (migration not applied?); cap skipped");
+      console.warn("[ai] daily AI cap is active but AiUsage could not be read (migration not applied?); cap skipped (dev)");
     }
-    return false;
+    return "ok";
   }
+}
+
+/** Returns true when the user is at or over today's limit. */
+export async function isOverDailyLimit(userId) {
+  return (await checkDailyLimit(userId)) === "over";
 }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { inventedNumbers } from "../src/lib/ai/numberCheck.js";
 import { normalizeText } from "../src/lib/ai/sources.js";
+import { extractTerms, matchText, resumeToText } from "../src/lib/match.js";
+import { weightsForLevel, weightsPromptText, WEIGHT_GROUPS } from "../src/lib/ats/weights.js";
 const ok = (o, i) => assert.equal(inventedNumbers(o, i).length, 0, `ok: ${o} <- ${i}`);
 const bad = (o, i) => assert.ok(inventedNumbers(o, i).length > 0, `flagged: ${o} <- ${i}`);
 ok("led five engineers", "led 5 engineers");
@@ -19,4 +21,30 @@ m("re-\nsponsible", "responsible");
 m("end-to-end", "end-to-end");
 m("full-stack", "fullstack");
 m("full- stack", "full-stack");
+// Deterministic match % (D37)
+const JD = `About us\nWe need a Senior Frontend Engineer with React, TypeScript and Node.js.\nExperience with AWS, Docker, CI/CD and REST APIs. Knowledge of GraphQL is a plus.\nMust be a team player. EEO employer. Familiar with JS, SQL, WCAG and HIPAA. We value the rest of the team.`;
+const terms = extractTerms(JD);
+assert.deepEqual(terms, ["react", "typescript", "node.js", "aws", "docker", "ci/cd", "rest api", "graphql", "javascript", "sql", "web accessibility", "hipaa"]);
+assert.ok(!terms.includes("ci") && !terms.includes("cd") && !terms.includes("rest") && !terms.includes("eeo"));
+assert.deepEqual(extractTerms("We use Java and some C++ daily"), ["java", "c++"]);
+assert.ok(!extractTerms("javascript only").includes("java"));
+assert.deepEqual(extractTerms("go to market with great results"), []);
+assert.deepEqual(extractTerms("Backend in Go and Kubernetes (k8s)"), ["go", "kubernetes"]);
+assert.deepEqual(extractTerms(""), []);
+const r = matchText(JD, "Built React and typescript apps on AWS with docker, nodejs, SQL. Wrote JavaScript and RESTful APIs.");
+assert.equal(r.percent, Math.round((r.matched.length / 12) * 100));
+assert.deepEqual(r.matched, ["react", "typescript", "node.js", "aws", "docker", "rest api", "javascript", "sql"]);
+assert.deepEqual(r.missing, ["ci/cd", "graphql", "web accessibility", "hipaa"]);
+assert.equal(r.percent, 67);
+assert.equal(matchText("nothing technical here", "anything").percent, 0);
+assert.equal(matchText(JD, "").percent, 0);
+assert.ok(resumeToText({ summary: "S", skills: "k", experience: [{ title: "T", organization: "O", description: "D" }] }).includes("O"));
+// Weights shown in the UI are the ones in the prompt
+assert.equal(weightsForLevel("Junior (0-2 yrs)").level, "Junior");
+assert.equal(weightsForLevel("Senior").weights[0].value, 50);
+assert.equal(weightsForLevel("nonsense"), null);
+for (const g of Object.values(WEIGHT_GROUPS)) {
+  assert.equal(g.weights.reduce((a, w) => a + w.value, 0), 100);
+  for (const w of g.weights) assert.ok(weightsPromptText().includes(`${w.key} → ${w.value}`));
+}
 console.log("all self-checks passed");

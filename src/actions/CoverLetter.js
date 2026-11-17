@@ -16,6 +16,7 @@ const inputSchema = z.object({
   jobDescription: z.string().max(20000).nullish(),
 });
 
+const MAX_CONTENT = 10000;
 const fail = (code, error) => ({ error, code });
 
 export async function generateCoverLetter(data) {
@@ -91,6 +92,7 @@ RULES FOR THE JSON:
     console.error("generateCoverLetter failed:", safeErr(error));
     if (error?.code === "NO_SOURCES") return fail("NO_SOURCES", NO_SOURCES_MSG);
     if (error?.code === "AI_LIMIT") return fail("AI_LIMIT", "Daily AI limit reached. Please try again tomorrow.");
+    if (error?.code === "AI_UNAVAILABLE") return fail("AI_UNAVAILABLE", "AI is temporarily unavailable. Please try again later.");
     return fail("FAILED", "Failed to generate cover letter. Please try again.");
   }
 }
@@ -149,4 +151,39 @@ export async function deleteCoverLetter(id) {
       userId: user.id,
     },
   });
+}
+
+const updateSchema = z.object({
+  id: z.string().trim().min(1).max(100),
+  content: z.string().trim().min(1).max(MAX_CONTENT),
+});
+
+/**
+ * Saves the user's edited text. Owner-scoped. Keeps the stored `sources` untouched (the UI shows a
+ * "Based on" list when paragraphs no longer line up). Returns the updated row or { error, code }.
+ */
+export async function updateCoverLetter(id, content) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const parsed = updateSchema.safeParse({ id, content });
+  if (!parsed.success) {
+    return fail("INVALID", "Please enter some text (up to {MAX} characters) before saving.".replace("{MAX}", String(MAX_CONTENT)));
+  }
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+
+    const result = await db.coverLetter.updateMany({
+      where: { id: parsed.data.id, userId: user.id },
+      data: { content: parsed.data.content },
+    });
+    if (result.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
+
+    return await db.coverLetter.findFirst({ where: { id: parsed.data.id, userId: user.id } });
+  } catch (error) {
+    console.error("updateCoverLetter failed:", safeErr(error));
+    return fail("FAILED", "We couldn't save your changes. Please try again.");
+  }
 }
