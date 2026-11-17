@@ -1,42 +1,41 @@
-# Phase 1 Review (phase-1, 64bc610..HEAD)
+# Review: Phase 2 (branch phase-2, a5a40e6..HEAD)
 
-Summary: lint passes (0 errors, 1 warning in src/app/layout.js), `npm run build` passes, 0 must-fix found. 6 nice-to-haves. Caveat: node_modules is not readable by the reviewer, so the LangChain options and the PDF media block were checked only by the build and by reading the code, not against the library source.
+Phase 1 results: see git history of this file (commit a2cfd0c and earlier); Phase 1 had no open must-fix items.
+
+Summary: lint pass (0 errors, 1 pre-existing font warning in src/app/layout.js), build pass. 1 MUST-FIX, 7 NICE-TO-HAVE. Code review only; migration not applied, so nothing was run against a DB.
 
 ## MUST-FIX
-None.
+
+| # | Owner | File:line | Problem | Fix |
+|---|---|---|---|---|
+| 1 | BACKEND + FRONTEND | src/actions/Interview.js:100,142,167,205; src/app/(main)/(gated)/interview/mock/page.jsx:35-41; src/app/(main)/(gated)/interview/_components/Quiz.jsx:~84 (useFetch toast) | Next.js masks thrown server-action messages in production. The `AI_LIMIT:` prefix check in mock/page.jsx and the "Quiz already submitted" / "Quiz not found" messages only work in dev. In production the user sees a generic masked error, so the daily-limit UX the contract promises (API-CONTRACT s4) is broken for the quiz. The cap itself still blocks the request. | BACKEND: make `generateQuiz` and `submitQuiz` return `{ error, code }` for expected failures (`AI_LIMIT`, `ALREADY_SUBMITTED`, `NOT_FOUND`, `INVALID`, `FAILED`) instead of throwing; keep throwing only for `Unauthorized`. Update API-CONTRACT s2/s4. FRONTEND: branch on `result.code` in mock/page.jsx and Quiz.jsx (do not use `useFetch`'s `toast.error(error.message)` for these); show the friendly limit message on `AI_LIMIT`. |
 
 ## NICE-TO-HAVE
+
 | # | Owner | File:line | Problem | Fix |
-|---|-------|-----------|---------|-----|
-| 1 | BACKEND | src/lib/ai/index.js:158 (pdfPart) | Inline PDF block `{type:"media", mimeType, data}` is unverified against @langchain/google-genai ^2.3.6. Build cannot catch a wrong block shape. | Run one real ATS upload (or add a PDF case to test:ai). If rejected, use `{type:"file", mimeType, data}` or `{type:"image_url"}` per the installed converter. |
-| 2 (RESOLVED in 9cc2866) | BACKEND | src/lib/ai/index.js:14-20 (classify) | Regex `\b5\d\d\b` on the error message can misread text such as "500 characters" as a 5xx and retry or fall back. | Check numeric status first and only use the message regex for 429/quota. |
-| 3 (RESOLVED in 9cc2866) | BACKEND | src/actions/Resume.js:~202, CoverLetter.js, ColdEmail.js, Interview.js:65 | Parity drift: resume improve was temp 0.7 with maxOutputTokens 300, now `write` 0.4 with no token cap. Cover letter and cold email were 0.3 (now 0.4). Quiz was 0.3 (now 0). | Accept as D5/D15 consequence, or add an optional `maxOutputTokens` override in runAI. Mention in the changelog. |
-| 4 | BACKEND | src/actions/ResumeParser.js:187 | `analyzedBy` changed from "Gemini-2.5-Flash" to "AI". Existing rows differ from new ones. | Store the real model name (return it from runAI) or leave it. |
-| 5 (RESOLVED in 9cc2866) | BACKEND | src/actions/ResumeParser.js:371, Interview.js:143, ResumeParser.js:236-377 | Still `console.error(error)` with full error objects, and a stale `revalidatePath("/ats-scores/${id}")`. These are DB errors, not AI content, but a Prisma error can echo query values. | Log `error?.code` only. Change the revalidate path to `/resume-parser`. |
-| 6 | BACKEND | Dockerfile (builder stage) | `npm run build` runs in Docker with no env (.env is excluded). If Clerk keys are needed to prerender `/chat` or `/`, the image build may fail. Not testable here. | Pass NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY as a build ARG, or confirm `docker compose up --build` works. |
+|---|---|---|---|---|
+| 1 | FRONTEND | src/app/(main)/(gated)/interview/_components/Quiz.jsx (removed Explain button) | Mid-quiz "Explain" hint is gone (see verdict below). Needs owner sign-off against "never remove a feature". | Optional: BACKEND `explainAnswer(quizId, index, answer)` that only returns the explanation after the user has locked an answer; FRONTEND restores the button. Otherwise record the removal in DECISIONS.md. |
+| 2 | FRONTEND | src/app/(main)/(gated)/dashboard/_component/DashboardView.jsx:131-136 | "ask pip" quick input shows toast "pip received your request!" and opens chat, but the typed text is never sent (a leftover from the mock). Misleading. | Pass the text to `ChatSlideOver` as an initial message (auto-send) or drop the toast. |
+| 3 | FRONTEND | src/app/(main)/(gated)/interview/_components/QuizGenerateForm.jsx | Component has no importers (dead code; its `generateQuiz` call is untouched except the prop pass-through). | Delete it or wire it up; do not leave two generate paths. |
+| 4 | BACKEND | src/actions/Interview.js:163-206 | If the process dies between the claim and the `Assessment` insert, the session stays "submitted" with no result (release only runs on caught errors). | Do the claim and `assessment.create` in one `db.$transaction` (generate the tip before it). |
+| 5 | BACKEND | src/actions/Interview.js:10,45-49 | All-empty skills (e.g. `["  "]`) pass zod and produce a prompt with no skills. Contract says 1-100 chars. | `.min(1)` after trim, and reject when the cleaned list is empty. |
+| 6 | BACKEND | prisma QuizSession | Abandoned (never submitted) sessions accumulate with correct answers in the DB. | Periodic cleanup of unsubmitted rows older than e.g. 7 days. |
+| 7 | FRONTEND | src/components/shared/ResumePaperDoc.jsx:8-10 | "Aarav Sharma" sample is still used on the public landing page (src/app/page.js) and /tools/resume. The landing use has no "sample" label. | Label it as a sample on the landing page. |
 
-## Checklist results
-- Middleware: all 10 listed prefixes use `(.*)`, so subpaths are covered. `/api/chat` is not matched by the redirect. The route itself returns 401 JSON (signed out), 400 for bad JSON or a bad body, with zod validation. OK.
-- (gated) layout: `/onboarding` is in `(main)` outside `(gated)`, so no redirect loop. Signed-out "Unauthorized" passes through only because middleware has already redirected. Other errors rethrow to error.jsx. `/chat` is outside the gate (auth only), consistent with the plan. OK.
-- runAI: route comes from env only, no hardcoded models. Fallback on 429/5xx/timeout, immediate throw otherwise (per spec). 60s cooldown only on rate limit, round-robin with a per-call tried set. Structured retry-once on parse or schema failure. Error messages contain provider and code only, with no keys or content. `maxRetries: 0` is set so retries are not hidden. AIOutputError is declared after use but only invoked at runtime, so there is no TDZ issue.
-- Privacy: content is logged only through debugLog (AI_DEBUG=1 and not production). Raw logs removed from Interview, ResumeParser and CareerRoadmap. Client-facing errors are generic. Roadmap recommendations fall back to a canned string on AI failure, which is the same behavior class as before.
-- Parity: all 6 actions keep their inputs. Quiz returns an array of 10 questions (sliced). ATS returns `{success, data}`, and atsScore 0 is now accepted. Cover letter, cold email and resume improve return the same shapes. Cover letter now throws a generic Error instead of the raw one. No dangling imports of AiServices (grep clean).
-- Prisma: migration SQL matches the AiUsage model (columns, nullability, both indexes). Added as a new migration only.
-- Docker: port 3000:3000, node:20-alpine in all stages, .env and .env.* excluded except .env.example, `prisma migrate deploy` runs before `node server.js`, env via env_file at runtime. OK.
-- Secrets: .env is not tracked, and only .env.example is in git.
+## Checks that passed
 
-## Done-when
-- No `@google/genai` outside src/lib/ai: PASS (zero matches in src, scripts, package.json; the dependency was removed).
-- Every AI call via runAI: PASS.
-- Routes redirect signed-out users: PASS (by code review; not browser-tested).
-- npm run build: PASS.
-- All 6 tools still work: PASS by code review; live behavior (especially the PDF block, nice-to-have 1) not run.
+- Contract parity: Dashboard fields/hrefs, quiz generate/submit shapes, chat SSE events (`step`, `text`, `tool_result`, `done`, terminal `error` with `AI_LIMIT`), all 5 card types and their hrefs (`/resume-parser`, `/cover-letter/<id>`, `/cold-email/<id>`, `/roadmap/<id>`, `/interview`) match the consumers. Unknown card types render nothing.
+- Scoping: every query in Dashboard.js, Interview.js (QuizSession `findFirst` and `updateMany` include `userId`) and chatContext.js is scoped by the user's DB id. Clerk auth on `/api/chat`, `getDashboardData`, `generateQuiz`, `submitQuiz`.
+- Quiz: `generateQuiz` returns only `{question, options}`; correct answers and explanations stay server-side. Score is computed on the server; the claim is atomic (`updateMany ... submittedAt: null`, count must be 1) and is released if the Assessment insert fails. The tip failure does not fail the submit. Zod on `skills`, `quizId`, `answers`, and chat `message`.
+- Chat: system prompt restricts answers to the USER DATA block, treats it as data, and forbids inventing facts. Cards are resolved from a server-built index (foreign, unknown, wrong-type and duplicate ids dropped, max 3). The only write is `AiUsage` (via `runAI`). Errors are friendly codes; no raw messages.
+- Nothing invented: `grep -rn "lib/mock" src` only matches the 6 `src/app/(main)/(gated)/tools/*/page.jsx` files. No fake names, companies or scores in the dashboard, sidebar or chat.
+- Daily cap: counts today's (UTC) `AiUsage` rows by the same Clerk id that `logAttempt` writes; returns false (no cap) when `AI_DAILY_LIMIT` is unset or invalid; fails open with one warning if the table or client is missing.
+- Migration `20261117010000_quiz_session` matches schema.prisma (columns, `QuizSession_userId_idx`, FK to User with RESTRICT/CASCADE as Prisma generates).
+- `/tools/*` layout shows the non-dismissable preview banner with a link to the real route; the sidebar main nav uses real routes and keeps a Previews group.
 
-## Follow-up round (9cc2866)
-Lint: 0 errors, 1 warning (same layout.js font warning). Build: PASS. MUST-FIX: none. Nice-to-haves 2, 3 and 5 are resolved.
+## Feature-removal verdicts
 
-- (a) Override works: `tempOverride ?? TASKS[task].temperature` (so an explicit 0 is honored); `maxOutputTokens` is added to the Google constructor only when truthy, so it is omitted otherwise. runAIText and runAIStructured both forward the options.
-- (b) Quiz 0.3; improveWithAI 0.7 with 300 tokens. Cover letter and cold email use the default (write, 0.4), as intended.
-- (c) classify now takes only a 3-digit numeric status from status/statusCode/response.status/code, and 5xx is limited to 500-599. The message regex no longer matches `5\d\d`. 429, 5xx and timeouts are still retried. Retrying "fetch failed" and ECONNRESET is reasonable: they are transient network errors, and the fallback to the next key or model is cheap. Nit: `\b429\b` in the message text can still match, for example "429 characters". This is low risk and was not changed.
-- (d) The `/ats-scores/${id}` revalidate is gone (grep clean). No `console.error` in src/actions logs a whole error object. They log `error?.message` or `code`/`name`. Nit: `error?.message` on a Prisma error can echo query values, so `error?.code` would be safer. The earlier log text also reads oddly ("Error saving quiz result failed").
-- (e) No returned shapes changed (the diff touches only logging, params and classify). Build passes.
+1. Quiz "Explain" button: a real user capability was lost. Before, after picking an answer the user could click Explain and read the coach explanation for that question mid-quiz. Now explanations only appear in the results screen after submit. This is required by D20: sending explanations (which reveal the answer) before submit would defeat server-side scoring. Verdict: acceptable but needs owner sign-off (nice-to-have 1).
+2. `getLatestQuiz` fallback in Quiz.jsx: no user-facing capability lost. `Quiz` is only mounted from interview/mock/page.jsx, which always passes `initialQuestions` (an array, even when empty, so the old `!initialQuestions` branch never ran). Resuming or re-showing a previous quiz was never reachable. `getLatestQuiz` is still exported and unchanged but now has no callers. The Assessment history on /interview is unaffected.
+3. Local task toggle on the dashboard: mock behavior only. It flipped local React state on hard-coded mock tasks and persisted nothing. Real roadmap steps are completed on /roadmap/<id>; the dashboard now links each task there. Nothing real was lost.
+4. Old mock chat cards (`resume_edit`, `interview_question`, `roadmap_task`): mock only. They displayed invented data and wrote nothing real. The user can no longer see canned "edit/question/task" cards; they now get real ATS, cover letter, cold email, roadmap and assessment cards that link to the real record. Nothing real was lost.
