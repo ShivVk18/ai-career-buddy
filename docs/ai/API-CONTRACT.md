@@ -66,7 +66,7 @@ Errors: throws `Error("Unauthorized")` when signed out. If the DB user row does 
 ## 2. Interview quiz (`src/actions/Interview.js`, server actions)
 
 ### `generateQuiz(skills)`
-- Input: `skills: string[]` (max 20 items, each trimmed, 1-100 chars; empty strings are dropped). Invalid input throws `Error("Invalid skills")`.
+- Input: `skills: string[]` (max 20 items, each trimmed, 1-100 chars; list must have at least 1 item; blank or over-long items are rejected, not dropped). Invalid input returns `{ error, code: "INVALID" }`.
 - Returns:
 
 ```ts
@@ -77,11 +77,21 @@ Errors: throws `Error("Unauthorized")` when signed out. If the DB user row does 
 ```
 
 - Breaking change: it used to return the bare `Question[]` array including `correctAnswer`/`explanation`.
-- Errors (thrown `Error` with these messages): `"Unauthorized"`, `"Failed to generate quiz. Please try again."`. If the daily cap is hit the message is `"AI_LIMIT: Daily AI limit reached"` (the message starts with `AI_LIMIT`; see section 4).
+- Errors: only signed-out THROWS (`Error("Unauthorized")`). Expected failures are RETURNED (Next masks thrown messages in production):
+
+```ts
+{ error: string, code: "AI_LIMIT" | "NOT_FOUND" | "INVALID" | "FAILED" }
+```
+
+Examples:
+`{ error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" }`
+`{ error: "Please provide 1-20 skills, each 1-100 characters.", code: "INVALID" }`
+`{ error: "Failed to generate quiz. Please try again.", code: "FAILED" }`
+(`NOT_FOUND` = DB user row missing.) Callers must check `result.code` / `result.error` before using `quizId`.
 
 ### `submitQuiz(quizId, answers)`
 - Input: `quizId: string` (non-empty, max 64); `answers: (string | null)[]`, one entry per question in order, each the exact option text chosen, or `null` for unanswered. Length must equal the number of questions. Unanswered or unknown text counts as wrong.
-- Server loads the session by `quizId` AND the user's id (foreign or unknown ids behave as not found), rejects an already-submitted session, computes the score, writes the `Assessment` (same shape as before: `quizScore`, `questions` Json[], `category: "Technical"`, `improvementTip`), and marks the session submitted (atomically, so a double submit cannot score twice).
+- Server loads the session by `quizId` AND the user's id (foreign or unknown ids behave as not found), rejects an already-submitted session, computes the score, writes the `Assessment` (same shape as before: `quizScore`, `questions` Json[], `category: "Technical"`, `improvementTip`), and marks the session submitted. The claim and the `Assessment` insert run in ONE `db.$transaction` (a double submit cannot score twice; a crash cannot leave a submitted quiz without a result). The improvement tip AI call runs before and outside the transaction; if it fails, `improvementTip` is `null`.
 - Returns:
 
 ```ts
@@ -102,7 +112,16 @@ Errors: throws `Error("Unauthorized")` when signed out. If the DB user row does 
 }
 ```
 
-- Errors (thrown `Error`, `message` is one of): `"Unauthorized"`, `"Invalid quiz submission"` (zod/length failure), `"Quiz not found"` (unknown or not yours), `"Quiz already submitted"`, `"Failed to save quiz result"`.
+- Errors: only signed-out THROWS (`Error("Unauthorized")`). Expected failures are RETURNED as `{ error: string, code }`:
+
+| code | when | example `error` |
+|---|---|---|
+| `INVALID` | zod/length failure | `"Invalid input. Please check your submission and try again."` |
+| `NOT_FOUND` | unknown quiz, not yours, or no DB user | `"Quiz not found."` |
+| `ALREADY_SUBMITTED` | session already submitted (incl. lost double-submit race) | `"This quiz has already been submitted."` |
+| `FAILED` | unexpected/DB error (nothing is saved; the transaction rolled back so the user can retry) | `"Failed to save quiz result. Please try again."` |
+
+Example: `{ error: "This quiz has already been submitted.", code: "ALREADY_SUBMITTED" }`. Success shape is the object above (no `error`/`code` keys).
 - A tip failure (including `AI_LIMIT`) never fails the submit; the tip is just `null`.
 
 ### `saveQuizResult(questions, answers, score)`  - DEPRECATED
@@ -207,7 +226,7 @@ Grounding: the model gets only the user's profile (industry, skills, experience,
 - The count is checked once per `runAI` call. A call that retries providers still counts one attempt per provider try.
 - Surfacing it:
   - `/api/chat`: SSE `error` event with `code: "AI_LIMIT"` (section 3).
-  - Server actions that use AI (`generateQuiz`, `generateCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `createATSAnalysis`, `improveWithAI`, `generateProgressRecommendations`): Next.js hides thrown messages in production for uncaught errors, so the existing catch blocks in those actions keep their current generic messages. Only `generateQuiz` is guaranteed to carry the `AI_LIMIT` prefix in its thrown message (`"AI_LIMIT: Daily AI limit reached"`). For the other actions, the UI will see their existing failure message; improving this is out of scope for Phase 2.
+  - Server actions that use AI (`generateQuiz`, `generateCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `createATSAnalysis`, `improveWithAI`, `generateProgressRecommendations`): Next.js hides thrown messages in production for uncaught errors, so the existing catch blocks in those actions keep their current generic messages. Only `generateQuiz` surfaces it reliably: it RETURNS `{ error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" }` (no message-prefix convention anymore). For the other actions, the UI will see their existing failure message; improving this is out of scope for Phase 2.
 
 Frontend handling: on `AI_LIMIT` show a friendly "daily limit reached, try again tomorrow" message, not a generic failure.
 

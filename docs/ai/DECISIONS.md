@@ -49,3 +49,5 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D20 | Quiz scoring (D10) | Done in Phase 2. Generated quizzes are stored on the server, correct answers never reach the browser before submit, and the score is computed on the server. One quiz can't be submitted twice. |
 | D21 | AI usage cap | A per-user daily cap counts today's `AiUsage` rows against `AI_DAILY_LIMIT`. Over the limit, `runAI` throws `AIError` with code `AI_LIMIT`. If the table is missing (migration not applied), the cap is skipped with a warning. |
 | D22 | Migrations | Agents write migration SQL only. The owner applies `AiUsage` and the Phase 2 migration after resolving the dev DB drift. |
+| D23 | Quiz "Explain" | Accepted: explanations show on the results screen after submit, not mid-quiz, because they would reveal answers (D20). |
+| D24 | Small leftovers | The landing footer links go to the real routes, and the dashboard "ask pip" box sends the typed text to chat. Both are fixed in the Phase 2 fix round. |
