@@ -4,8 +4,8 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { buildSources, formatCatalogForPrompt } from "@/lib/ai/sources";
-import { generateSourcedParagraphs, allowedNumberText } from "@/lib/ai/paragraphs";
-import { runAIStructured } from "@/lib/ai";
+import { generateSourcedParagraphs, allowedNumberText, withUpdatedHashes } from "@/lib/ai/paragraphs";
+import { runAIStructured, withAiAction } from "@/lib/ai";
 import { shortenSchema } from "@/lib/ai/schemas";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { safeErr } from "@/lib/utils";
@@ -99,7 +99,12 @@ function genError(error, what) {
   return fail("FAILED", `Failed to ${what}. Please try again.`);
 }
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function generateCoverLetter(data) {
+  return withAiAction(() => generateCoverLetterImpl(data));
+}
+
+async function generateCoverLetterImpl(data) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -245,7 +250,12 @@ export async function updateCoverLetter(id, content) {
  * D43: replaces content and sources of the SAME row with a fresh generation (new tone and/or more
  * formal). The previous text and edits are lost, so the UI confirms first. Owner-scoped.
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function regenerateCoverLetter(id, opts) {
+  return withAiAction(() => regenerateCoverLetterImpl(id, opts));
+}
+
+async function regenerateCoverLetterImpl(id, opts) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -296,7 +306,12 @@ const SHORTEN_NOTE =
  * stored sources exactly (no new ids); greeting and closing are untouched. Numbers must already appear
  * in the current text (inventedNumbers). Owner-scoped.
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function shortenCoverLetter(id) {
+  return withAiAction(() => shortenCoverLetterImpl(id));
+}
+
+async function shortenCoverLetterImpl(id) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -379,7 +394,8 @@ OUTPUT: valid JSON only, no markdown fences:
 
     const updated = await db.coverLetter.updateMany({
       where: { id: row.id, userId: user.id, content: row.content }, // not changed since we read it
-      data: { content: res.next.join("\n\n") }, // sources stay exactly as stored
+      // Source ids stay exactly as stored; only the hash of a rewritten paragraph is refreshed (when it had one).
+      data: { content: res.next.join("\n\n"), sources: withUpdatedHashes(row.sources, paras, res.next) },
     });
     if (updated.count === 0) return fail("FAILED", "The letter changed while shortening. Please try again.");
     return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } }));

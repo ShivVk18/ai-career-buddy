@@ -332,7 +332,7 @@ Contract change: used to return a string and throw. Now returns
 ### 6.8 `saveResume` stable ids
 `saveResume` adds a stable `id` (`"e_" + 12 hex`) to every `experience`, `education` and `projects` entry that lacks one, and keeps existing ids (duplicates within one array are regenerated). Only saving does this; nothing is batch-rewritten. The saved resume returned by `saveResume` / `getResume` includes the ids. **The client must send entries back with their `id`** (react-hook-form + `entrySchema` in `src/app/lib/schema.js` will strip an `id` unless the schema has `id: z.string().optional()`; use it as the React key).
 
-### 6.9 Schema changes (migration `20261118000000_phase3_sources`, NOT applied by the agent)
+### 6.9 Schema changes (migration `20261117020000_phase3_sources`, NOT applied by the agent)
 `CoverLetter.sources Json?`, `ColdEmail.sources Json?`, `ATSScore.evidence Json?`, `User.email` becomes optional (the code no longer writes `""` or `...@placeholder.com`; email is the Clerk primary email or null). Until the migration is applied, generators that write `sources`/`evidence` will fail with `FAILED`.
 
 
@@ -437,7 +437,7 @@ In production, if the `AiUsage` count can't be read, `runAI` throws `AIError` co
 
 ## 8. Phase 5 (D34, D35, D40-D43): writing tools, ATS delete and purge, redirects
 
-One migration `20261119000000_cold_email_fields` (SQL only, NOT applied by the agent): optional columns on `ColdEmail`: `recipientName`, `recipientRole`, `recipientEmail`, `subject` (all `String?`) and `followUpAt` (`DateTime?`), plus an index on `(userId, followUpAt)`. Until it is applied, the cold email actions fail with `FAILED`. All actions are `"use server"`: signed-out throws `Error("Unauthorized")`; every expected failure is RETURNED as `{ error, code }` (`error` is user-safe). Everything is owner-scoped. Check `result.error` first. Nothing here sends anything (D35).
+One migration `20261117030000_cold_email_fields` (SQL only, NOT applied by the agent): optional columns on `ColdEmail`: `recipientName`, `recipientRole`, `recipientEmail`, `subject` (all `String?`) and `followUpAt` (`DateTime?`), plus an index on `(userId, followUpAt)`. Until it is applied, the cold email actions fail with `FAILED`. All actions are `"use server"`: signed-out throws `Error("Unauthorized")`; every expected failure is RETURNED as `{ error, code }` (`error` is user-safe). Everything is owner-scoped. Check `result.error` first. Nothing here sends anything (D35).
 
 New codes: `NOT_SHORTENABLE` (see 8.2) and `MIGRATION_PENDING` (see 8.3). Other codes as in 6.3 and 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVENTED_DETAIL`, `INVALID`, `NOT_FOUND`, `FAILED`).
 
@@ -504,7 +504,7 @@ Also `counts.dueFollowUps: number` is NOT added; use `dueFollowUps.length` (a us
 
 ## 9. Phase 6 (D44-D48): open interview practice, roadmap parity, redirects
 
-Conventions as before: only signed-out THROWS `Error("Unauthorized")`; expected failures are RETURNED as `{ error, code }`. Every query is scoped to the signed-in user's rows. New codes: `ALREADY_SCORED` and `SCORING_IN_PROGRESS` (9.2) and `MIGRATION_PENDING` (also for interview actions when the `interview_answer` migration is not applied; no AI call is spent). Other codes as in 6.3 / 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVALID`, `NOT_FOUND`, `FAILED`). New migration `20261120000000_interview_answer` (SQL only, NOT applied by the agent).
+Conventions as before: only signed-out THROWS `Error("Unauthorized")`; expected failures are RETURNED as `{ error, code }`. Every query is scoped to the signed-in user's rows. New codes: `ALREADY_SCORED` and `SCORING_IN_PROGRESS` (9.2) and `MIGRATION_PENDING` (also for interview actions when the `interview_answer` migration is not applied; no AI call is spent). Other codes as in 6.3 / 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVALID`, `NOT_FOUND`, `FAILED`). New migration `20261117040000_interview_answer` (SQL only, NOT applied by the agent).
 
 ### 9.1 `src/lib/interview/rubric.js` (plain JS, no imports; safe in server and UI)
 
@@ -597,3 +597,24 @@ Open questions live in `QuizSession.questions` as items `{ type: "open", questio
 
 - `generateColdEmail`: before the AI call it probes the Phase 5 columns with a one-row `findFirst`. Missing columns (Prisma P2022) => `{ error, code: "MIGRATION_PENDING" }` with NO AI call and no `AiUsage` row. Other DB errors => `FAILED`.
 - Redirects (`next.config.mjs`, permanent 308): `/tools/interview` -> `/interview`, `/tools/roadmap` -> `/roadmap`, `/tools` -> `/dashboard` (plus the four from 8.6). The middleware `/tools(.*)` guard stays (harmless).
+
+## 10. Phase 7 (D49-D53): cap per action, profile validation, paragraph hashes
+
+### 10.1 Migrations (SQL only, NOT applied by the agent)
+Apply order (renamed so they sort after `20261117010000_quiz_session`; contents unchanged): `20261117000000_ai_usage`, `20261117010000_quiz_session`, `20261117020000_phase3_sources`, `20261117030000_cold_email_fields`, `20261117040000_interview_answer`, then NEW `20261117050000_ai_usage_action_id` (adds nullable `AiUsage.actionId` and index `(userId, createdAt)`). Runbook: `docs/ai/DEPLOY.md`. Before the new migration is applied the cap query fails: production blocks AI with `AI_UNAVAILABLE` (D33), dev fails open.
+
+### 10.2 Cap counts one per user action (amends section 4 and 7.8, D50)
+- `withAiAction(fn)` (`src/lib/ai/action.js`, re-exported from `@/lib/ai`) gives one `actionId` to every `runAI` call made inside it. The cap is checked once, right before the first call of the action; later calls in the same action (retries, re-scores, regenerate/shorten second try) are never blocked part-way. Every call is still logged as an `AiUsage` row (with `actionId`).
+- Used count = distinct `actionId`s today (UTC) + legacy rows with `actionId` NULL counted individually. Over the limit => the NEXT action returns `AI_LIMIT`. Disabled with `AI_DAILY_LIMIT=0`; unset = 50 actions/day.
+- Wrapped entry points: `improveWithAI`, `tailorResume`, `createATSAnalysis`, `proposeAtsFix`, `applyAtsFix`, `generateCoverLetter`, `regenerateCoverLetter`, `shortenCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `generateProgressRecommendations`, `generateQuiz`, `submitQuiz` (tip), `generateOpenQuestions`, `scoreOpenAnswer`, and the `/api/chat` POST. No request or response shape changed. UI: the "N per day" copy now means actions, not calls.
+
+### 10.3 `updateUser(data)` (`src/actions/User.js`)
+Input is validated with zod: `industry` string 1-100, `experience` integer 0-60 (numeric strings accepted), `skills` array of at most 50 strings of 1-50 chars (optional), `bio` at most 500 chars (optional). Signed out still THROWS `Error("Unauthorized")`. Everything else is RETURNED: `{ error: string, code: "INVALID" | "NOT_FOUND" | "FAILED" }` (these used to throw). Success returns the updated user row spread plus `success: true` (the onboarding form already checks `result.success`). The form must show `result.error` when present. `IndustryInsight` rows created here are placeholders only (FK); nothing reads or shows them (Phase 8).
+
+### 10.4 Paragraph hashes (cover letter, cold email)
+`sources.paragraphs[i]` is now `{ kind, hash, sources }` on NEW generations (`generateCoverLetter`, `generateColdEmail`, `regenerateCoverLetter`). `hash = paragraphHash(text)` from `src/lib/entryIds.js` (plain, isomorphic: FNV-1a base36, 7 chars, over the paragraph text with whitespace collapsed and trimmed). `shortenCoverLetter` refreshes `hash` for every paragraph it rewrote (source ids untouched). Legacy rows have no `hash`: use the old index rule. To map chips in the UI: split content on blank lines, `paragraphHash(each)`, find the stored paragraph with the same `hash`; no match means the paragraph was edited (show no chips).
+
+### 10.5 Other
+- `derive.js`: generic phrases ("customer facing", "cross functional", "fast paced", "best practices", ...) no longer produce step targets.
+- Sentry (D51) is server/browser inert without `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`; no API change.
+- `npm test` (Vitest) runs the unit tests; `node scripts/selfcheck-matching.mjs` still works.

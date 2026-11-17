@@ -3,7 +3,7 @@
 import { db } from "@/lib/prisma";
 import { pruneOldSessions } from "@/lib/interview/prune";
 import { auth } from "@clerk/nextjs/server";
-import { runAIStructured, runAIText } from "@/lib/ai";
+import { runAIStructured, runAIText, withAiAction } from "@/lib/ai";
 import { quizSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
@@ -24,7 +24,12 @@ const MESSAGES = {
 };
 const fail = (code, message) => ({ error: message || MESSAGES[code], code });
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function generateQuiz(skills) {
+  return withAiAction(() => generateQuizImpl(skills));
+}
+
+async function generateQuizImpl(skills) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
@@ -135,7 +140,12 @@ async function generateImprovementTip(industry, wrongAnswers, userId) {
   return runAIText("write", () => [["user", prompt]], { userId });
 }
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function submitQuiz(quizId, answers) {
+  return withAiAction(() => submitQuizImpl(quizId, answers));
+}
+
+async function submitQuizImpl(quizId, answers) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 

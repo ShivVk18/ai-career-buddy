@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { runAIStructured, runAIText } from "@/lib/ai";
+import { runAIStructured, runAIText, withAiAction } from "@/lib/ai";
 import { roadmapSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
@@ -20,7 +20,12 @@ const fail = (code, error) => ({ error, code });
 const stepProgress = (steps) =>
   steps.length ? (steps.filter((st) => st && st.completed).length / steps.length) * 100 : 0;
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function generateCareerRoadmap(rawData) {
+  return withAiAction(() => generateCareerRoadmapImpl(rawData));
+}
+
+async function generateCareerRoadmapImpl(rawData) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -337,7 +342,12 @@ export async function deleteCareerRoadmap(id) {
   });
 }
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function generateProgressRecommendations(id) {
+  return withAiAction(() => generateProgressRecommendationsImpl(id));
+}
+
+async function generateProgressRecommendationsImpl(id) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 

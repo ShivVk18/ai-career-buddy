@@ -7,7 +7,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createHmac, createHash, timingSafeEqual, randomBytes } from "node:crypto";
-import { runAIStructured } from "@/lib/ai";
+import { runAIStructured, withAiAction } from "@/lib/ai";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { weightsPromptText } from "@/lib/ats/weights";
 import { validateAndExtractPdf, INVALID_FILE_MSG } from "@/lib/ai/pdf";
@@ -313,7 +313,12 @@ async function purgeOldResumeText(userDbId) {
  * code: INVALID_FILE | NO_SOURCES | AI_LIMIT | INVALID | FAILED. Input: resumeBase64 (raw base64
  * of the PDF), optional resumeType (MIME type of the file).
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function createATSAnalysis(formData) {
+  return withAiAction(() => createATSAnalysisImpl(formData));
+}
+
+async function createATSAnalysisImpl(formData) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -671,7 +676,12 @@ const proposeInput = z.object({ scoreId: z.string().trim().min(1).max(100), weak
  * or { error, code: INVALID | NOT_FOUND | NEEDS_REUPLOAD | NO_SOURCES | INVENTED_DETAIL | AI_LIMIT | AI_UNAVAILABLE | FAILED }.
  * Changes nothing and does not touch the score or the main resume.
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function proposeAtsFix(scoreId, weaknessIndex) {
+  return withAiAction(() => proposeAtsFixImpl(scoreId, weaknessIndex));
+}
+
+async function proposeAtsFixImpl(scoreId, weaknessIndex) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -789,7 +799,12 @@ const applyInput = z.object({ scoreId: z.string().trim().min(1).max(100), fixId:
  * a fresh analysis, and saves a NEW ATSScore (evidence.previousScoreId). The old score and the main resume
  * are never changed.
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function applyAtsFix(scoreId, fixId) {
+  return withAiAction(() => applyAtsFixImpl(scoreId, fixId));
+}
+
+async function applyAtsFixImpl(scoreId, fixId) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 

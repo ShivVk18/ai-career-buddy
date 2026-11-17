@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
 import { z } from "zod";
+import { withAiAction } from "@/lib/ai";
 import { buildSources, formatCatalogForPrompt, snapshot } from "@/lib/ai/sources";
 import { generateSourcedParagraphs, allowedNumberText } from "@/lib/ai/paragraphs";
 import { safeErr } from "@/lib/utils";
@@ -71,7 +72,12 @@ const LIST_SELECT = {
   updatedAt: true,
 };
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function generateColdEmail(data) {
+  return withAiAction(() => generateColdEmailImpl(data));
+}
+
+async function generateColdEmailImpl(data) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 

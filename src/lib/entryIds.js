@@ -4,7 +4,7 @@
 const SECTION_KEYS = { exp: "experience", edu: "education", proj: "projects" };
 
 /** FNV-1a 32-bit, base36. Sync and environment independent. */
-function fnv1a(str) {
+export function fnv1a(str) {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
@@ -37,4 +37,13 @@ export function ensureEntryIds(resumeJson) {
     });
   }
   return out;
+}
+
+/**
+ * Short stable hash of a paragraph's text (whitespace collapsed, trimmed, case kept): 7 chars, base36.
+ * Same result on the server and in the browser. Stored as sources.paragraphs[i].hash so the UI can map
+ * source chips to a paragraph even after other paragraphs are edited.
+ */
+export function paragraphHash(text) {
+  return fnv1a(String(text ?? "").replace(/\s+/g, " ").trim());
 }

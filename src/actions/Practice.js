@@ -3,7 +3,7 @@
 import { db } from "@/lib/prisma";
 import { pruneOldSessions } from "@/lib/interview/prune";
 import { auth } from "@clerk/nextjs/server";
-import { runAIStructured } from "@/lib/ai";
+import { runAIStructured, withAiAction } from "@/lib/ai";
 import { openQuestionsSchema, rubricSchema } from "@/lib/ai/schemas";
 import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
 import { inventedQuestionNumbers } from "@/lib/ai/numberCheck";
@@ -92,7 +92,12 @@ const publicAnswer = (a) =>
 // ---------------------------------------------------------------------------------------------------------
 // generateOpenQuestions
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function generateOpenQuestions(input) {
+  return withAiAction(() => generateOpenQuestionsImpl(input));
+}
+
+async function generateOpenQuestionsImpl(input) {
   try {
     const clerkId = await getUserId();
     const parsed = generateSchema.safeParse(input ?? {});
@@ -238,7 +243,12 @@ function buildRubric(r, answerText, allowed) {
   };
 }
 
+// D50: one cap-counted action, however many AI calls it makes.
 export async function scoreOpenAnswer(sessionId, index, answerText) {
+  return withAiAction(() => scoreOpenAnswerImpl(sessionId, index, answerText));
+}
+
+async function scoreOpenAnswerImpl(sessionId, index, answerText) {
   try {
     const clerkId = await getUserId();
     const parsed = scoreSchema.safeParse({ sessionId, index, answerText });

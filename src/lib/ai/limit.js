@@ -1,4 +1,5 @@
-// Per-user daily AI cap (D21). Counts today's AiUsage rows (UTC day) for a user.
+// Per-user daily AI cap (D21, D50). Counts today's user ACTIONS (UTC day): distinct AiUsage.actionId,
+// plus legacy rows with a null actionId counted individually. Every call is still logged.
 // If usage can't be read: fails CLOSED in production (D33), fails open with one warning in dev.
 import { db } from "../prisma.js";
 
@@ -16,6 +17,18 @@ export function getDailyLimit() {
 export const isProduction = () => process.env.NODE_ENV === "production";
 
 /**
+ * Distinct actions since `start`. Uses the (userId, createdAt) index; one aggregate, no row transfer.
+ * COUNT(DISTINCT) ignores NULLs, so null-actionId (legacy) rows are added back one by one.
+ */
+export async function countActionsToday(userId, start) {
+  const rows = await db.$queryRaw`
+    SELECT COUNT(DISTINCT "actionId") + COUNT(*) FILTER (WHERE "actionId" IS NULL) AS used
+    FROM "AiUsage"
+    WHERE "userId" = ${userId} AND "createdAt" >= ${start}`;
+  return Number(rows?.[0]?.used ?? 0);
+}
+
+/**
  * Returns "ok" | "over" | "unavailable".
  * "unavailable" only in production when usage can't be read (D33); dev fails open with a warning.
  */
@@ -25,7 +38,7 @@ export async function checkDailyLimit(userId) {
   try {
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
-    const used = await db.aiUsage.count({ where: { userId, createdAt: { gte: start } } });
+    const used = await countActionsToday(userId, start);
     return used >= limit ? "over" : "ok";
   } catch {
     if (isProduction()) {

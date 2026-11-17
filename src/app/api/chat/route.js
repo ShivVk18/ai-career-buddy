@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
-import { runAIStructured } from "@/lib/ai";
+import { runAIStructured, withAiAction } from "@/lib/ai";
 import { SYSTEM_PROMPT, buildChatContext, chatOutputSchema, resolveCards } from "@/lib/ai/chatContext";
 import { safeErr } from "@/lib/utils";
 
@@ -61,7 +61,7 @@ export async function POST(req) {
           const { contextText, cardIndex } = await buildChatContext(user.id);
           send({ type: "step", step: "thinking", text: "putting an answer together..." });
 
-          const out = await runAIStructured(
+          const out = await withAiAction(() => runAIStructured(
             "write",
             chatOutputSchema,
             () => [
@@ -69,7 +69,7 @@ export async function POST(req) {
               ["user", message],
             ],
             { userId, temperature: 0.2 }
-          );
+          ));
 
           send({ type: "text", content: out.reply.trim() });
           for (const card of resolveCards(out.cards, cardIndex)) {

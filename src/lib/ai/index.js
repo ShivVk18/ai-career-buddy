@@ -1,12 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { getRoute, TASKS } from "./tasks.js";
 import { createModel, isSupportedProvider } from "./providers.js";
 import { nextKey, coolDown, getKeys } from "./keys.js";
 import { logAttempt, debugLog } from "./log.js";
 import { checkDailyLimit } from "./limit.js";
+import { currentAiAction } from "./action.js";
 
 const TIMEOUT_MS = 90_000;
 
 /** Thrown when AI cannot be used. Message never contains keys or user content. */
+export { withAiAction } from "./action.js";
+
 export class AIError extends Error {
   constructor(message, { code = "AI_UNAVAILABLE", attempts = [] } = {}) {
     super(message);
@@ -53,10 +57,16 @@ export async function runAI(task, callback, { userId, temperature: tempOverride,
     throw new AIError(e.message, { code: "AI_CONFIG" });
   }
 
-  if (userId) {
+  // D50: inside withAiAction() all calls share one actionId and the cap is checked once, before the
+  // first call, so retries and re-scores later in the same action are never blocked part-way.
+  // Outside an action, each call is its own action (checked every time).
+  const action = currentAiAction();
+  const actionId = action?.actionId ?? randomUUID();
+  if (userId && !action?.capChecked) {
     const cap = await checkDailyLimit(userId);
     if (cap === "over") throw new AIError("Daily AI limit reached", { code: "AI_LIMIT" });
     if (cap === "unavailable") throw new AIError("AI is temporarily unavailable", { code: "AI_UNAVAILABLE" });
+    if (action) action.capChecked = true;
   }
 
   const temperature = tempOverride ?? TASKS[task].temperature;
@@ -84,12 +94,12 @@ export async function runAI(task, callback, { userId, temperature: tempOverride,
       try {
         const chat = createModel(provider, model, k.key, { temperature, maxOutputTokens });
         const result = await withTimeout(Promise.resolve(callback(chat)));
-        logAttempt({ userId, task, provider, model, ok: true, latencyMs: Date.now() - started });
+        logAttempt({ userId, actionId, task, provider, model, ok: true, latencyMs: Date.now() - started });
         return result;
       } catch (err) {
         const kind = classify(err);
         const code = kind || (err?.name === "AIOutputError" ? "invalid_output" : "error");
-        logAttempt({ userId, task, provider, model, ok: false, latencyMs: Date.now() - started, errorCode: code });
+        logAttempt({ userId, actionId, task, provider, model, ok: false, latencyMs: Date.now() - started, errorCode: code });
         debugLog("error", err);
         if (!kind) {
           throw new AIError(`AI request failed (${provider}: ${code})`, {

@@ -4,6 +4,7 @@ import { runAIStructured } from "./index.js";
 import { paragraphsSchema, emailParagraphsSchema } from "./schemas.js";
 import { validateSourceIds, snapshot } from "./sources.js";
 import { inventedNumbers } from "./numberCheck.js";
+import { paragraphHash } from "../entryIds.js";
 
 export class NoSourcesError extends Error {
   constructor() {
@@ -68,7 +69,7 @@ const unsourced = (ps) => ps.filter((p) => p.kind === "body" && p.ids.length ===
  * @param {string} [o.userName] used in the default closing when a closing has an unbacked number
  * @param {boolean} [o.withSubject] cold email: also read and verify a `subject`
  * @returns {{ content: string, sources: object, subject: {text: string, sources: object[]} | null }}
- * content = paragraphs joined by a blank line; sources = { version: 1, paragraphs: [{ kind, sources }] }.
+ * content = paragraphs joined by a blank line; sources = { version: 1, paragraphs: [{ kind, hash, sources }] } (hash = paragraphHash of the paragraph text).
  * @throws NoSourcesError when no body paragraph can be sourced.
  */
 export async function generateSourcedParagraphs({ prompt, catalog, userId, allowedText, withSubject = false, userName = null }) {
@@ -100,7 +101,7 @@ export async function generateSourcedParagraphs({ prompt, catalog, userId, allow
     content: ps.map((p) => p.text).join("\n\n"),
     sources: {
       version: 1,
-      paragraphs: ps.map((p) => ({ kind: p.kind, sources: snapshot(p.ids, catalog) })),
+      paragraphs: ps.map((p) => ({ kind: p.kind, hash: paragraphHash(p.text), sources: snapshot(p.ids, catalog) })),
     },
     subject: subject ? { text: subject.text, sources: snapshot(subject.ids, catalog) } : null,
   };
@@ -109,4 +110,21 @@ export async function generateSourcedParagraphs({ prompt, catalog, userId, allow
 /** Text that backs the numbers in a generated letter/email: the whole catalog plus caller-given strings. */
 export function allowedNumberText(catalog, ...extra) {
   return [...catalog.map((c) => c.text), ...extra.filter(Boolean)].join("\n");
+}
+
+/**
+ * After shorten: returns `sources` with the hash refreshed for every paragraph whose text was rewritten.
+ * Source ids/snapshots are never touched, and paragraphs that had no hash (older letters) stay without one.
+ */
+export function withUpdatedHashes(sources, oldParas, newParas) {
+  const list = sources?.paragraphs;
+  if (!Array.isArray(list)) return sources;
+  return {
+    ...sources,
+    paragraphs: list.map((p, i) =>
+      p && typeof p === "object" && typeof p.hash === "string" && newParas[i] !== oldParas[i]
+        ? { ...p, hash: paragraphHash(newParas[i]) }
+        : p
+    ),
+  };
 }

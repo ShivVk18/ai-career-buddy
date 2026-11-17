@@ -66,6 +66,18 @@ const STOP = new Set(
 );
 const GENERIC_SINGLE = new Set([...STOP, "software", "engineering", "engineer", "technical", "technology", "general", "management", "design", "data", "system", "systems", "application", "applications", "code", "coding", "problem", "solving", "communication", "leadership", "career", "job", "role", "company"]);
 
+// Boilerplate phrases that appear in nearly every job description; never a target on their own.
+const GENERIC_PHRASES = new Set([
+  "customer facing", "cross functional", "fast paced", "best practices", "team player", "detail oriented",
+  "self starter", "problem solving", "strong communication", "communication skills", "interpersonal skills",
+  "work ethic", "results driven", "hands experience", "proven track", "track record", "equal opportunity",
+  "opportunity employer", "stakeholder management", "time management", "critical thinking", "attention detail",
+  "passion technology", "highly motivated", "dynamic environment", "growth mindset", "ownership mindset",
+  "remote work", "full time", "part time", "years experience", "bachelor degree", "related field",
+  "customer service", "customer success", "end end", "day day", "high quality", "large scale", "real world",
+  "work closely", "closely collaborate", "continuous improvement", "life cycle", "wide range",
+]);
+
 /** Runs of 2-3 consecutive non-stopword tokens (>= 3 chars) from normalized text. */
 export function titlePhrases(title) {
   const tokens = normalizeText(title).split(" ").filter(Boolean);
@@ -73,7 +85,12 @@ export function titlePhrases(title) {
   let run = [];
   const flush = () => {
     for (let n = 2; n <= 3; n++) {
-      for (let i = 0; i + n <= run.length; i++) out.add(run.slice(i, i + n).join(" "));
+      for (let i = 0; i + n <= run.length; i++) {
+        const words = run.slice(i, i + n);
+        // Skip a generic phrase and anything that merely contains one ("fast paced environment").
+        const generic = [2, 3].some((m) => words.some((_, j) => j + m <= n && GENERIC_PHRASES.has(words.slice(j, j + m).join(" "))));
+        if (!generic) out.add(words.join(" "));
+      }
     }
     run = [];
   };

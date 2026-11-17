@@ -32,4 +32,22 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// D51: Sentry's build plugin (source-map upload) is only wrapped in when the upload credentials are set.
+// Without them the config is exported untouched, so the build does no Sentry work and makes no network call.
+// Runtime error reporting is separate and needs only SENTRY_DSN / NEXT_PUBLIC_SENTRY_DSN (see src/instrumentation.js).
+const canUpload = Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT);
+
+let finalConfig = nextConfig;
+if (canUpload) {
+  const { withSentryConfig } = await import("@sentry/nextjs");
+  finalConfig = withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    silent: true,
+    telemetry: false,
+    sourcemaps: { deleteSourcemapsAfterUpload: true },
+  });
+}
+
+export default finalConfig;

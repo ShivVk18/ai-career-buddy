@@ -3,7 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { runAIText, runAIStructured } from "@/lib/ai";
+import { runAIText, runAIStructured, withAiAction } from "@/lib/ai";
 import { tailorSchema } from "@/lib/ai/schemas";
 import { matchText, resumeToText } from "@/lib/match";
 import { safeErr } from "@/lib/utils";
@@ -212,7 +212,12 @@ const improveSchema = z.object({
  * Every number in the output must also appear in the input (one retry, then INVENTED_DETAIL).
  * Expected failures are RETURNED as { error, code } (INVALID | NOT_FOUND | AI_LIMIT | INVENTED_DETAIL | FAILED).
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function improveWithAI(input) {
+  return withAiAction(() => improveWithAIImpl(input));
+}
+
+async function improveWithAIImpl(input) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -734,7 +739,12 @@ const MAX_PROPOSED = 600;
  *   proposals:[{ proposalId, entryId, bulletIndex, original, proposed, reason, sources }] }
  * or { error, code: INVALID | NOT_FOUND | NO_SOURCES | INVENTED_DETAIL | AI_LIMIT | AI_UNAVAILABLE | FAILED }.
  */
+// D50: one cap-counted action, however many AI calls it makes.
 export async function tailorResume(input) {
+  return withAiAction(() => tailorResumeImpl(input));
+}
+
+async function tailorResumeImpl(input) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
   const parsed = tailorInput.safeParse(input ?? {});

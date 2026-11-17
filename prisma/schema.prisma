@@ -382,10 +382,13 @@ model AiUsage {
   ok        Boolean
   latencyMs Int
   errorCode String?
+  // D50: one id per user action; the daily cap counts distinct ids. Null on legacy rows (counted individually).
+  actionId  String?
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 model QuizSession {
