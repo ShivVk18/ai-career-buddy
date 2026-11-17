@@ -7,8 +7,8 @@ CREATE TABLE "InterviewAnswer" (
     "question" TEXT NOT NULL,
     "topic" TEXT NOT NULL,
     "answerText" TEXT NOT NULL,
-    "rubric" JSONB NOT NULL,
-    "overall" DOUBLE PRECISION NOT NULL,
+    "rubric" JSONB,
+    "overall" DOUBLE PRECISION,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "InterviewAnswer_pkey" PRIMARY KEY ("id")

@@ -412,8 +412,8 @@ model InterviewAnswer {
   question      String      @db.Text
   topic         String
   answerText    String      @db.Text
-  rubric        Json
-  overall       Float
+  rubric        Json?
+  overall       Float?
   createdAt     DateTime    @default(now())
 
   @@unique([sessionId, questionIndex])

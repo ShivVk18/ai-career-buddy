@@ -504,7 +504,7 @@ Also `counts.dueFollowUps: number` is NOT added; use `dueFollowUps.length` (a us
 
 ## 9. Phase 6 (D44-D48): open interview practice, roadmap parity, redirects
 
-Conventions as before: only signed-out THROWS `Error("Unauthorized")`; expected failures are RETURNED as `{ error, code }`. Every query is scoped to the signed-in user's rows. New codes: `ALREADY_SCORED` (9.2) and `MIGRATION_PENDING` (also for interview actions when the `interview_answer` migration is not applied; no AI call is spent). Other codes as in 6.3 / 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVALID`, `NOT_FOUND`, `FAILED`). New migration `20261120000000_interview_answer` (SQL only, NOT applied by the agent).
+Conventions as before: only signed-out THROWS `Error("Unauthorized")`; expected failures are RETURNED as `{ error, code }`. Every query is scoped to the signed-in user's rows. New codes: `ALREADY_SCORED` and `SCORING_IN_PROGRESS` (9.2) and `MIGRATION_PENDING` (also for interview actions when the `interview_answer` migration is not applied; no AI call is spent). Other codes as in 6.3 / 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVALID`, `NOT_FOUND`, `FAILED`). New migration `20261120000000_interview_answer` (SQL only, NOT applied by the agent).
 
 ### 9.1 `src/lib/interview/rubric.js` (plain JS, no imports; safe in server and UI)
 
@@ -525,7 +525,7 @@ Open questions live in `QuizSession.questions` as items `{ type: "open", questio
 
 `generateOpenQuestions({ count?: number, jobDescription?: string | null })`
 - `count` integer 3-10 (default 5), `jobDescription` max 20000 chars; unknown keys or bad values => `INVALID`.
-- One `write` call, plus at most one retry when too few sourced questions remain (D28; both count against the cap). Sources can only be job-description lines (`jd:<n>`) and the profile skills (`profile:skills`). A question with no valid source, a duplicate, or a number not found in the sources is dropped. May return fewer than `count` (at least 1); none => `NO_SOURCES` (also when there is no job description and the profile has no skills). `timeLimitSec` is clamped to 60-300.
+- One `write` call, plus at most one retry when too few sourced questions remain (D28; both count against the cap). Sources can only be job-description lines (`jd:<n>`) and the profile skills (`profile:skills`). A question with no valid source, a duplicate, or a number not found in the sources is dropped; harmless counts are allowed in questions (number words "two" to "ten" and bare digits 2-10, e.g. "Describe two approaches"), while years, percentages, currency, durations and numbers above 10 must still appear in the sources. May return fewer than `count` (at least 1); none => `NO_SOURCES` (also when there is no job description and the profile has no skills). `timeLimitSec` is clamped to 60-300.
 - Returns:
 
 ```ts
@@ -536,12 +536,12 @@ Open questions live in `QuizSession.questions` as items `{ type: "open", questio
 }
 ```
 - Errors: `INVALID`, `NOT_FOUND` (no DB user), `NO_SOURCES`, `AI_LIMIT`, `AI_UNAVAILABLE`, `FAILED`.
-- Housekeeping now keeps open sessions that have scored answers; old unsubmitted MCQ sessions and open sessions without answers are still deleted after 7 days.
+- Housekeeping keeps open sessions that have scored answers; old (7 days) unsubmitted MCQ sessions and open sessions without scored answers are deleted. The two parts are independent: MCQ pruning still runs when the `interview_answer` table does not exist yet.
 
 `scoreOpenAnswer(sessionId: string, index: number, answerText: string)`
 - `answerText` trimmed, 1-5000 chars; `index` 0-9; else `INVALID`. Session must be yours and an open session, else `NOT_FOUND`; an index past the last question is `INVALID`.
-- Scored once per (session, index). If a stored result exists, NO AI call is made and the stored result is returned with `code: "ALREADY_SCORED"`. Otherwise one `fast` call (a second `fast` call only if the first feedback contained numbers the answer/question do not back; both count against the cap).
-- Server rules: every `quote` must appear verbatim in `answerText` after `normalizeText` on both sides, else that criterion's `quote` is `null` (the score stays). Feedback and summary pass `inventedNumbers` against question + answer; sentences with unbacked numbers are dropped (empty string if nothing is left). `overall` is recomputed on the server from `RUBRIC_WEIGHTS`; the model's overall is ignored.
+- Scored once per (session, index). If a stored result exists, NO AI call is made and the stored result is returned with `code: "ALREADY_SCORED"`. Otherwise exactly one `fast` call (counts against the cap; there is no retry). Concurrency: the server first inserts a claim row for (session, index) (unique index). Only the claim winner calls the AI. A concurrent request while the claim has no result yet returns `SCORING_IN_PROGRESS` (no AI call); if the AI call or validation fails the claim is deleted so the user can retry; claims older than 2 minutes without a result are treated as stale and can be re-claimed.
+- Server rules: every `quote` must appear verbatim in `answerText` after `normalizeText` on both sides, else that criterion's `quote` is `null` (the score stays). Feedback and summary pass `inventedNumbers` (strict) against question + answer; sentences with unbacked numbers are dropped (empty string if nothing is left). `overall` is recomputed on the server from `RUBRIC_WEIGHTS`; the model's overall is ignored.
 - Success returns:
 
 ```ts
@@ -565,10 +565,11 @@ Open questions live in `QuizSession.questions` as items `{ type: "open", questio
 }
 ```
 - Repeat: `{ error: "This question has already been scored.", code: "ALREADY_SCORED", index, answerText, overall, createdAt, rubric }` (the stored result, same fields as success).
-- Errors: `INVALID`, `NOT_FOUND`, `MIGRATION_PENDING`, `AI_LIMIT`, `AI_UNAVAILABLE`, `FAILED`. When every question has a score, the session's `submittedAt` is set.
+- `{ error, code: "SCORING_IN_PROGRESS" }`: the same answer is being scored by another request. UI: keep the answer text, show the message, and let the user retry/refresh after a few seconds (calling again returns `ALREADY_SCORED` with the result once it finishes).
+- Errors: `INVALID`, `NOT_FOUND`, `MIGRATION_PENDING`, `SCORING_IN_PROGRESS`, `AI_LIMIT`, `AI_UNAVAILABLE`, `FAILED`. When every question has a score, the session's `submittedAt` is set.
 - `submitQuiz` now returns `INVALID` ("This is an open practice session...") for open sessions.
 
-`getOpenSession(sessionId: string)` returns (or `NOT_FOUND` for unknown / not yours / MCQ session, `MIGRATION_PENDING`, `INVALID`, `FAILED`):
+`getOpenSession(sessionId: string)` (ignores unfinished claim rows) returns (or `NOT_FOUND` for unknown / not yours / MCQ session, `MIGRATION_PENDING`, `INVALID`, `FAILED`):
 
 ```ts
 {
@@ -590,7 +591,7 @@ Open questions live in `QuizSession.questions` as items `{ type: "open", questio
 
 `getGapFrequency()` (no AI): returns `{ gaps: { skill: string, count: number }[], resultCount: number }`. Counts `missingSkills` across the user's latest 200 ATS results; grouped case/whitespace/edge-punctuation-insensitively; a skill counts once per result; `skill` is the most common original spelling; sorted by count desc, max 50. `resultCount` = ATS results counted (use for "based on N ATS results"); `[]`/`0` when none. Error: `{ error, code: "FAILED" }`.
 
-`getStepTargets(roadmapId: string)` (no AI): returns `{ targets: { [stepId: string]: { company: string, role: string, jdExcerpt: string, kinds: ("ats"|"coverLetter"|"coldEmail")[] }[] } }` with every step id present (possibly `[]`). Targets come from the user's own ATS results, cover letters and cold emails (D18, deduplicated by company+role, newest first, a pair needs a company or role), and appear only when the STORED job description names the step's skill or title (whole-term match through `normalizeText`; skills from the match vocabulary found in the step's `skill`/`title`, or the whole title). `jdExcerpt` is the matching job-description line, max 240 chars; at most 5 targets per step. Errors: `INVALID`, `NOT_FOUND`, `FAILED`. The shape is wrapped in `{ targets }` so errors can be told apart.
+`getStepTargets(roadmapId: string)` (no AI): returns `{ targets: { [stepId: string]: { company: string, role: string, jdExcerpt: string, kinds: ("ats"|"coverLetter"|"coldEmail")[] }[] } }` with every step id present (possibly `[]`). Targets come from the user's own ATS results, cover letters and cold emails (D18, deduplicated by company+role, newest first, a pair needs a company or role), and appear only when the STORED job description names the step's skill or title (whole-term match through `normalizeText`; skills from the match vocabulary found in the step's `skill`/`title`, the whole title, multi-word phrases of 2-3 consecutive non-generic words from the title, and terms from the step's stored `sources`: profile skills and vocabulary terms in target-role excerpts; generic single words such as "skills" or "project" never match alone). `jdExcerpt` is the matching job-description line, max 240 chars; at most 5 targets per step. Errors: `INVALID`, `NOT_FOUND`, `FAILED`. The shape is wrapped in `{ targets }` so errors can be told apart.
 
 ### 9.4 Cold email check and redirects
 

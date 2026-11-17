@@ -47,3 +47,19 @@ export function inventedNumbers(output, input) {
   const known = new Set(allNumbers(input));
   return allNumbers(output).filter((n) => !known.has(n));
 }
+
+// Counting words/digits that are harmless in an interview QUESTION ("Describe two approaches", "Name 3 trade-offs").
+// Not harmless: years, percentages, currency, durations, numbers above 10, compounds ("twenty-two"), decimals.
+const COUNT_WORDS = "two|three|four|five|six|seven|eight|nine|ten";
+const UNIT_AFTER = "(?!\\s*(?:%|percent|per\\s*cent|dollars?|usd|euros?|eur|gbp|years?|yrs?|months?|weeks?|days?|hours?|k\\b|hundred|thousand|million|billion|dozen))";
+const COUNT_WORD_RE = new RegExp(`(?<![\\w$€£.-])(?:${COUNT_WORDS})(?![\\w%-])${UNIT_AFTER}`, "gi");
+const COUNT_DIGIT_RE = new RegExp(`(?<![\\w$€£.,-])(?:10|[2-9])(?![\\w%])(?![.,]\\d)${UNIT_AFTER}`, "g");
+
+/**
+ * Like inventedNumbers, but for interview questions: counting words "two".."ten" and bare digits 2-10 are allowed
+ * even when the sources do not contain them. Everything else must still be backed by `input`.
+ */
+export function inventedQuestionNumbers(output, input) {
+  const text = String(output).replace(COUNT_WORD_RE, " ").replace(COUNT_DIGIT_RE, " ");
+  return inventedNumbers(text, input);
+}

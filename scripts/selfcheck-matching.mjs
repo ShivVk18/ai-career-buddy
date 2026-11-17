@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { inventedNumbers } from "../src/lib/ai/numberCheck.js";
+import { inventedNumbers, inventedQuestionNumbers } from "../src/lib/ai/numberCheck.js";
 import { normalizeText } from "../src/lib/ai/sources.js";
 import { legacyEntryId, ensureEntryIds } from "../src/lib/entryIds.js";
 import { extractTerms, matchText, resumeToText } from "../src/lib/match.js";
@@ -136,5 +136,35 @@ for (const g of Object.values(WEIGHT_GROUPS)) {
   assert.deepEqual(t["1"].map((x) => [x.company, x.role, x.kinds]), [["Acme", "Dev", ["ats", "coldEmail"]]]);
   assert.deepEqual(t["3"].map((x) => x.company), ["Globex"]);
   assert.deepEqual(t["4"], []);
+  // Steps with no vocabulary skill: source snapshots and title phrases.
+  const src = { id: 5, title: "Ship something real", sources: [{ id: "profile:skills", kind: "profile", label: "Profile: skills", excerpt: "Figma, Product Analytics, Go, skills" }] };
+  assert.ok(matchStepToJd(src, "Own product analytics for the team."));
+  assert.ok(matchStepToJd(src, "Design in Figma daily."));
+  assert.equal(matchStepToJd(src, "Strong skills and experience required. Go getter."), null); // generic / too short
+  const ph = { id: 6, title: "Master event driven architecture patterns" };
+  assert.ok(matchStepToJd(ph, "You know event driven architecture."));
+  assert.equal(matchStepToJd(ph, "Event planning and architecture of homes."), null); // phrase must appear whole
+  assert.equal(matchStepToJd({ id: 7, title: "Learn and build skills" }, "Build team skills and learn."), null); // only stopwords
+  const jdSrc = { id: 8, title: "Ship it", sources: [{ id: "jd:1", kind: "jd", label: "JD", excerpt: "Experience with Kubernetes required." }] };
+  assert.ok(matchStepToJd(jdSrc, "Run Kubernetes clusters."));
+  assert.equal(matchStepToJd(jdSrc, "Experience with teams."), null);
+}
+{
+  const qok = (o, i = "React, Node") => assert.equal(inventedQuestionNumbers(o, i).length, 0, `q ok: ${o}`);
+  const qbad = (o, i = "React, Node") => assert.ok(inventedQuestionNumbers(o, i).length > 0, `q flagged: ${o}`);
+  qok("Describe two approaches to state management in React.");
+  qok("Name 3 trade-offs of using Node. Then explain Ten of them?");
+  qok("Walk me through the top 5 risks.");
+  qbad("Tell me about your 12 years building React apps.");
+  qbad("Describe how you improved speed by 30%.");
+  qbad("Describe how you improved speed by 5%.");
+  qbad("How did you handle a $5 budget?");
+  qbad("What happened in 2019?");
+  qbad("Describe twenty approaches.");
+  qbad("Describe 25 approaches.");
+  qbad("Describe two years of experience.");
+  qbad("Describe twenty-two cases.");
+  qok("Describe four cases.", "We handle four cases");
+  assert.ok(inventedNumbers("Describe two approaches.", "React").length > 0); // strict rule unchanged
 }
 console.log("all self-checks passed");

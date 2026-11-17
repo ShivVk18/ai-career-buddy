@@ -53,13 +53,72 @@ for (const [canon, aliases] of Object.entries(VOCAB)) {
   if (v.length) VARIANTS.set(canon, v);
 }
 
-/** What a step names: the vocabulary skills in its skill/title, plus its whole title (normalized). */
+// Words that are too generic to count as a target on their own, or to start/end/sit inside a phrase.
+const STOP = new Set(
+  (
+    "the and for with from into onto over under that this these those your you our their its are was were been being have has had " +
+    "will can may use using used build building built learn learning study practice complete create make get set take work working " +
+    "skills skill experience project projects team teams knowledge basics basic fundamentals understanding understand improve " +
+    "develop developing development tools tool concepts concept advanced intermediate beginner introduction intro start " +
+    "master mastering apply applying prepare preparing review explore week weeks month months day days step steps " +
+    "about each every more most other some such than then them they what when where which while who how why also any all not but"
+  ).split(" ")
+);
+const GENERIC_SINGLE = new Set([...STOP, "software", "engineering", "engineer", "technical", "technology", "general", "management", "design", "data", "system", "systems", "application", "applications", "code", "coding", "problem", "solving", "communication", "leadership", "career", "job", "role", "company"]);
+
+/** Runs of 2-3 consecutive non-stopword tokens (>= 3 chars) from normalized text. */
+export function titlePhrases(title) {
+  const tokens = normalizeText(title).split(" ").filter(Boolean);
+  const out = new Set();
+  let run = [];
+  const flush = () => {
+    for (let n = 2; n <= 3; n++) {
+      for (let i = 0; i + n <= run.length; i++) out.add(run.slice(i, i + n).join(" "));
+    }
+    run = [];
+  };
+  for (const t of tokens) {
+    if (t.length >= 3 && !STOP.has(t)) run.push(t);
+    else flush();
+  }
+  flush();
+  return [...out];
+}
+
+const usableSingle = (t) => t.length >= 3 && !GENERIC_SINGLE.has(t);
+
+/** Candidate terms from the step's stored source snapshots: profile skills (comma list) and vocabulary terms in excerpts. */
+export function sourceTerms(step) {
+  const out = new Set();
+  for (const src of Array.isArray(step?.sources) ? step.sources : []) {
+    if (!src || typeof src.excerpt !== "string") continue;
+    if (src.kind === "profile" && src.id === "profile:skills") {
+      for (const part of src.excerpt.split(",")) {
+        const t = normalizeText(part);
+        if (!t || t.split(" ").length > 3) continue;
+        if (t.includes(" ") ? t.length >= 3 : usableSingle(t)) out.add(t);
+      }
+    } else if (src.kind === "jd") {
+      const text = normalizeText(src.excerpt);
+      for (const variants of VARIANTS.values()) {
+        if (variants.some((t) => hasTerm(text, t))) for (const v of variants) out.add(v);
+      }
+    }
+  }
+  return [...out];
+}
+
+/**
+ * What a step names: vocabulary skills in its skill/title, terms from its stored sources, multi-word phrases of
+ * its title, plus its whole title (normalized). `stepNeedles` keeps the vocabulary + source + phrase terms in `terms`.
+ */
 export function stepNeedles(step) {
   const text = normalizeText([step?.skill, step?.title].filter((x) => typeof x === "string").join(" "));
   const needles = [];
   for (const variants of VARIANTS.values()) {
     if (variants.some((t) => hasTerm(text, t))) needles.push(...variants);
   }
+  needles.push(...sourceTerms(step), ...titlePhrases(step?.title));
   const title = normalizeText(step?.title);
   const whole = title.length >= 4 ? [title] : [];
   return { terms: [...new Set(needles)], whole };

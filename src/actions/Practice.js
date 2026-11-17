@@ -1,11 +1,12 @@
 "use server";
 
 import { db } from "@/lib/prisma";
+import { pruneOldSessions } from "@/lib/interview/prune";
 import { auth } from "@clerk/nextjs/server";
 import { runAIStructured } from "@/lib/ai";
 import { openQuestionsSchema, rubricSchema } from "@/lib/ai/schemas";
 import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
-import { inventedNumbers } from "@/lib/ai/numberCheck";
+import { inventedQuestionNumbers } from "@/lib/ai/numberCheck";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
 import {
@@ -26,9 +27,11 @@ const MESSAGES = {
     "We couldn't ground interview questions in your details. Add skills to your profile or paste a job description, then try again.",
   NOT_FOUND: "Practice session not found.",
   INVALID: "Invalid input. Please check your submission and try again.",
+  SCORING_IN_PROGRESS: "This answer is already being scored. Please wait a few seconds and check again.",
   MIGRATION_PENDING: "Interview practice is being updated. Please try again in a few minutes.",
   FAILED: "Something went wrong. Please try again.",
 };
+const CLAIM_STALE_MS = 2 * 60 * 1000;
 const fail = (code, message) => ({ error: message || MESSAGES[code], code });
 
 /** Prisma P2021 / P2022 = table / column missing (migration not applied yet). */
@@ -120,7 +123,7 @@ RULES:
 - Mix behavioural ("tell me about a time...") and practical/scenario questions.
 - "topic" is a short label (1-3 words) naming the skill area, for example "React" or "System design". Reuse the same label for related questions.
 - "timeLimitSec" is a sensible answer time in seconds (between 60 and 300).
-- Do not use numbers or number words (such as "two") in the questions unless they appear in the SOURCES.
+- Do not use years, percentages, amounts, or numbers above 10 in the questions unless they appear in the SOURCES. Small counts such as "two approaches" are fine.
 - Output valid JSON only, no markdown:
 { "questions": [ { "question": "string", "topic": "string", "timeLimitSec": 120, "sourceIds": ["id from SOURCES"] } ] }
 `;
@@ -135,8 +138,8 @@ RULES:
         const topic = cleanLine(q.topic, 60);
         const key = normKey(text);
         if (!sourceIds.length || !text || !topic || seen.has(key)) continue;
-        // A number the sources do not contain would be invented.
-        if (inventedNumbers(text, catalog.map((c) => c.text).join("\n")).length) continue;
+        // A number the sources do not contain would be invented (harmless counts like "two approaches" are allowed).
+        if (inventedQuestionNumbers(text, catalog.map((c) => c.text).join("\n")).length) continue;
         seen.add(key);
         kept.push({
           type: "open",
@@ -167,21 +170,8 @@ RULES:
     }
     if (kept.length === 0) return fail("NO_SOURCES");
 
-    // Housekeeping: drop this user's own old unsubmitted MCQ sessions and open sessions with no answers.
-    // Open sessions that have scored answers are kept (history and weak areas depend on them).
-    try {
-      const old = await db.quizSession.findMany({
-        where: { userId: user.id, submittedAt: null, createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
-        select: { id: true, questions: true, _count: { select: { answers: true } } },
-        take: 100,
-      });
-      const ids = old
-        .filter((s) => !(Array.isArray(s.questions) && s.questions.some((q) => q?.type === "open")) || s._count.answers === 0)
-        .map((s) => s.id);
-      if (ids.length) await db.quizSession.deleteMany({ where: { id: { in: ids }, userId: user.id, submittedAt: null } });
-    } catch {
-      /* best effort */
-    }
+    // Housekeeping (best effort, independent parts): old unsubmitted MCQ sessions and answerless open sessions.
+    await pruneOldSessions(user.id);
 
     const session = await db.quizSession.create({ data: { userId: user.id, questions: kept }, select: { id: true } });
     return { sessionId: session.id, questions: kept.map(publicQuestion) };
@@ -220,10 +210,6 @@ RULES:
 { "criteria": [ { "name": "clarity", "score": 0, "quote": "exact phrase or null", "feedback": "string" }, { "name": "depth", "score": 0, "quote": null, "feedback": "string" }, { "name": "evidence", "score": 0, "quote": null, "feedback": "string" } ], "summary": "string" }
 `;
 }
-
-/** Feedback text from a model result that contains numbers the answer or question do not back. */
-const hasInvented = (r, allowed) =>
-  r.criteria.some((c) => inventedNumbers(c.feedback ?? "", allowed).length) || inventedNumbers(r.summary ?? "", allowed).length > 0;
 
 /**
  * Turns the model result into the stored rubric: quotes verified (dropped if not found), feedback with
@@ -269,59 +255,68 @@ export async function scoreOpenAnswer(sessionId, index, answerText) {
     const item = session.questions[data.index];
     if (!item) return fail("INVALID", "That question does not exist in this session.");
 
-    // Already scored: return the stored result with no AI call. This read also detects a missing table.
-    const existing = await db.interviewAnswer.findUnique({
-      where: { sessionId_questionIndex: { sessionId: session.id, questionIndex: data.index } },
-    });
-    if (existing) return { ...fail("ALREADY_SCORED", "This question has already been scored."), ...publicAnswer(existing), index: data.index };
+    const where = { sessionId_questionIndex: { sessionId: session.id, questionIndex: data.index } };
+    const scoredResult = (row) => ({ ...fail("ALREADY_SCORED", "This question has already been scored."), ...publicAnswer(row), index: data.index });
 
-    const allowed = `${item.question}\n${data.answerText}`;
-    const run = (note) =>
-      runAIStructured("fast", rubricSchema, () => [["user", rubricPrompt(item.question, item.topic, data.answerText) + note]], {
-        userId: clerkId,
-      });
-
-    let result = await run("");
-    if (hasInvented(result, allowed)) {
+    // Claim the (session, question) slot first, relying on the unique index, so concurrent first scores cost one AI call.
+    // A claim row has a null rubric/overall. This insert also detects a missing table (no AI call is spent).
+    let claim = null;
+    for (let attempt = 0; attempt < 3 && !claim; attempt++) {
       try {
-        const retry = await run(
-          "\n\nIMPORTANT: your feedback contained numbers that are not in the question or the answer. Write feedback with no numbers at all."
-        );
-        if (!hasInvented(retry, allowed)) result = retry;
+        claim = await db.interviewAnswer.create({
+          data: {
+            userId: user.id,
+            sessionId: session.id,
+            questionIndex: data.index,
+            question: item.question,
+            topic: item.topic,
+            answerText: data.answerText,
+          },
+        });
       } catch (e) {
-        if (e?.code !== "AI_LIMIT") console.error("rubric retry failed, using first attempt:", safeErr(e));
+        if (e?.code !== "P2002") throw e;
+        const existing = await db.interviewAnswer.findUnique({ where });
+        if (!existing) continue; // the claim was removed meanwhile: try again
+        if (existing.rubric != null && existing.overall != null) return scoredResult(existing);
+        if (Date.now() - existing.createdAt.getTime() > CLAIM_STALE_MS) {
+          await db.interviewAnswer.deleteMany({ where: { id: existing.id, overall: null } }); // stale claim: allow a re-claim
+          continue;
+        }
+        return fail("SCORING_IN_PROGRESS");
       }
     }
-    const rubric = buildRubric(result, data.answerText, allowed);
+    if (!claim) return fail("SCORING_IN_PROGRESS");
 
+    const allowed = `${item.question}\n${data.answerText}`;
     let saved;
     try {
-      saved = await db.interviewAnswer.create({
-        data: {
-          userId: user.id,
-          sessionId: session.id,
-          questionIndex: data.index,
-          question: item.question,
-          topic: item.topic,
-          answerText: data.answerText,
-          rubric,
-          overall: rubric.overall,
-        },
+      // One `fast` call only. Feedback sentences with unbacked numbers are dropped by buildRubric.
+      const result = await runAIStructured("fast", rubricSchema, () => [["user", rubricPrompt(item.question, item.topic, data.answerText)]], {
+        userId: clerkId,
       });
+      const rubric = buildRubric(result, data.answerText, allowed);
+      const upd = await db.interviewAnswer.updateMany({ where: { id: claim.id, overall: null }, data: { rubric, overall: rubric.overall } });
+      if (upd.count !== 1) {
+        // Our claim was treated as stale and replaced: return whatever is stored now.
+        const winner = await db.interviewAnswer.findUnique({ where });
+        if (winner && winner.overall != null) return scoredResult(winner);
+        return fail("SCORING_IN_PROGRESS");
+      }
+      saved = await db.interviewAnswer.findUnique({ where });
+      if (!saved) return fail("FAILED", "Failed to score your answer. Please try again.");
     } catch (e) {
-      if (e?.code === "P2002") {
-        // Lost a double-submit race: return the winner's stored result.
-        const winner = await db.interviewAnswer.findUnique({
-          where: { sessionId_questionIndex: { sessionId: session.id, questionIndex: data.index } },
-        });
-        if (winner) return { ...fail("ALREADY_SCORED", "This question has already been scored."), ...publicAnswer(winner), index: data.index };
+      // Release the claim so the user can retry.
+      try {
+        await db.interviewAnswer.deleteMany({ where: { id: claim.id, overall: null } });
+      } catch {
+        /* the stale-claim rule (2 minutes) cleans up */
       }
       throw e;
     }
 
     // Mark the session finished once every question has a score.
     try {
-      const n = await db.interviewAnswer.count({ where: { sessionId: session.id, userId: user.id } });
+      const n = await db.interviewAnswer.count({ where: { sessionId: session.id, userId: user.id, overall: { not: null } } });
       if (n >= session.questions.length) {
         await db.quizSession.updateMany({ where: { id: session.id, userId: user.id, submittedAt: null }, data: { submittedAt: new Date() } });
       }
@@ -350,7 +345,7 @@ export async function getOpenSession(sessionId) {
 
     const session = await db.quizSession.findFirst({ where: { id: id.data, userId: user.id } });
     if (!session || !isOpenItems(session.questions)) return fail("NOT_FOUND");
-    const answers = await db.interviewAnswer.findMany({ where: { sessionId: session.id, userId: user.id } });
+    const answers = await db.interviewAnswer.findMany({ where: { sessionId: session.id, userId: user.id, overall: { not: null } } });
     const byIndex = new Map(answers.map((a) => [a.questionIndex, a]));
     const questions = session.questions.map((q, i) => ({ ...publicQuestion(q, i), answer: publicAnswer(byIndex.get(i)) }));
     const scored = questions.filter((q) => q.answer);
@@ -378,14 +373,14 @@ export async function getPracticeHistory() {
 
     // Only sessions with at least one scored answer (that also excludes MCQ sessions).
     const sessions = await db.quizSession.findMany({
-      where: { userId: user.id, answers: { some: {} } },
+      where: { userId: user.id, answers: { some: { overall: { not: null } } } },
       orderBy: { createdAt: "desc" },
       take: 50,
       select: {
         id: true,
         createdAt: true,
         questions: true,
-        answers: { select: { overall: true, topic: true }, orderBy: { questionIndex: "asc" } },
+        answers: { where: { overall: { not: null } }, select: { overall: true, topic: true }, orderBy: { questionIndex: "asc" } },
       },
     });
     return {
@@ -418,7 +413,7 @@ export async function getWeakAreas() {
     if (!user) return { topics: [], minAnswers: WEAK_AREA_MIN_ANSWERS, totalAnswers: 0, hiddenTopics: 0 };
 
     const rows = await db.interviewAnswer.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, overall: { not: null } },
       orderBy: { createdAt: "desc" },
       take: 1000,
       select: { topic: true, overall: true },
