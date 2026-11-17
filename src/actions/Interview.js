@@ -162,20 +162,9 @@ export async function submitQuiz(quizId, answers) {
     const total = results.length;
     const score = (correctCount / total) * 100;
 
-    // AI call stays outside the transaction.
     const wrongAnswers = results
       .filter((r) => !r.isCorrect)
       .map((r) => ({ question: r.question, answer: r.correctAnswer, userAnswer: r.userAnswer ?? "(no answer)" }));
-
-    let improvementTip = null;
-    if (wrongAnswers.length > 0) {
-      try {
-        improvementTip = (await generateImprovementTip(user.industry, wrongAnswers, userId)) || null;
-      } catch {
-        console.error("Error generating improvement tip");
-        improvementTip = null;
-      }
-    }
 
     // Claim the session and write the result atomically: a double submit cannot
     // be scored twice, and a crash cannot leave a submitted quiz with no result.
@@ -197,11 +186,28 @@ export async function submitQuiz(quizId, answers) {
             explanation: r.explanation,
           })),
           category: "Technical",
-          improvementTip,
+          improvementTip: null,
         },
       });
     });
     if (!assessment) return fail("ALREADY_SUBMITTED");
+
+    // Only the winner spends an AI call, outside the transaction. Failure or
+    // AI_LIMIT leaves improvementTip null; the submission still succeeds.
+    let improvementTip = null;
+    if (wrongAnswers.length > 0) {
+      try {
+        improvementTip = (await generateImprovementTip(user.industry, wrongAnswers, userId)) || null;
+        if (improvementTip) {
+          await db.assessment.update({
+            where: { id: assessment.id },
+            data: { improvementTip },
+          });
+        }
+      } catch {
+        console.error("Error generating or saving improvement tip");
+      }
+    }
 
     return { assessmentId: assessment.id, score, correctCount, total, improvementTip, results };
   } catch (error) {
