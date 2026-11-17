@@ -85,7 +85,8 @@ export async function saveResume(data) {
     return resume;
   } catch (error) {
     console.error("saveResume failed:", safeErr(error));
-    throw new Error(error.message || "Failed to save resume");
+    const known = ["Unauthorized", "User not found"];
+    throw new Error(known.includes(error?.message) ? error.message : "Failed to save resume");
   }
 }
 
