@@ -2,7 +2,7 @@
 
 Phase 4's review is at commit cb54b26 (`git show cb54b26:docs/ai/REVIEW.md`).
 
-Summary: PASS with 0 must-fix. `npm run lint` passes (0 errors, 1 pre-existing font warning). `npm run build` passes. `node scripts/selfcheck-matching.mjs` prints "all self-checks passed". 8 nice-to-have items.
+Summary (initial review): PASS with 0 must-fix. See the Fix round section at the end for the re-review. `npm run lint` passes (0 errors, 1 pre-existing font warning). `npm run build` passes. `node scripts/selfcheck-matching.mjs` prints "all self-checks passed". 8 nice-to-have items.
 
 ## MUST-FIX
 
@@ -40,3 +40,16 @@ None.
 2. 4 old URLs redirect: PASS (config verified; build output has no /tools/{resume,ats,cover-letter,cold-email})
 3. ATS delete and 90-day purge: PASS
 4. Build passes and the 6 tools still routable: PASS (build only; no runtime click-through done)
+
+## Fix round (d64f358 + 230bf43)
+
+Lint 0 errors (1 pre-existing font warning), build passes, selfcheck-matching prints "all self-checks passed".
+
+Resolved: #1 (greeting becomes "Hello,", closing becomes "Best regards," plus the user name only; body paragraphs keep the number rule; the prompt also forbids numbers there), #2 (LIST_SELECT of pre-Phase-5 columns, the list UI uses none of the new fields, getColdEmail returns MIGRATION_PENDING on P2022, generate/update/follow-up map it, the detail page shows the message), #3 (the regex rejects `, ; < > " ( )` and a second @; mailto holds only the one validated address), #4 (whitespace-collapsed and capped at 80), #6 (publicScore uses isPastResumeTextLimit), #7 (sources.tone stored, regenerate falls back to it, "More formal" sends only formality, dropdown preselected), #8 (tip from COLD_EMAIL_WORDS, label "Draft ready to review").
+
+NOT resolved: #5.
+
+### MUST-FIX
+| Severity | File:line | Owner | Problem | Fix |
+|---|---|---|---|---|
+| must-fix | src/actions/ColdEmail.js updateColdEmail (~lines 270-280) | BACKEND | updateColdEmail writes the subject but never touches `sources.subject`. After the user saves an edited subject and reloads, `fields.subject === subject` holds again, so ColdEmailPreview.jsx:260 shows "Subject based on" with the old AI subject's sources for text the AI did not write. | When a supplied `subject` differs from the stored one, clear `sources.subject` (or set it to a user-edited marker) in the same update, owner-scoped (read the row by id and userId, then updateMany). |
