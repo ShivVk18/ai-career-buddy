@@ -1,109 +1,108 @@
-# PLAN: Phase 6 (interview + roadmap parity, retire the last previews, honest landing page)
+# PLAN: Phase 7 (production readiness + quality)
 
-Branch `phase-6`. Decisions: D44–D48 in DECISIONS.md. Inputs: CONTEXT.md §11.1–11.6.
+Branch `phase-7`. Decisions: D49–D53 in DECISIONS.md. Inputs: CONTEXT.md §8 and §11 (b)–(d).
 
 **Done when:**
-- Every real-data feature of the interview and roadmap previews works in the real routes: open questions, typed and voice answers, the timer, rubric scoring with verified quotes, weak areas, the weekly checklist, toggle with undo, "closes gaps for", and gaps ranked by frequency.
-- Every `/tools/*` URL redirects, and `mock.ts` and the tools folder are gone.
-- The landing page has no unlabelled fake data or claims that contradict the limits.
-- `npm run build` passes, and all 6 tools still work (the MCQ quiz is kept).
+- `npm test` runs Vitest unit tests for the trust helpers.
+- Migrations are dated in order and documented in `docs/ai/DEPLOY.md`.
+- The daily cap counts one per user action.
+- Sentry does nothing without a DSN and scrubs personal data.
+- `vercel.json` exists, and the build never touches the database.
+- Unused dependencies are removed.
+- The UI nits are fixed.
+- `npm run build` passes, and all 6 tools still work.
 
-Rules: never edit `.env`; migrations are SQL files only and are never applied; every query is scoped by userId; zod on every input; expected failures return `{error, code}`; sources rules D26–D28 and `inventedNumbers` apply to every generator; every AI call goes through runAI (so the cap applies); no audio upload; no feature removed; the MCQ flow stays as it is.
+Rules: never edit `.env`; never apply migrations or touch any database; new migrations are SQL only; renaming *unapplied* migration folders is allowed only to fix ordering; no feature removed; no personal data sent to third parties.
 
-**Out of scope:** industry insights; any new job-target model (D18 still derives targets).
-
----
-
-### 1. BACKEND: Contract, `InterviewAnswer` model and open questions
-- **Files:** `docs/ai/API-CONTRACT.md` (§9), `prisma/schema.prisma`, new migration `interview_answer` (SQL only), `src/actions/Interview.js` (or a new `src/actions/Practice.js`), `src/lib/ai/schemas.js`
-- **What:**
-  - Add the `InterviewAnswer` model (D45): `id`, `userId`, `sessionId`, `questionIndex`, `question`, `topic`, `answerText`, `rubric` Json, `overall`, `createdAt`, with `@@unique([sessionId, questionIndex])` and an index on `(userId, topic)`.
-  - `generateOpenQuestions({count=5 (3–10), jobDescription?})` asks one `write` call for questions, each with `{question, topic, timeLimitSec, sourceIds}`. Sources are job-description lines or profile skills. Unsourced questions are dropped with one retry (D28).
-  - The questions are stored in `QuizSession` with `type:"open"`. The action returns `{sessionId, questions}` (no answers or rubric).
-- **Why:** D45 and D46.
-- **Test:** `prisma validate` passes. A generated session has 5 sourced questions, and the MCQ `generateQuiz` is unchanged.
-
-### 2. BACKEND: Scoring, history and weak areas
-- **Files:** the same actions file, new `src/lib/interview/rubric.js` (the weights constant, shared with the UI)
-- **What:**
-  - `scoreOpenAnswer(sessionId, index, answerText)` is owner-scoped and scores each question once (the unique index; a repeat returns `ALREADY_SCORED` with the stored result). It makes one `fast` call.
-  - The zod rubric is `{criteria:[{name, score, quote, feedback}], overall}`, with weights from `rubric.js` (clarity 30, depth 40, evidence 30). The overall score is recomputed on the server from the weights.
-  - Each `quote` must appear verbatim (after normalization) in `answerText`; otherwise that criterion's quote is dropped. Feedback passes `inventedNumbers` against the answer and the question.
-  - The result is saved as an `InterviewAnswer`.
-  - `getOpenSession(sessionId)` returns the questions and any scored answers. `getPracticeHistory()` returns them too.
-  - `getWeakAreas()` averages the overall score per topic across your own `InterviewAnswer` rows, with no AI. It needs at least 2 answers per topic and returns the counts.
-- **Why:** D46, plus the weak-areas feature.
-- **Test:** A quote not found in the answer is dropped, and the overall score matches the weights. A second score call returns `ALREADY_SCORED`. Weak areas reflect only real answers.
-
-### 3. BACKEND: Roadmap undo, gap frequency and "closes gaps for"
-- **Files:** `src/actions/CareerRoadmap.js`, `src/actions/ResumeParser.js` (read only, or a new helper)
-- **What:**
-  - `setRoadmapStepDone(id, stepId, done)` is owner-scoped and recomputes progress. Also fix `updateRoadmapProgress`, which currently ignores its `progress` argument.
-  - `getGapFrequency()` counts normalized `missingSkills` across your ATS results and returns `[{skill, count}]` plus `resultCount`, with no AI.
-  - `getStepTargets(roadmapId)`: for each step, it finds your targets (D18: ATS, cover letters and cold emails, with company and role) whose stored job description mentions the step's skill or title. It returns `{stepId: [{company, role, jdExcerpt}]}`. This is deterministic, uses `normalizeText`, and uses no AI.
-- **Why:** roadmap parity (CONTEXT §11.2).
-- **Test:** Toggling a step done and then undoing it updates progress. Gap counts match your ATS rows. Targets appear only where a job description really names the skill.
-
-### 4. BACKEND: The cold email migration check and redirects
-- **Files:** `src/actions/ColdEmail.js`, `next.config.mjs`, `src/middleware.js`, `scripts/capture_screenshots.js`, `scripts/capture_via_cdp.js`
-- **What:**
-  - Before the AI call in `generateColdEmail`, run a cheap check of the Phase 5 columns (e.g. a `findFirst` selecting `subject` with `take:1`). On P2022, return `MIGRATION_PENDING` without spending an AI call (CONTEXT §8 MED).
-  - Add redirects: `/tools/interview`→`/interview`, `/tools/roadmap`→`/roadmap`, `/tools`→`/dashboard`.
-  - Keep the middleware's `/tools(.*)` guard harmless, or remove it once the redirects cover everything.
-  - Point the capture scripts at the real routes.
-- **Why:** D44, and the scout's MED problem.
-- **Test:** With no migration applied, generate returns `MIGRATION_PENDING` and no `AiUsage` row. All `/tools/*` URLs redirect.
-
-### 5. FRONTEND: Interview practice route
-- **Files:** new `(gated)/interview/practice/**`, plus a link from `(gated)/interview/page.jsx`
-- **What:**
-  - Setup: an optional job description and a question count (3–10, default 5).
-  - Then one question at a time, showing its topic and `SourceChips`, and a per-question timer that shows "time's up" and never auto-submits (D46).
-  - A typed answer box plus a voice button using `src/hooks/use-speech-to-text.js` that fills the editable textarea, with no upload.
-  - Submit leads to a rubric card: per-criterion score, quote highlighted inside the answer, feedback, and an overall score labelled "AI estimate".
-  - Show the cap and other errors via `generationError.js` (`ALREADY_SCORED` shows the stored result).
-- **Why:** D46.
-- **Test:** Complete a 3-question session with one typed and one voice answer. Quotes highlight inside the answers, and the timer never submits on its own.
-
-### 6. FRONTEND: Practice history and weak areas on `/interview`
-- **Files:** `(gated)/interview/page.jsx` and its components (PerformanceChart and the like)
-- **What:**
-  - Add an "Open practice" history section (sessions, scores, and a link to review each).
-  - Add a weak areas panel from `getWeakAreas` (topic, average and count), with an empty state until there's enough data.
-  - The existing MCQ history and chart stay unchanged.
-- **Why:** the weak-areas feature.
-- **Test:** After two sessions, weak areas show real topics with counts. The MCQ quiz still works.
-
-### 7. FRONTEND: Roadmap parity UI
-- **Files:** `(gated)/roadmap/**` (`RoadmapDetailView.jsx`, the list page)
-- **What:**
-  - A weekly or phase-grouped checklist built from the existing phase breakdown, labelled as an AI estimate (D47).
-  - A step toggle with undo using `setRoadmapStepDone`, which reverts if the save fails.
-  - "Closes gaps for" chips from `getStepTargets`, with the job-description excerpt as a tooltip.
-  - A "Gaps ranked by frequency" panel on `/roadmap` from `getGapFrequency`, reading "based on N ATS results", with an empty state.
-- **Why:** roadmap parity.
-- **Test:** Toggle and undo survive a reload, and the targets and gap counts match real data.
-
-### 8. FRONTEND: Retire the last previews and `mock.ts`
-- **Files:** delete `src/app/(main)/(gated)/tools/` and `src/lib/mock.ts`; edit `AppSidebar.jsx` (remove the Previews group), and `src/app/page.js` (hrefs at :70,94 and the footer)
-- **What:**
-  - Remove the remaining previews and every reference to them.
-  - Grep `src` and `scripts` for `tools/` and `lib/mock` and confirm both are empty.
-- **Why:** D41 and D44.
-- **Test:** The build route list has no `/tools`, and the old URLs redirect.
-
-### 9. FRONTEND: An honest landing page
-- **Files:** `src/app/page.js` (job demo at :22-50, "live interactive demo" at :218-224, copy at :77,85), `src/components/shared/ResumePaperDoc.jsx`, `src/components/landingPage/PricingSection.jsx`
-- **What:**
-  - Label the job demo and the paper resume "Sample", and replace real company names with fictional ones.
-  - Reword "live interactive demo" if it isn't live.
-  - Reword the pricing bullets ("Unlimited AI Credits", "1-on-1 AI Career Coaching") to match reality: 50 AI actions per day by default, and Pip as an AI assistant.
-  - Align the copy at :77,85 with the actual features.
-  - No layout or design change (D48).
-- **Why:** D48 and the "nothing invented" promise.
-- **Test:** The landing page shows no unlabelled fake data or claims that contradict the limits.
+**Out of scope:** industry insights (Phase 8); dropping unused Prisma models (needs your confirmation that they hold no data); resume text retention scheduling (no job runner yet).
 
 ---
 
-**New env var names:** none.
-**New migration (you apply it):** `interview_answer`.
+### 1. BACKEND: Migration order, runbook and Vercel config
+- **Files:** `prisma/migrations/*` (rename only the future-dated, unapplied folders), new `docs/ai/DEPLOY.md`, new `vercel.json`
+- **What:**
+  - Rename `20261118000000_phase3_sources`, `20261119000000_cold_email_fields` and `20261120000000_interview_answer` to timestamps on or before today, keeping the current order (after `20261117010000_quiz_session`). Leave the contents unchanged.
+  - Write `DEPLOY.md`:
+    - Back up first.
+    - Run `prisma migrate status`.
+    - Use `migrate resolve --applied` only for drift.
+    - Run `prisma migrate deploy` by hand.
+    - Never use `migrate dev` or `reset` on production.
+    - Include the apply order, the env checklist (every `.env.example` name, `AI_DEBUG` unset, `ATS_FIX_SIGNING_SECRET` ≥32 chars, the Sentry vars), a rollback note, and the Docker path.
+  - `vercel.json` sets a build command that never runs migrations.
+- **Why:** D52, and the scout's HIGH deploy gate.
+- **Test:** `prisma validate` passes, the migration folders sort in the intended order, and the build doesn't touch a database.
+
+### 2. BACKEND: Count the cap per user action
+- **Files:** `src/lib/ai/index.js`, `src/lib/ai/limit.js`, `prisma/schema.prisma`, new migration `ai_usage_action_id` (SQL only), every server action that calls runAI
+- **What:**
+  - Add a nullable `actionId` to `AiUsage`, with an index on `(userId, createdAt)` if it's missing.
+  - A small helper (e.g. `withAiAction(userId, fn)`) creates one id per user action and passes it to every `runAI` call inside it.
+  - The cap counts distinct `actionId`s today, plus legacy rows with a null id counted individually.
+  - The check happens once at the start of an action. Retries and re-scores inside the same action aren't blocked part-way.
+  - Every row is still logged (D50).
+- **Why:** D50, and the scout's MED multi-call spend.
+- **Test:** A tailor or ATS-fix flow that makes 3 calls counts as 1 action. Hitting the limit blocks the next action, not a retry in the middle of an action.
+
+### 3. BACKEND: Vitest unit tests
+- **Files:** `package.json` (`test` script plus the vitest devDependency), `vitest.config.*`, new `src/**/__tests__/*.test.js` (or `tests/`)
+- **What:**
+  - Port the `scripts/selfcheck-matching.mjs` cases into tests, and add tests for `numberCheck`, `sources` normalize/validate, `paragraphs` shape, `entryIds`, `match`, `writing`, `rubric` computeOverall, `verify`, `derive` and `limit` counting logic (mocking the DB).
+  - No network and no database.
+  - Keep the self-check script.
+- **Why:** D53. There are no tests today.
+- **Test:** `npm test` passes, and so does `npm run build`.
+
+### 4. BACKEND: Sentry with scrubbing
+- **Files:** `package.json` (`@sentry/nextjs`), `instrumentation.js` / `sentry.*.config.js`, `next.config.mjs` (wrap only if needed; no source-map upload unless the env is set), the `safeErr` helper, `.env.example`
+- **What:**
+  - Initialize Sentry only when `SENTRY_DSN` (server) or `NEXT_PUBLIC_SENTRY_DSN` (client) is set.
+  - `beforeSend` and `beforeBreadcrumb` drop request bodies, cookies, headers, user objects, and any field named like resume, jd, jobDescription, answer, content, email or clerk.
+  - Server actions report via `safeErr` with the error code only.
+  - With no DSN, nothing loads or sends.
+  - Add the env names to `.env.example`.
+- **Why:** D51.
+- **Test:** With no DSN, the build and app behave exactly as before. A unit test of the scrubber shows sensitive fields removed.
+
+### 5. BACKEND: Profile validation, stable paragraph ids and generic phrases
+- **Files:** `src/actions/User.js`, `src/lib/ai/paragraphs.js`, `src/lib/roadmap/derive.js`
+- **What:**
+  - Add a zod schema to `updateUser` (industry, experience 0–60, skills ≤50 items of ≤50 chars, bio length) that returns `{error, code}`.
+  - Placeholder IndustryInsight rows are still needed for the foreign key, but add a comment, and make sure nothing reads or displays them before Phase 8.
+  - New letter and email generations store a short hash of each paragraph's text in `sources.paragraphs[i].hash`.
+  - Extend the generic phrase list in `derive.js` (e.g. "customer facing", "cross functional", "fast paced", "best practices").
+  - Update the contract.
+- **Why:** the scout's MED profile validation item, the SourceChips mapping, and a review nit.
+- **Test:** Invalid profile input is rejected with a message. New letters have paragraph hashes, and generic phrases no longer match targets.
+
+### 6. BACKEND: Dependency cleanup and audit
+- **Files:** `package.json`, `package-lock.json`, `DEPLOY.md`
+- **What:**
+  - Remove dependencies with zero imports, confirmed by grep for each (CONTEXT §8.13; e.g. unused PDF libraries, `openai`, `@upstash/qstash`, `resend`, and the duplicate motion library if unused).
+  - Run `npm audit --omit=dev` and record the results in `DEPLOY.md`.
+  - Apply only non-breaking fixes (no major bumps); list the rest for your decision.
+- **Why:** dependency risk.
+- **Test:** `npm run build` and `npm test` pass, and every remaining dependency is imported.
+
+### 7. FRONTEND: Practice and voice nits
+- **Files:** `(gated)/interview/practice/page.jsx`, `(gated)/resume/_components/AITextarea.jsx`, `EntryForm.jsx`
+- **What:**
+  - The practice submit button is disabled under `ANSWER_MIN_CHARS` (import from `rubric.js`), with a live "N more characters" hint.
+  - In all three places, typing in the box while recording stops the recording first, so the next speech result never overwrites what you typed.
+- **Why:** review nits.
+- **Test:** Typing during recording stops it and keeps your text, and submit stays disabled until 20 characters.
+
+### 8. FRONTEND: Stable source chips and landing copy
+- **Files:** `src/components/shared/SourceChips.jsx` (`ParagraphSources`), `CoverLetterPreview.jsx`, `ColdEmailPreview.jsx`, `src/app/page.js` (:85, :101)
+- **What:**
+  - Map chips to paragraphs by `hash` when it's present, so unchanged paragraphs keep their chips even after other paragraphs are edited.
+  - Edited paragraphs show none, and a "Based on" list covers the rest.
+  - Fall back to the current index rule for legacy letters without hashes.
+  - Landing copy: replace "1-click fixes that count up live" with an accurate line, and align "<120 word" with the 100–140 range from `writing.js`.
+- **Why:** the scout's MED SourceChips item and the copy nits.
+- **Test:** Editing one paragraph keeps the chips on the others, and the landing copy matches the product.
+
+---
+
+**New env var names:** `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` (both optional).
+**New migration (you apply it):** `ai_usage_action_id`. Three unapplied migration folders are renamed to fix the date order.

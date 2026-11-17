@@ -95,3 +95,13 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D46 | Practice sessions | Default 5 open questions (the user can pick 3–10). Each answer is scored when submitted (one `fast` call), labelled "AI estimate", and every rubric quote must appear verbatim in the user's answer. The timer shows "time's up" but never auto-submits. Voice uses browser speech-to-text only, with no audio upload, and the transcript is editable. |
 | D47 | Roadmap weeks | Group the existing steps in the UI by the roadmap's phase breakdown, labelled as an AI estimate. No regeneration and no schema change. |
 | D48 | Honest landing page | Label demos "Sample", use fictional company names, and reword pricing bullets to match real limits (50 AI actions per day by default). No design change. |
+
+## Phase 7 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D49 | Phase 7 scope | **Production readiness and quality.** Covers the migration order and runbook, a test runner, Sentry with scrubbing, Vercel config, dependency cleanup, profile validation, counting the cap per action, stable paragraph source mapping and the UI nits. Industry insights moves to Phase 8. **Done when:** `npm test` runs unit tests for the trust helpers; migrations are dated in order and documented in `docs/ai/DEPLOY.md`; the cap counts one per user action; Sentry does nothing without a DSN and scrubs personal data; `vercel.json` exists with no DB access at build time; unused dependencies are removed; the UI nits are fixed; `npm run build` passes; all 6 tools still work. |
+| D50 | Cap counting (amends D21/D30) | Count **one per user action**. Every `runAI` call inside one server action shares an `actionId`, and the cap counts distinct action ids per user per day. `AiUsage` still logs every call. |
+| D51 | Error monitoring | `@sentry/nextjs`, enabled only when a DSN is set. `beforeSend` strips request bodies, resume, job-description, answer and letter text, emails and Clerk ids, so only error codes, routes and stack frames are sent. |
+| D52 | Vercel migrations | Migrations are never run during the build. `docs/ai/DEPLOY.md` is the runbook: back up, `prisma migrate status`, `resolve` only for drift, then `prisma migrate deploy` by hand before promoting. |
+| D53 | Test runner | Vitest (default choice, no question needed). The existing self-check cases move into unit tests, and the script stays. |
