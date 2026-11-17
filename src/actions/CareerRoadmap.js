@@ -7,6 +7,7 @@ import { roadmapSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
 import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
+import { countGaps, deriveStepTargets } from "@/lib/roadmap/derive";
 
 const NO_SOURCES_MSG =
   "We couldn't ground a roadmap in your details. Add skills or experience to your profile or resume, then try again.";
@@ -16,6 +17,8 @@ const inputSchema = z.object({
   industry: z.string().trim().max(200).default(""),
 });
 const fail = (code, error) => ({ error, code });
+const stepProgress = (steps) =>
+  steps.length ? (steps.filter((st) => st && st.completed).length / steps.length) * 100 : 0;
 
 export async function generateCareerRoadmap(rawData) {
   const { userId } = await auth();
@@ -260,10 +263,11 @@ export async function updateRoadmapProgress(id, stepId, progress) {
 
   if (!careerPath) throw new Error("Career path not found");
 
-  // Calculate new progress
-  const steps = careerPath.steps;
-  const completedSteps = steps.filter(step => step.completed).length;
-  const newProgress = (completedSteps / steps.length) * 100;
+  // Use the progress the caller passed (clamped to 0-100). Only when it is missing or not a number is it
+  // recomputed from the completed steps. (It used to ignore the argument.)
+  const steps = Array.isArray(careerPath.steps) ? careerPath.steps : [];
+  const given = typeof progress === "number" && Number.isFinite(progress) ? Math.min(100, Math.max(0, progress)) : null;
+  const newProgress = given ?? stepProgress(steps);
 
   return await db.careerPath.update({
     where: {
@@ -272,7 +276,7 @@ export async function updateRoadmapProgress(id, stepId, progress) {
     },
     data: {
       progress: newProgress,
-      currentStep: stepId,
+      currentStep: Number.isFinite(Number(stepId)) ? Number(stepId) : careerPath.currentStep,
       updatedAt: new Date(),
     },
   });
@@ -384,5 +388,115 @@ Maximum 200 words.
   } catch (error) {
     console.error("Error generating recommendations");
     throw new Error("Failed to generate recommendations");
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Phase 6 (D47, roadmap parity). Read-only helpers use no AI.
+
+const setDoneSchema = z.object({
+  id: z.string().min(1).max(64),
+  stepId: z.number().int(),
+  done: z.boolean(),
+});
+
+/** Sets one step done / not done (undo) and recomputes progress. Owner-scoped; safe against concurrent toggles. */
+export async function setRoadmapStepDone(id, stepId, done) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const parsed = setDoneSchema.safeParse({ id, stepId, done });
+  if (!parsed.success) return fail("INVALID", "Invalid roadmap step.");
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const path = await db.careerPath.findFirst({ where: { id: parsed.data.id, userId: user.id } });
+      if (!path) return fail("NOT_FOUND", "Roadmap not found.");
+      const steps = Array.isArray(path.steps) ? path.steps : [];
+      if (!steps.some((st) => st && st.id === parsed.data.stepId)) return fail("NOT_FOUND", "Step not found.");
+
+      const updated = steps.map((st) => {
+        if (!st || st.id !== parsed.data.stepId) return st;
+        if (parsed.data.done) return { ...st, completed: true, completedAt: new Date().toISOString() };
+        const { completedAt: _drop, ...rest } = st;
+        return { ...rest, completed: false };
+      });
+      const progress = stepProgress(updated);
+      const next = updated.find((st) => st && !st.completed);
+      const currentStep = next ? Number(next.id) || 0 : updated.length;
+
+      // Optimistic lock on updatedAt: a concurrent toggle makes this miss, and we re-read and retry.
+      const res = await db.careerPath.updateMany({
+        where: { id: path.id, userId: user.id, updatedAt: path.updatedAt },
+        data: { steps: updated, progress, currentStep },
+      });
+      if (res.count === 1) {
+        return { success: true, id: path.id, stepId: parsed.data.stepId, done: parsed.data.done, progress, currentStep, steps: updated };
+      }
+    }
+    return fail("FAILED", "Could not save the change. Please try again.");
+  } catch (error) {
+    console.error("setRoadmapStepDone failed:", safeErr(error));
+    return fail("FAILED", "Could not save the change. Please try again.");
+  }
+}
+
+/** Missing skills ranked by how many of the user's own ATS results list them. No AI. */
+export async function getGapFrequency() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return { gaps: [], resultCount: 0 };
+    const rows = await db.aTSScore.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: { missingSkills: true },
+    });
+    return { gaps: countGaps(rows), resultCount: rows.length };
+  } catch (error) {
+    console.error("getGapFrequency failed:", safeErr(error));
+    return fail("FAILED", "Failed to load skill gaps.");
+  }
+}
+
+/**
+ * For each step of the roadmap, the user's own targets (D18: ATS results, cover letters, cold emails; company
+ * and role) whose stored job description names the step's skill or title. Deterministic, no AI.
+ * Returns { targets: { [stepId]: [{ company, role, jdExcerpt, kinds }] } } with every step present.
+ */
+export async function getStepTargets(roadmapId) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const parsed = z.string().min(1).max(64).safeParse(roadmapId);
+  if (!parsed.success) return fail("INVALID", "Invalid roadmap.");
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const path = await db.careerPath.findFirst({ where: { id: parsed.data, userId: user.id }, select: { steps: true } });
+    if (!path) return fail("NOT_FOUND", "Roadmap not found.");
+
+    const pick = { companyName: true, jobTitle: true, jobDescription: true };
+    const [ats, letters, emails] = await Promise.all([
+      db.aTSScore.findMany({ where: { userId: user.id, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
+      db.coverLetter.findMany({ where: { userId: user.id, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
+      db.coldEmail.findMany({ where: { userId: user.id, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
+    ]);
+    const docs = [
+      ...ats.map((d) => ({ kind: "ats", company: d.companyName, role: d.jobTitle, jobDescription: d.jobDescription })),
+      ...letters.map((d) => ({ kind: "coverLetter", company: d.companyName, role: d.jobTitle, jobDescription: d.jobDescription })),
+      ...emails.map((d) => ({ kind: "coldEmail", company: d.companyName, role: d.jobTitle, jobDescription: d.jobDescription })),
+    ];
+    return { targets: deriveStepTargets(path.steps, docs) };
+  } catch (error) {
+    console.error("getStepTargets failed:", safeErr(error));
+    return fail("FAILED", "Failed to load targets.");
   }
 }

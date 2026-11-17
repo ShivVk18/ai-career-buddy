@@ -1,4 +1,4 @@
-# API Contract (Phase 2, plus Phase 3 Sources in section 6)
+# API Contract (Phase 2, plus Phase 3 Sources in section 6, Phase 6 in section 9)
 
 Source of truth for frontend and backend. Branches `phase-2`, `phase-3`. Decisions: D18-D21, D25-D31 in DECISIONS.md.
 
@@ -498,3 +498,101 @@ Also `counts.dueFollowUps: number` is NOT added; use `dueFollowUps.length` (a us
 ### 8.6 Redirects (`next.config.mjs`, permanent, 308)
 
 `/tools/resume` -> `/resume`, `/tools/ats` -> `/resume-parser`, `/tools/cover-letter` -> `/cover-letter`, `/tools/cold-email` -> `/cold-email`. Next redirects run before pages, so they apply even while the old preview pages still exist; the frontend then deletes those pages. `/tools/interview` and `/tools/roadmap` stay.
+
+
+---
+
+## 9. Phase 6 (D44-D48): open interview practice, roadmap parity, redirects
+
+Conventions as before: only signed-out THROWS `Error("Unauthorized")`; expected failures are RETURNED as `{ error, code }`. Every query is scoped to the signed-in user's rows. New codes: `ALREADY_SCORED` (9.2) and `MIGRATION_PENDING` (also for interview actions when the `interview_answer` migration is not applied; no AI call is spent). Other codes as in 6.3 / 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVALID`, `NOT_FOUND`, `FAILED`). New migration `20261120000000_interview_answer` (SQL only, NOT applied by the agent).
+
+### 9.1 `src/lib/interview/rubric.js` (plain JS, no imports; safe in server and UI)
+
+```ts
+RUBRIC_WEIGHTS = { clarity: 30, depth: 40, evidence: 30 }   // sums to 100
+RUBRIC_CRITERIA = ["clarity", "depth", "evidence"]           // display order
+RUBRIC_LABELS = { clarity: "Clarity", depth: "Depth", evidence: "Evidence" }
+CRITERION_SCORE_MAX = 10                                     // each criterion is scored 0-10
+ANSWER_MIN_CHARS = 1; ANSWER_MAX_CHARS = 5000                // answer length (after trim)
+OPEN_QUESTION_COUNT = { min: 3, max: 10, default: 5 }
+WEAK_AREA_MIN_ANSWERS = 2
+computeOverall(criteria: {name, score}[]): number            // integer 0-100 = round(sum(score/10 * weight)); scores clamped, missing = 0
+```
+
+### 9.2 Open practice (`src/actions/Practice.js`, new file; the MCQ actions in `Interview.js` are unchanged)
+
+Open questions live in `QuizSession.questions` as items `{ type: "open", question, topic, timeLimitSec, sourceIds, sources }`. Nothing server-only is stored there beyond that (there are no answers or rubric in the session); the rubric is only ever in `InterviewAnswer`.
+
+`generateOpenQuestions({ count?: number, jobDescription?: string | null })`
+- `count` integer 3-10 (default 5), `jobDescription` max 20000 chars; unknown keys or bad values => `INVALID`.
+- One `write` call, plus at most one retry when too few sourced questions remain (D28; both count against the cap). Sources can only be job-description lines (`jd:<n>`) and the profile skills (`profile:skills`). A question with no valid source, a duplicate, or a number not found in the sources is dropped. May return fewer than `count` (at least 1); none => `NO_SOURCES` (also when there is no job description and the profile has no skills). `timeLimitSec` is clamped to 60-300.
+- Returns:
+
+```ts
+{
+  sessionId: string,
+  questions: { index: number, question: string, topic: string, timeLimitSec: number, sources: Snapshot[] }[]
+  // Snapshot = { id, kind: "jd"|"profile", label, excerpt }  (same as section 6.1; use SourceChips)
+}
+```
+- Errors: `INVALID`, `NOT_FOUND` (no DB user), `NO_SOURCES`, `AI_LIMIT`, `AI_UNAVAILABLE`, `FAILED`.
+- Housekeeping now keeps open sessions that have scored answers; old unsubmitted MCQ sessions and open sessions without answers are still deleted after 7 days.
+
+`scoreOpenAnswer(sessionId: string, index: number, answerText: string)`
+- `answerText` trimmed, 1-5000 chars; `index` 0-9; else `INVALID`. Session must be yours and an open session, else `NOT_FOUND`; an index past the last question is `INVALID`.
+- Scored once per (session, index). If a stored result exists, NO AI call is made and the stored result is returned with `code: "ALREADY_SCORED"`. Otherwise one `fast` call (a second `fast` call only if the first feedback contained numbers the answer/question do not back; both count against the cap).
+- Server rules: every `quote` must appear verbatim in `answerText` after `normalizeText` on both sides, else that criterion's `quote` is `null` (the score stays). Feedback and summary pass `inventedNumbers` against question + answer; sentences with unbacked numbers are dropped (empty string if nothing is left). `overall` is recomputed on the server from `RUBRIC_WEIGHTS`; the model's overall is ignored.
+- Success returns:
+
+```ts
+{
+  index: number,
+  answerText: string,
+  overall: number,                    // integer 0-100, label "AI estimate"
+  createdAt: string,                  // ISO
+  rubric: {
+    criteria: {                       // always exactly 3, order clarity, depth, evidence
+      name: "clarity" | "depth" | "evidence",
+      weight: 30 | 40 | 30,
+      score: number,                  // integer 0-10
+      quote: string | null,           // verbatim from answerText (exact original substring when locatable), else null
+      quoteRange: [number, number] | null,  // [start, end) offsets into answerText for highlighting; null when the quote matched only through normalization (e.g. hyphenation): then show the quote without highlight
+      feedback: string                // may be ""
+    }[],
+    summary: string,                  // may be ""
+    overall: number                   // same as above
+  }
+}
+```
+- Repeat: `{ error: "This question has already been scored.", code: "ALREADY_SCORED", index, answerText, overall, createdAt, rubric }` (the stored result, same fields as success).
+- Errors: `INVALID`, `NOT_FOUND`, `MIGRATION_PENDING`, `AI_LIMIT`, `AI_UNAVAILABLE`, `FAILED`. When every question has a score, the session's `submittedAt` is set.
+- `submitQuiz` now returns `INVALID` ("This is an open practice session...") for open sessions.
+
+`getOpenSession(sessionId: string)` returns (or `NOT_FOUND` for unknown / not yours / MCQ session, `MIGRATION_PENDING`, `INVALID`, `FAILED`):
+
+```ts
+{
+  sessionId: string, createdAt: string, total: number, answered: number, completed: boolean,
+  averageOverall: number | null,      // over scored answers, rounded
+  questions: { index, question, topic, timeLimitSec, sources: Snapshot[],
+               answer: { answerText, rubric, overall, createdAt } | null }[]   // answer shape as in scoreOpenAnswer
+}
+```
+
+`getPracticeHistory()` returns `{ sessions: { sessionId, createdAt, total, answered, completed, averageOverall: number|null, topics: string[], href: "/interview/practice/<sessionId>" }[] }` (own sessions with at least one scored answer, newest first, max 50; `[]` when none) or `{ error, code: "MIGRATION_PENDING" | "FAILED" }`. The review route `/interview/practice/[sessionId]` is a frontend choice; `href` is only a suggestion.
+
+`getWeakAreas()` (no AI) returns `{ topics: { topic, average, count }[], minAnswers: 2, totalAnswers: number, hiddenTopics: number }` or `{ error, code }`. Averages of `overall` per topic (case/whitespace-insensitive) over the user's own `InterviewAnswer` rows (latest 1000); only topics with at least 2 answers are listed, weakest first; `hiddenTopics` = topics with too few answers; empty `topics` => show the empty state. MCQ results are not included.
+
+### 9.3 Roadmap (`src/actions/CareerRoadmap.js`)
+
+`setRoadmapStepDone(id: string, stepId: number, done: boolean)`: owner-scoped; sets `completed` (adds `completedAt` ISO when done, removes it on undo), recomputes `progress` (completed / total * 100) and `currentStep` (id of the first incomplete step, else the step count). Safe against concurrent toggles (optimistic retry). Returns `{ success: true, id, stepId, done, progress, currentStep, steps }` or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`. Undo = call again with the old value; the UI reverts its local state if the result has `error`.
+`updateRoadmapProgress(id, stepId, progress)` (existing, still throws on errors): now stores the `progress` argument (clamped 0-100) when it is a number; only when missing or not a number it recomputes from the steps. Prefer `setRoadmapStepDone`.
+
+`getGapFrequency()` (no AI): returns `{ gaps: { skill: string, count: number }[], resultCount: number }`. Counts `missingSkills` across the user's latest 200 ATS results; grouped case/whitespace/edge-punctuation-insensitively; a skill counts once per result; `skill` is the most common original spelling; sorted by count desc, max 50. `resultCount` = ATS results counted (use for "based on N ATS results"); `[]`/`0` when none. Error: `{ error, code: "FAILED" }`.
+
+`getStepTargets(roadmapId: string)` (no AI): returns `{ targets: { [stepId: string]: { company: string, role: string, jdExcerpt: string, kinds: ("ats"|"coverLetter"|"coldEmail")[] }[] } }` with every step id present (possibly `[]`). Targets come from the user's own ATS results, cover letters and cold emails (D18, deduplicated by company+role, newest first, a pair needs a company or role), and appear only when the STORED job description names the step's skill or title (whole-term match through `normalizeText`; skills from the match vocabulary found in the step's `skill`/`title`, or the whole title). `jdExcerpt` is the matching job-description line, max 240 chars; at most 5 targets per step. Errors: `INVALID`, `NOT_FOUND`, `FAILED`. The shape is wrapped in `{ targets }` so errors can be told apart.
+
+### 9.4 Cold email check and redirects
+
+- `generateColdEmail`: before the AI call it probes the Phase 5 columns with a one-row `findFirst`. Missing columns (Prisma P2022) => `{ error, code: "MIGRATION_PENDING" }` with NO AI call and no `AiUsage` row. Other DB errors => `FAILED`.
+- Redirects (`next.config.mjs`, permanent 308): `/tools/interview` -> `/interview`, `/tools/roadmap` -> `/roadmap`, `/tools` -> `/dashboard` (plus the four from 8.6). The middleware `/tools(.*)` guard stays (harmless).

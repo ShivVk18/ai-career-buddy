@@ -25,6 +25,7 @@ model User {
   skills        String[]  
   assessments   Assessment[]
   quizSessions  QuizSession[]
+  interviewAnswers InterviewAnswer[]
   resume        Resume?
   coverLetter   CoverLetter[]
   
@@ -395,6 +396,26 @@ model QuizSession {
   questions   Json
   createdAt   DateTime  @default(now())
   submittedAt DateTime?
+  answers     InterviewAnswer[]
 
   @@index([userId])
+}
+
+// One scored open interview answer (D45). Rubric is the verified rubric; overall is recomputed on the server.
+model InterviewAnswer {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  sessionId     String
+  session       QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionIndex Int
+  question      String      @db.Text
+  topic         String
+  answerText    String      @db.Text
+  rubric        Json
+  overall       Float
+  createdAt     DateTime    @default(now())
+
+  @@unique([sessionId, questionIndex])
+  @@index([userId, topic])
 }

@@ -130,3 +130,33 @@ export const atsFixSchema = z.object({
   proposed: z.string().min(1),
   sourceIds: z.array(z.string()).default([]),
 });
+
+// Open interview questions (D45/D46): each cites job-description lines or profile skills; the server checks the ids.
+export const openQuestionsSchema = z.object({
+  questions: z
+    .array(
+      z.object({
+        question: z.string().min(1),
+        topic: z.string().min(1),
+        timeLimitSec: z.number().optional(),
+        sourceIds: z.array(z.string()).default([]),
+      })
+    )
+    .min(1),
+});
+
+// Open answer rubric (D46). The model's `overall` is ignored: the server recomputes it from the weights.
+export const rubricSchema = z.object({
+  criteria: z
+    .array(
+      z.object({
+        name: z.enum(["clarity", "depth", "evidence"]),
+        score: z.number().min(0).max(10),
+        quote: z.string().nullish(),
+        feedback: z.string().default(""),
+      })
+    )
+    .length(3),
+  summary: z.string().default(""),
+  overall: z.number().optional(),
+});

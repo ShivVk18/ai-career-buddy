@@ -13,10 +13,10 @@ const pages = [
   { name: "02_dashboard", path: "/dashboard" },
   { name: "03_chat", path: "/chat" },
   { name: "04_tool_resume", path: "/resume" },
-  { name: "05_tool_interview", path: "/tools/interview" },
+  { name: "05_tool_interview", path: "/interview" },
   { name: "06_tool_cover_letter", path: "/cover-letter" },
   { name: "07_tool_cold_email", path: "/cold-email" },
-  { name: "08_tool_roadmap", path: "/tools/roadmap" },
+  { name: "08_tool_roadmap", path: "/roadmap" },
   { name: "09_tool_ats", path: "/resume-parser" },
 ];
 

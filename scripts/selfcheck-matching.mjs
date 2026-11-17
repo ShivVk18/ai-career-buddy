@@ -4,6 +4,9 @@ import { normalizeText } from "../src/lib/ai/sources.js";
 import { legacyEntryId, ensureEntryIds } from "../src/lib/entryIds.js";
 import { extractTerms, matchText, resumeToText } from "../src/lib/match.js";
 import { findCliches, countWords, COVER_LETTER_WORDS, COLD_EMAIL_WORDS } from "../src/lib/writing.js";
+import { RUBRIC_WEIGHTS, computeOverall } from "../src/lib/interview/rubric.js";
+import { verifyQuote, stripInventedSentences } from "../src/lib/interview/verify.js";
+import { countGaps, deriveStepTargets, matchStepToJd } from "../src/lib/roadmap/derive.js";
 import { weightsForLevel, weightsPromptText, WEIGHT_GROUPS } from "../src/lib/ats/weights.js";
 const ok = (o, i) => assert.equal(inventedNumbers(o, i).length, 0, `ok: ${o} <- ${i}`);
 const bad = (o, i) => assert.ok(inventedNumbers(o, i).length > 0, `flagged: ${o} <- ${i}`);
@@ -80,5 +83,58 @@ for (const g of Object.values(WEIGHT_GROUPS)) {
   assert.equal(countWords(""), 0);
   assert.ok(COVER_LETTER_WORDS.min < COVER_LETTER_WORDS.max);
   assert.ok(COLD_EMAIL_WORDS.min <= COLD_EMAIL_WORDS.target && COLD_EMAIL_WORDS.target <= COLD_EMAIL_WORDS.max);
+}
+// Interview rubric (D46): weights, server-side overall, verbatim quotes, feedback numbers
+{
+  assert.deepEqual(RUBRIC_WEIGHTS, { clarity: 30, depth: 40, evidence: 30 });
+  assert.equal(Object.values(RUBRIC_WEIGHTS).reduce((a, b) => a + b, 0), 100);
+  const c = (a, b, d) => [{ name: "clarity", score: a }, { name: "depth", score: b }, { name: "evidence", score: d }];
+  assert.equal(computeOverall(c(10, 10, 10)), 100);
+  assert.equal(computeOverall(c(0, 0, 0)), 0);
+  assert.equal(computeOverall(c(5, 5, 5)), 50);
+  assert.equal(computeOverall(c(10, 0, 0)), 30);
+  assert.equal(computeOverall(c(0, 10, 0)), 40);
+  assert.equal(computeOverall(c(8, 6, 7)), 24 + 24 + 21);
+  assert.equal(computeOverall(c(99, -5, 10)), 60); // clamped to 0-10
+  assert.equal(computeOverall([{ name: "clarity", score: 10 }]), 30); // missing criteria count as 0
+  assert.equal(computeOverall([]), 0);
+  const ans = "I used React and cut the full-\nstack build time.  Then I wrote tests.";
+  assert.equal(verifyQuote("I used React", ans).quote, "I used React");
+  assert.deepEqual(verifyQuote("i USED react", ans).range, [0, 12]);
+  assert.ok(verifyQuote("full-stack build time", ans)); // matches through normalization
+  assert.equal(verifyQuote("then   I wrote tests", ans).quote, "Then I wrote tests");
+  assert.equal(verifyQuote("I led a team of ten", ans), null);
+  assert.equal(verifyQuote("", ans), null);
+  assert.equal(verifyQuote(null, ans), null);
+  const allowed = "Tell me about a project. I built a tool for 5 users.";
+  assert.equal(stripInventedSentences("Good example. You saved 40% of time. Add more detail.", allowed), "Good example. Add more detail.");
+  assert.equal(stripInventedSentences("Nice with 5 users.", allowed), "Nice with 5 users.");
+  assert.equal(stripInventedSentences("You saved 40%.", allowed), "");
+}
+// Gap frequency (normalized) and step targets (deterministic, from stored job descriptions)
+{
+  const gaps = countGaps([
+    { missingSkills: ["Docker", " docker ", "Kubernetes"] },
+    { missingSkills: ["DOCKER", "kubernetes.", "GraphQL"] },
+    { missingSkills: ["docker"] },
+    { missingSkills: [] },
+  ]);
+  assert.deepEqual(gaps, [{ skill: "docker", count: 3 }, { skill: "Kubernetes", count: 2 }, { skill: "GraphQL", count: 1 }]);
+  assert.deepEqual(countGaps([]), []);
+  assert.deepEqual(countGaps(null), []);
+  const step = { id: 1, title: "Learn Docker and containerization" };
+  assert.equal(matchStepToJd(step, "We use Kubernetes.\nExperience with Docker is a plus.").jdExcerpt, "Experience with Docker is a plus.");
+  assert.equal(matchStepToJd(step, "We use Dockerfile conventions and python."), null);
+  assert.equal(matchStepToJd({ id: 2, title: "Build a portfolio" }, "Experience with Docker."), null);
+  const docs = [
+    { kind: "ats", company: "Acme", role: "Dev", jobDescription: "Must know Docker." },
+    { kind: "coldEmail", company: "acme", role: "dev", jobDescription: "Docker again." },
+    { kind: "coverLetter", company: "Globex", role: "SRE", jobDescription: "Terraform only." },
+    { kind: "ats", company: "", role: "", jobDescription: "Docker." },
+  ];
+  const t = deriveStepTargets([step, { id: 3, title: "Practice Terraform" }, { id: 4, title: "Network" }], docs);
+  assert.deepEqual(t["1"].map((x) => [x.company, x.role, x.kinds]), [["Acme", "Dev", ["ats", "coldEmail"]]]);
+  assert.deepEqual(t["3"].map((x) => x.company), ["Globex"]);
+  assert.deepEqual(t["4"], []);
 }
 console.log("all self-checks passed");

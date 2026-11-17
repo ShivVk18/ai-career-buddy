@@ -89,16 +89,27 @@ Ensure all 10 questions are unique and the correctAnswer exactly matches one of 
       .slice(0, 10);
     if (valid.length < 5) return fail("FAILED", "Could not generate a quiz. Please try again.");
 
-    // Housekeeping: drop this user's own unsubmitted sessions older than 7 days.
-    await db.quizSession
-      .deleteMany({
+    // Housekeeping: drop this user's own unsubmitted MCQ sessions older than 7 days. Open practice
+    // sessions that already have scored answers are kept (their history and weak areas depend on them).
+    try {
+      const old = await db.quizSession.findMany({
         where: {
           userId: user.id,
           submittedAt: null,
           createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         },
-      })
-      .catch(() => {});
+        select: { id: true, questions: true, _count: { select: { answers: true } } },
+        take: 100,
+      });
+      const ids = old
+        .filter((s) => !(Array.isArray(s.questions) && s.questions.some((q) => q?.type === "open")) || s._count.answers === 0)
+        .map((s) => s.id);
+      if (ids.length) {
+        await db.quizSession.deleteMany({ where: { id: { in: ids }, userId: user.id, submittedAt: null } });
+      }
+    } catch {
+      /* best effort */
+    }
 
     const session = await db.quizSession.create({
       data: { userId: user.id, questions: valid },
@@ -160,6 +171,10 @@ export async function submitQuiz(quizId, answers) {
     if (session.submittedAt) return fail("ALREADY_SUBMITTED");
 
     const stored = Array.isArray(session.questions) ? session.questions : [];
+    // Open practice sessions (type "open") are scored one answer at a time by scoreOpenAnswer, never here.
+    if (stored.some((q) => q?.type === "open")) {
+      return fail("INVALID", "This is an open practice session. Answer its questions in the practice flow.");
+    }
     const given = parsedInput.data.answers;
     if (stored.length === 0 || given.length !== stored.length) return fail("INVALID");
 

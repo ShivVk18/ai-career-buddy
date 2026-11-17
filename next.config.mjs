@@ -18,6 +18,10 @@ const nextConfig = {
       { source: "/tools/ats", destination: "/resume-parser", permanent: true },
       { source: "/tools/cover-letter", destination: "/cover-letter", permanent: true },
       { source: "/tools/cold-email", destination: "/cold-email", permanent: true },
+      // Phase 6 (D44): the last two previews and the (index-less) /tools root.
+      { source: "/tools/interview", destination: "/interview", permanent: true },
+      { source: "/tools/roadmap", destination: "/roadmap", permanent: true },
+      { source: "/tools", destination: "/dashboard", permanent: true },
     ];
   },
 

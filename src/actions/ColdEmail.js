@@ -94,6 +94,19 @@ export async function generateColdEmail(data) {
   const catalog = buildSources({ profile: user, resume, jobDescription, extra });
   if (catalog.length === 0) return fail("NO_SOURCES", NO_SOURCES_MSG);
 
+  // Cheap column probe BEFORE the AI call: if the Phase 5 columns are not in the database yet, the insert below
+  // would fail after a capped AI call was already spent. P2022 => MIGRATION_PENDING with no AI call.
+  try {
+    await db.coldEmail.findFirst({
+      where: { userId: user.id },
+      select: { id: true, subject: true, recipientName: true, recipientRole: true, recipientEmail: true, followUpAt: true },
+    });
+  } catch (error) {
+    if (isMissingColumn(error)) return fail("MIGRATION_PENDING", MIGRATION_MSG);
+    console.error("generateColdEmail column check failed:", safeErr(error));
+    return fail("FAILED", "Failed to generate cold email. Please try again.");
+  }
+
   // PRIVACY (D34): recipientEmail is deliberately NOT used anywhere in this prompt, the source catalog or
   // any other AI input. It is only stored on the row (typed by the user) and used by the user's own
   // "Open in mail client" click. Do not add it here.
