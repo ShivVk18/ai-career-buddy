@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { saveResume } from "@/actions/Resume";
+import { ensureEntryIds } from "@/lib/entryIds";
 import { EntryForm } from "./EntryForm";
 import ResumeToolsPanel from "./ResumeToolsPanel";
 import { AITextarea } from "./AITextarea";
@@ -136,14 +137,8 @@ const TEMPLATES = [
   },
 ];
 
-// Stable client ids for entries that were saved without one, so repeated saves keep the same ids.
-function newEntryId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  return `e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-function withIds(entries) {
-  return (entries || []).map((e) => (e && typeof e === "object" && !e.id ? { ...e, id: newEntryId() } : e));
-}
+// Legacy entries (saved without ids) get deterministic ids, identical to the server's.
+const normalizedInitial = (resume) => ensureEntryIds(resume || {});
 
 export default function ResumeBuilder({ initialContent, initialResume }) {
   const [activeTab, setActiveTab] = useState("template");
@@ -175,9 +170,9 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       },
       summary: initialResume?.summary || "",
       skills: initialResume?.skills || "",
-      experience: withIds(initialResume?.experience),
-      education: withIds(initialResume?.education),
-      projects: withIds(initialResume?.projects),
+      experience: normalizedInitial(initialResume).experience || [],
+      education: normalizedInitial(initialResume).education || [],
+      projects: normalizedInitial(initialResume).projects || [],
       template: initialResume?.templateId || "",
       photo: initialResume?.photoUrl || "",
     },
