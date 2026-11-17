@@ -20,6 +20,8 @@ export function generationErrorMessage(result, fallback = "Something went wrong.
       return "This older copy only kept plain text, so it can't be restored. Your resume was not changed.";
     case "NOT_SHORTENABLE":
       return `${result.error || "This letter can't be shortened automatically."} Use Regenerate instead.`;
+    case "MIGRATION_PENDING":
+      return "Cold email details are being set up. Please try again in a little while.";
     default:
       return result.error || fallback;
   }

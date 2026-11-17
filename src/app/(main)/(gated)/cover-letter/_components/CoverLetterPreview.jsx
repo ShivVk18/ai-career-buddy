@@ -40,9 +40,9 @@ const ACTION_COPY = {
   shorten: { title: "Shorten this letter?", cta: "Shorten" },
 };
 
-const CoverLetterPreview = ({ id, content, sources: initialSources }) => {
+const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initialTone = null }) => {
   const [sources, setSources] = useState(initialSources);
-  const [tone, setTone] = useState(DEFAULT_TONE);
+  const [tone, setTone] = useState(COVER_LETTER_TONES.includes(initialTone) ? initialTone : DEFAULT_TONE);
   const [pendingAction, setPendingAction] = useState(null);
   const [working, setWorking] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
@@ -77,7 +77,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources }) => {
       const res =
         kind === "shorten"
           ? await shortenCoverLetter(id)
-          : await regenerateCoverLetter(id, kind === "formal" ? { formality: "formal", tone } : { tone });
+          : await regenerateCoverLetter(id, kind === "formal" ? { formality: "formal" } : { tone });
       if (!res || res.error || res.code) {
         toast.error(generationErrorMessage(res));
         return;

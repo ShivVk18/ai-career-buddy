@@ -4,10 +4,31 @@ import { Button } from "@/components/ui/button"
 
 import ColdEmailPreview from "../_components/ColdEmailPreview"
 import { getColdEmail } from "@/actions/ColdEmail"
+import { generationErrorMessage } from "@/components/shared/generationError"
 
 export default async function EditColdEmailPage({ params }) {
   const { id } = await params
-  const coldEmail = await getColdEmail(id)
+  const result = await getColdEmail(id)
+  const loadError = !result || result.error ? result : null
+  const coldEmail = loadError ? null : result
+
+  if (loadError !== null || !coldEmail) {
+    return (
+      <div className="min-h-screen bg-transparent text-foreground py-12 px-6 md:px-12">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <Link href="/cold-email">
+            <Button variant="ghost" className="gap-3 pl-0 text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="h-4 w-4" />
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Back to Emails</span>
+            </Button>
+          </Link>
+          <p className="text-muted-foreground text-sm">
+            {generationErrorMessage(loadError, "We couldn't load this email. It may have been deleted.")}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-transparent text-foreground relative py-12 px-6 md:px-12">

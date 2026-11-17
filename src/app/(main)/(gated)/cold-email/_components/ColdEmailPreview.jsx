@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import { COLD_EMAIL_WORDS } from "@/lib/writing";
 import { updateColdEmail, setColdEmailFollowUp } from "@/actions/ColdEmail";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Single address only: no whitespace, no second @, none of , ; < > " ( )
+const EMAIL_RE = /^[^\s@,;<>"()]+@[^\s@,;<>"()]+\.[^\s@,;<>"()]+$/;
 const MAILTO_MAX = 1800;
 
 const ColdEmailPreview = ({
@@ -157,7 +158,7 @@ const ColdEmailPreview = ({
             </div>
             <div>
               <h2 className="text-lg font-clash font-bold text-foreground uppercase tracking-tight">Preview & Edit</h2>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Ready to send</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Draft ready to review</p>
             </div>
           </div>
 
@@ -256,7 +257,9 @@ const ColdEmailPreview = ({
             placeholder={fields.subject ? "" : "No subject yet. Type one."}
             className="h-12"
           />
-          <SourceChips sources={sources?.subject?.sources} heading="Subject based on" />
+          {fields.subject === subject && (
+            <SourceChips sources={sources?.subject?.sources} heading="Subject based on" />
+          )}
         </div>
         <Button
           variant="outline"
@@ -400,7 +403,7 @@ const ColdEmailPreview = ({
               <div>
                 <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Be Brief</h4>
                 <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
-                  Decision makers are busy. Keep your email under 100 words for the best response rate.
+                  Decision makers are busy. Aim for about {COLD_EMAIL_WORDS.target} words (between {COLD_EMAIL_WORDS.min} and {COLD_EMAIL_WORDS.max}) so it is quick to read.
                 </p>
               </div>
             </div>
