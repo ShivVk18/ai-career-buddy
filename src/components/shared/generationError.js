@@ -24,6 +24,8 @@ export function generationErrorMessage(result, fallback = "Something went wrong.
       return "This feature is being set up. Please try again in a little while.";
     case "ALREADY_SCORED":
       return "This question has already been scored. Showing your saved result.";
+    case "SCORING_IN_PROGRESS":
+      return "Pip is still scoring this answer, check back in a few seconds";
     default:
       return result.error || fallback;
   }

@@ -56,6 +56,9 @@ export default function PracticePage() {
   const [submitting, setSubmitting] = useState(false);
   const [results, setResults] = useState({}); // index -> scored result
   const [submitError, setSubmitError] = useState(null);
+  const [scoringPending, setScoringPending] = useState(false);
+  const retryRef = useRef(null);
+  const handleSubmitRef = useRef(null);
 
   // Voice: transcript is appended to whatever was typed before recording started; the textarea stays editable.
   const baseRef = useRef("");
@@ -90,12 +93,23 @@ export default function PracticePage() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (auto = 0) => {
     if (isRecording) toggleRecording();
     setSubmitError(null);
+    setScoringPending(false);
     setSubmitting(true);
     try {
       const res = await scoreOpenAnswer(session.sessionId, session.questions[idx].index, text.trim());
+      if (res?.code === "SCORING_IN_PROGRESS") {
+        setSubmitError(generationErrorMessage(res));
+        setScoringPending(true);
+        // Retry automatically at most twice; after that the user taps "Check again".
+        if (auto < 2) {
+          clearTimeout(retryRef.current);
+          retryRef.current = setTimeout(() => handleSubmitRef.current(auto + 1), 4000);
+        }
+        return;
+      }
       if (res?.code === "ALREADY_SCORED" && res.rubric) {
         toast.info(generationErrorMessage(res));
         setResults((r) => ({ ...r, [idx]: res }));
@@ -111,7 +125,12 @@ export default function PracticePage() {
     }
   };
 
+  handleSubmitRef.current = handleSubmit;
+  useEffect(() => () => clearTimeout(retryRef.current), []);
+
   const goNext = () => {
+    clearTimeout(retryRef.current);
+    setScoringPending(false);
     setIdx((i) => i + 1);
     setText("");
     setSubmitError(null);
@@ -234,19 +253,21 @@ export default function PracticePage() {
                       {text.length}/{ANSWER_MAX_CHARS}
                     </span>
                   </div>
-                  <Button onClick={handleSubmit} disabled={submitting || !text.trim()} className="h-11 px-8">
+                  <Button onClick={() => handleSubmit(0)} disabled={submitting || !text.trim()} className="h-11 px-8">
                     {submitting ? (
                       <>
                         <Loader2 className="mr-3 h-4 w-4 animate-spin" />
                         Scoring...
                       </>
+                    ) : scoringPending ? (
+                      "Check again"
                     ) : (
                       "Submit answer"
                     )}
                   </Button>
                 </div>
                 {submitError && (
-                  <p role="alert" className="flex gap-2 text-sm text-destructive">
+                  <p role="alert" className={`flex gap-2 text-sm ${scoringPending ? "text-muted-foreground" : "text-destructive"}`}>
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                     {submitError}
                   </p>
