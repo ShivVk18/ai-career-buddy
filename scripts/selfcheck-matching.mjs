@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { inventedNumbers } from "../src/lib/ai/numberCheck.js";
 import { normalizeText } from "../src/lib/ai/sources.js";
+import { legacyEntryId, ensureEntryIds } from "../src/lib/entryIds.js";
 import { extractTerms, matchText, resumeToText } from "../src/lib/match.js";
 import { weightsForLevel, weightsPromptText, WEIGHT_GROUPS } from "../src/lib/ats/weights.js";
 const ok = (o, i) => assert.equal(inventedNumbers(o, i).length, 0, `ok: ${o} <- ${i}`);
@@ -46,5 +47,22 @@ assert.equal(weightsForLevel("nonsense"), null);
 for (const g of Object.values(WEIGHT_GROUPS)) {
   assert.equal(g.weights.reduce((a, w) => a + w.value, 0), 100);
   for (const w of g.weights) assert.ok(weightsPromptText().includes(`${w.key} → ${w.value}`));
+}
+// Legacy entry ids
+{
+  const a = { title: "Dev", organization: "Acme", startDate: "2020-01", description: "x" };
+  const b = { title: "Dev", organization: "Beta", startDate: "2020-01" };
+  assert.equal(legacyEntryId("exp", 0, a), legacyEntryId("exp", 0, { ...a }));
+  assert.match(legacyEntryId("exp", 0, a), /^l-exp-[0-9a-z]+$/);
+  assert.notEqual(legacyEntryId("exp", 0, a), legacyEntryId("exp", 1, a));
+  assert.notEqual(legacyEntryId("exp", 0, a), legacyEntryId("exp", 0, b));
+  assert.notEqual(legacyEntryId("exp", 0, a), legacyEntryId("proj", 0, a));
+  const r = { experience: [a, { ...b, id: "e_keep" }], projects: [b] };
+  const e1 = ensureEntryIds(r);
+  assert.equal(e1.experience[1].id, "e_keep");
+  assert.equal(e1.experience[0].id, legacyEntryId("exp", 0, a));
+  assert.equal(e1.projects[0].id, legacyEntryId("proj", 0, b));
+  assert.deepEqual(ensureEntryIds(e1), e1);
+  assert.equal(r.experience[0].id, undefined);
 }
 console.log("all self-checks passed");

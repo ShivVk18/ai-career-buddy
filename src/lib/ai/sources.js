@@ -1,6 +1,7 @@
 // Source catalog for Phase 3 (D26-D28). Server-only helpers: build a catalog of things the
 // user actually provided, let the model cite ids from it, and verify every cited id here.
 import { randomUUID } from "node:crypto";
+import { legacyEntryId, ensureEntryIds } from "../entryIds.js";
 
 const EXCERPT_MAX = 200;
 const JD_MAX_CHARS = 20000; // matches the input limit, so a maximum-size JD fits fully
@@ -60,7 +61,7 @@ function entryItems(entries, prefix, kindLabel, kind) {
     const desc = String(e.description ?? "").trim();
     if (!title && !org && !desc) return;
     // Entries saved before Phase 3 have no id; fall back to a position id (not stable across edits).
-    const id = `${prefix}:${e.id ? String(e.id) : `i${i}`}`;
+    const id = `${prefix}:${e.id ? String(e.id) : legacyEntryId(prefix, i, e)}`;
     const dates = [e.startDate, e.current ? "Present" : e.endDate].filter(Boolean).join(" - ");
     const label = `${kindLabel}: ${[title, org].filter(Boolean).join(" at ")}`.trim();
     out.push({ id, kind, label, text: [title, org, dates, desc].filter(Boolean).join(". ") });
@@ -144,9 +145,14 @@ export function formatCatalogForPrompt(catalog) {
     .join("\n");
 }
 
-/** Adds a stable id to entries that lack one. Existing ids are kept; duplicate ids are regenerated. */
-export function assignEntryIds(entries) {
+/**
+ * Adds a stable id to entries that lack one (deterministic legacyEntryId, same as the client computes via
+ * ensureEntryIds). Existing ids are kept; duplicate ids are regenerated. `section` is "exp" | "edu" | "proj".
+ */
+export function assignEntryIds(entries, section = "exp") {
   if (!Array.isArray(entries)) return [];
+  const key = { exp: "experience", edu: "education", proj: "projects" }[section] || "experience";
+  entries = ensureEntryIds({ [key]: entries })[key];
   const seen = new Set();
   return entries.map((e) => {
     if (!e || typeof e !== "object") return e;

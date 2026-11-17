@@ -9,6 +9,7 @@ import { matchText, resumeToText } from "@/lib/match";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
+import { legacyEntryId } from "@/lib/entryIds";
 import { assignEntryIds, buildSources, snapshot, validateSourceIds, formatCatalogForPrompt, normalizeText } from "@/lib/ai/sources";
 
 // Helper function to validate and sanitize resume data
@@ -43,9 +44,9 @@ async function validateResumeData(data) {
     summary: data.summary || null,
     skills: data.skills || null,
     // Stable entry ids are assigned only here, on save. Existing ids are kept.
-    experience: assignEntryIds(data.experience),
-    education: assignEntryIds(data.education),
-    projects: assignEntryIds(data.projects),
+    experience: assignEntryIds(data.experience, "exp"),
+    education: assignEntryIds(data.education, "edu"),
+    projects: assignEntryIds(data.projects, "proj"),
   };
 }
 
@@ -711,7 +712,7 @@ function resolveEntry(resume, entryId) {
   const key = rest.join(":");
   const list = kind === "exp" ? resume.experience : kind === "proj" ? resume.projects : null;
   if (!Array.isArray(list)) return null;
-  const index = list.findIndex((e, i) => e && typeof e === "object" && (e.id ? String(e.id) === key : `i${i}` === key));
+  const index = list.findIndex((e, i) => e && typeof e === "object" && (e.id ? String(e.id) === key : legacyEntryId(kind, i, e) === key));
   return index === -1 ? null : { list, index };
 }
 
@@ -754,7 +755,7 @@ export async function tailorResume(input) {
     for (const [prefix, list] of [["exp", resume.experience], ["proj", resume.projects]]) {
       (Array.isArray(list) ? list : []).forEach((e, i) => {
         if (!e || typeof e !== "object") return;
-        const entryId = `${prefix}:${e.id ? String(e.id) : `i${i}`}`;
+        const entryId = `${prefix}:${e.id ? String(e.id) : legacyEntryId(prefix, i, e)}`;
         splitBullets(e.description).forEach((b, n) => {
           // Only whole bullets of up to 400 characters, so "original" is exactly the line being replaced.
           if (bullets.size >= MAX_TAILOR_BULLETS || !byId.has(entryId) || b.text.length > 400) return;

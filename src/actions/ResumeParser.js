@@ -6,7 +6,7 @@ import { db } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
+import { createHmac, createHash, timingSafeEqual, randomBytes } from "node:crypto";
 import { runAIStructured } from "@/lib/ai";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { weightsPromptText } from "@/lib/ats/weights";
@@ -757,10 +757,38 @@ export async function applyAtsFix(scoreId, fixId) {
   const input = applyInput.safeParse({ scoreId, fixId });
   if (!input.success) return fixFail("INVALID", "We couldn't apply that fix. Please propose it again.");
 
+  // Same-process double click: concurrent calls with the same nonce share one promise (one AI call).
+  // Across instances a truly simultaneous double apply may still spend one extra capped re-score, but the
+  // advisory lock plus re-check inside the transaction means it can never create two rows.
+  let nonce = null;
+  try {
+    nonce = signingKey() ? readFixId(userId, input.data.fixId)?.n : null;
+  } catch {
+    nonce = null;
+  }
+  if (typeof nonce !== "string" || !nonce) return applyAtsFixInner(userId, input.data);
+  const key = `${userId}:${nonce}`;
+  const running = applyInFlight.get(key);
+  if (running) return running;
+  const p = applyAtsFixInner(userId, input.data).finally(() => {
+    if (applyInFlight.get(key) === p) applyInFlight.delete(key);
+  });
+  applyInFlight.set(key, p);
+  return p;
+}
+
+const applyInFlight = new Map();
+
+/** Signed 64-bit key for pg_advisory_xact_lock, from a sha256 prefix. */
+function advisoryKey(text) {
+  return createHash("sha256").update(text).digest().readBigInt64BE(0);
+}
+
+async function applyAtsFixInner(userId, input) {
   try {
     if (!signingKey()) return fixFail("FIX_UNAVAILABLE", FIX_UNAVAILABLE_MSG);
-    const fix = readFixId(userId, input.data.fixId);
-    if (!fix || fix.s !== input.data.scoreId || typeof fix.o !== "string" || typeof fix.p !== "string" || !Number.isInteger(fix.a) || fix.a < 0 || typeof fix.n !== "string" || !fix.n) {
+    const fix = readFixId(userId, input.fixId);
+    if (!fix || fix.s !== input.scoreId || typeof fix.o !== "string" || typeof fix.p !== "string" || !Number.isInteger(fix.a) || fix.a < 0 || typeof fix.n !== "string" || !fix.n) {
       return fixFail("INVALID", "We couldn't apply that fix. Please propose it again.");
     }
     if (!Number.isFinite(fix.t) || Date.now() - fix.t > FIX_TTL_MS || fix.t > Date.now() + 60_000) {
@@ -769,7 +797,7 @@ export async function applyAtsFix(scoreId, fixId) {
 
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fixFail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
-    const score = await db.aTSScore.findFirst({ where: { id: input.data.scoreId, userId: user.id } });
+    const score = await db.aTSScore.findFirst({ where: { id: input.scoreId, userId: user.id } });
     if (!score) return fixFail("NOT_FOUND", "We couldn't find that ATS result.");
 
     const ev = score.evidence && typeof score.evidence === "object" ? score.evidence : null;
@@ -804,39 +832,44 @@ export async function applyAtsFix(scoreId, fixId) {
     if (scored.empty) return fixFail("NO_SOURCES", NO_SOURCES_MSG);
     const { result, raw, evidence } = scored;
 
-    // Re-check right before the write (the AI call is slow); a tiny race window remains, which is acceptable.
-    const again = await db.aTSScore.findFirst({
-      where: {
-        userId: user.id,
-        AND: [
-          { evidence: { path: ["previousScoreId"], equals: score.id } },
-          { evidence: { path: ["appliedFix", "nonce"], equals: fix.n } },
-        ],
-      },
-      select: { id: true },
+    // Serialize on (scoreId, nonce) across instances, re-check, and create only if none exists.
+    const outcome = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${advisoryKey(`${score.id}:${fix.n}`)})`;
+      const again = await tx.aTSScore.findFirst({
+        where: {
+          userId: user.id,
+          AND: [
+            { evidence: { path: ["previousScoreId"], equals: score.id } },
+            { evidence: { path: ["appliedFix", "nonce"], equals: fix.n } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (again) return { duplicateId: again.id };
+      const created = await tx.aTSScore.create({
+        data: {
+          user: { connect: { id: user.id } },
+          atsScore: raw.atsScore,
+          matchPercentage: raw.matchPercentage,
+          strengths: result.strengths.map((x) => x.text),
+          weaknesses: result.weaknesses.map((x) => x.text),
+          improvements: raw.improvements,
+          relevantSkills: raw.relevantSkills,
+          missingSkills: raw.missingSkills,
+          recommendations: result.recommendations.map(stripRec).map(({ text, ...r }) => r),
+          evidence: { ...evidence, previousScoreId: score.id, appliedFix: { original: fix.o, proposed: fix.p, nonce: fix.n } },
+          finalSummary: raw.finalSummary,
+          analyzedBy: "AI",
+          jobTitle: score.jobTitle,
+          companyName: score.companyName,
+          jobDescription,
+        },
+        select: { id: true, atsScore: true, matchPercentage: true },
+      });
+      return { created };
     });
-    if (again) return fixFail("ALREADY_APPLIED", ALREADY_APPLIED_MSG, again.id);
-
-    const created = await db.aTSScore.create({
-      data: {
-        user: { connect: { id: user.id } },
-        atsScore: raw.atsScore,
-        matchPercentage: raw.matchPercentage,
-        strengths: result.strengths.map((x) => x.text),
-        weaknesses: result.weaknesses.map((x) => x.text),
-        improvements: raw.improvements,
-        relevantSkills: raw.relevantSkills,
-        missingSkills: raw.missingSkills,
-        recommendations: result.recommendations.map(stripRec).map(({ text, ...r }) => r),
-        evidence: { ...evidence, previousScoreId: score.id, appliedFix: { original: fix.o, proposed: fix.p, nonce: fix.n } },
-        finalSummary: raw.finalSummary,
-        analyzedBy: "AI",
-        jobTitle: score.jobTitle,
-        companyName: score.companyName,
-        jobDescription,
-      },
-      select: { id: true, atsScore: true, matchPercentage: true },
-    });
+    if (outcome.duplicateId) return fixFail("ALREADY_APPLIED", ALREADY_APPLIED_MSG, outcome.duplicateId);
+    const { created } = outcome;
 
     revalidatePath("/resume-parser");
     return {
