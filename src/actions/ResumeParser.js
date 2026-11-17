@@ -7,6 +7,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { runAIStructured, pdfPart } from "@/lib/ai";
 import { atsSchema } from "@/lib/ai/schemas";
+import { safeErr } from "@/lib/utils";
 
 export async function createATSAnalysis(formData) {
   const { userId } = await auth();
@@ -195,7 +196,7 @@ OUTPUT JSON STRUCTURE:
 
     return { success: true, data: atsAnalysis };
   } catch (err) {
-    console.error("Error in createATSAnalysis:", err?.code || err?.name || "error");
+    console.error("createATSAnalysis failed:", safeErr(err));
     const known = ["Resume PDF missing", "Unauthorized"];
     return {
       success: false,
@@ -233,7 +234,7 @@ export async function getUserATSScores() {
 
     return scores;
   } catch (error) {
-    console.error("Error fetching ATS scores failed:", error?.message);
+    console.error("getUserATSScores failed:", safeErr(error));
     throw new Error("Failed to fetch ATS scores");
   }
 }
@@ -259,7 +260,7 @@ export async function getATSScoreById(scoreId) {
 
     return score;
   } catch (error) {
-    console.error("Error fetching ATS score failed:", error?.message);
+    console.error("getATSScoreById failed:", safeErr(error));
     throw new Error("Failed to fetch ATS score details");
   }
 }
@@ -291,7 +292,7 @@ export async function deleteATSScore(scoreId) {
     return { success: true, message: "ATS score deleted successfully" };
 
   } catch (error) {
-    console.error("Error deleting ATS score failed:", error?.message);
+    console.error("deleteATSScore failed:", safeErr(error));
     throw new Error("Failed to delete ATS score");
   }
 }
@@ -336,7 +337,7 @@ export async function getATSAnalytics() {
 
     return analytics;
   } catch (error) {
-    console.error("Error fetching ATS analytics failed:", error?.message);
+    console.error("getATSAnalytics failed:", safeErr(error));
     throw new Error("Failed to fetch analytics");
   }
 }
@@ -373,7 +374,7 @@ export async function updateATSScore(scoreId, updateData) {
     return { success: true, message: "ATS score updated successfully", data: updated };
 
   } catch (error) {
-    console.error("Error updating ATS score failed:", error?.message);
+    console.error("updateATSScore failed:", safeErr(error));
     throw new Error("Failed to update ATS score");
   }
 }

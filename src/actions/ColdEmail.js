@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
 import { runAIText } from "@/lib/ai";
+import { safeErr } from "@/lib/utils";
 
 export async function generateColdEmail(data) {
   const { userId } = await auth();
@@ -90,7 +91,7 @@ Write like a smart, ambitious candidate reaching out strategically.
 
     return coldEmail;
   } catch (error) {
-    console.error("Error generating cold email:", error?.code || error?.name || "error");
+    console.error("generateColdEmail failed:", safeErr(error));
     throw new Error("Failed to generate cold email");
   }
 }

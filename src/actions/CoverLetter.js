@@ -3,6 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { runAIText } from "@/lib/ai";
+import { safeErr } from "@/lib/utils";
 
 export async function generateCoverLetter(data) {
   const { userId } = await auth();
@@ -81,7 +82,7 @@ Write like a strategic candidate, not a generic applicant.
 
     return coverLetter;
   } catch (error) {
-    console.error("Error generating cover letter:", error?.code || error?.name || "error");
+    console.error("generateCoverLetter failed:", safeErr(error));
     throw new Error("Failed to generate cover letter");
   }
 }

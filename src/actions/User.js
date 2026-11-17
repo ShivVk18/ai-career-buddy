@@ -3,6 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { safeErr } from "@/lib/utils";
 
 export async function updateUser(data) {
   const { userId } = await auth();
@@ -61,7 +62,7 @@ export async function updateUser(data) {
     revalidatePath("/");
     return updatedUser;
   } catch (error) {
-    console.error("Error updating user profile:", error.message);
+    console.error("updateUser failed:", safeErr(error));
     throw new Error("Failed to update profile");
   }
 }

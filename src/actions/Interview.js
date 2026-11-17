@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { runAIStructured, runAIText } from "@/lib/ai";
 import { quizSchema } from "@/lib/ai/schemas";
+import { safeErr } from "@/lib/utils";
 
 export async function generateQuiz(skills) {
   try {
@@ -69,7 +70,7 @@ Ensure all 10 questions are unique and the correctAnswer exactly matches one of 
 
     return parsed.questions.slice(0, 10);
   } catch (error) {
-    console.error("Quiz generation failed:", error?.code || error?.name || "error");
+    console.error("Quiz generation failed:", safeErr(error));
     throw new Error("Failed to generate quiz. Please try again.");
   }
 }
@@ -141,7 +142,7 @@ export async function saveQuizResult(questions, answers, score) {
 
     return assessment;
   } catch (error) {
-    console.error("Error saving quiz result failed:", error?.message);
+    console.error("saveQuizResult failed:", safeErr(error));
     throw new Error("Failed to save quiz result");
   }
 }
@@ -168,7 +169,7 @@ export async function getAssessments() {
 
     return assessments;
   } catch (error) {
-    console.error("Error fetching assessments failed:", error?.message);
+    console.error("getAssessments failed:", safeErr(error));
     throw new Error("Failed to fetch assessments");
   }
 }

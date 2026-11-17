@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { runAIText } from "@/lib/ai";
+import { safeErr } from "@/lib/utils";
 
 // Helper function to validate and sanitize resume data
 async function validateResumeData(data) {
@@ -83,7 +84,7 @@ export async function saveResume(data) {
     revalidatePath("/resume");
     return resume;
   } catch (error) {
-    console.error("Error saving resume failed:", error?.message);
+    console.error("saveResume failed:", safeErr(error));
     throw new Error(error.message || "Failed to save resume");
   }
 }
@@ -118,7 +119,7 @@ export async function getResume() {
 
     return resume;
   } catch (error) {
-    console.error("Error fetching resume failed:", error?.message);
+    console.error("getResume failed:", safeErr(error));
     return null;
   }
 }
@@ -135,7 +136,7 @@ export async function getResumeTemplates() {
 
     return templates;
   } catch (error) {
-    console.error("Error fetching templates failed:", error?.message);
+    console.error("getResumeTemplates failed:", safeErr(error));
     return [];
   }
 }
@@ -207,7 +208,7 @@ Requirements:
 
    return improvedText.replace(/^\d+:/gm, "").trim();
   } catch (error) {
-    console.error("Error improving content:", error?.code || error?.name || "error");
+    console.error("improveWithAI failed:", safeErr(error));
     throw new Error("Failed to improve content");
   }
 }
@@ -232,7 +233,7 @@ export async function deleteResume() {
     revalidatePath("/resume");
     return { success: true };
   } catch (error) {
-    console.error("Error deleting resume failed:", error?.message);
+    console.error("deleteResume failed:", safeErr(error));
     throw new Error("Failed to delete resume");
   }
 }
@@ -267,7 +268,7 @@ export async function duplicateResume() {
     revalidatePath("/resume");
     return version;
   } catch (error) {
-    console.error("Error duplicating resume failed:", error?.message);
+    console.error("duplicateResume failed:", safeErr(error));
     throw new Error("Failed to duplicate resume");
   }
 }
@@ -396,7 +397,7 @@ export async function seedResumeTemplates() {
 
     return { success: true, message: "Templates seeded successfully" };
   } catch (error) {
-    console.error("Error seeding templates failed:", error?.message);
+    console.error("seedResumeTemplates failed:", safeErr(error));
     throw new Error("Failed to seed templates");
   }
 }

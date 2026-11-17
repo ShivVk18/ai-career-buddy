@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { runAIStructured, runAIText } from "@/lib/ai";
 import { roadmapSchema } from "@/lib/ai/schemas";
+import { safeErr } from "@/lib/utils";
 
 export async function generateCareerRoadmap(data) {
   const { userId } = await auth();
@@ -138,7 +139,7 @@ Return ONLY JSON.
 
     return careerPath;
   } catch (error) {
-    console.error("Error generating career roadmap:", error?.code || error?.name || "error");
+    console.error("generateCareerRoadmap failed:", safeErr(error));
     throw new Error("Failed to generate career roadmap");
   }
 }
