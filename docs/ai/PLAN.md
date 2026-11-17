@@ -1,104 +1,109 @@
-# PLAN: Phase 5 (writing tools parity + retire 4 previews)
+# PLAN: Phase 6 (interview + roadmap parity, retire the last previews, honest landing page)
 
-Branch `phase-5`. Decisions: D34, D35, D40–D43 in DECISIONS.md. Inputs: CONTEXT.md §11.1, §11.2, §11.5.
+Branch `phase-6`. Decisions: D44–D48 in DECISIONS.md. Inputs: CONTEXT.md §11.1–11.6.
 
 **Done when:**
-- Every real-data feature of the cover letter and cold email previews works in `/cover-letter` and `/cold-email`, with verified sources on all AI output.
-- `/tools/resume`, `/tools/ats`, `/tools/cover-letter` and `/tools/cold-email` redirect to their real routes.
-- ATS results can be deleted, and stored resume text is purged after 90 days.
-- `npm run build` passes, and all 6 tools still work.
+- Every real-data feature of the interview and roadmap previews works in the real routes: open questions, typed and voice answers, the timer, rubric scoring with verified quotes, weak areas, the weekly checklist, toggle with undo, "closes gaps for", and gaps ranked by frequency.
+- Every `/tools/*` URL redirects, and `mock.ts` and the tools folder are gone.
+- The landing page has no unlabelled fake data or claims that contradict the limits.
+- `npm run build` passes, and all 6 tools still work (the MCQ quiz is kept).
 
-Rules: never edit `.env`; migrations are SQL files only and are never applied; every query is scoped by userId; zod on every input; expected failures return `{error, code}`; sources rules D26–D28 and `inventedNumbers` apply to every generator; never auto-send (D35); no feature removed (the previews are removed only after their features are ported, D41).
+Rules: never edit `.env`; migrations are SQL files only and are never applied; every query is scoped by userId; zod on every input; expected failures return `{error, code}`; sources rules D26–D28 and `inventedNumbers` apply to every generator; every AI call goes through runAI (so the cap applies); no audio upload; no feature removed; the MCQ flow stays as it is.
 
-**Out of scope:** interview and roadmap parity and their previews (Phase 6); removing `mock.ts` (still used by those two previews); industry insights.
+**Out of scope:** industry insights; any new job-target model (D18 still derives targets).
 
 ---
 
-### 1. BACKEND: Contract, shared writing rules and cover letter rewrites
-- **Files:** `docs/ai/API-CONTRACT.md` (§8), new `src/lib/writing.js`, `src/actions/CoverLetter.js`
+### 1. BACKEND: Contract, `InterviewAnswer` model and open questions
+- **Files:** `docs/ai/API-CONTRACT.md` (§9), `prisma/schema.prisma`, new migration `interview_answer` (SQL only), `src/actions/Interview.js` (or a new `src/actions/Practice.js`), `src/lib/ai/schemas.js`
 - **What:**
-  - `writing.js` exports the cover letter range (one range used by both the prompt and the UI), the cold email target, a curated cliché phrase list, and `findCliches(text)`, which is deterministic with no AI.
-  - The generator takes an optional `tone` enum (the preview's tones).
-  - New `regenerateCoverLetter(id, {tone?, formality?})` replaces the letter in place with new paragraphs and sources (D43).
-  - New `shortenCoverLetter(id)` rewrites the body paragraphs shorter, keeping each paragraph's existing source ids and passing `inventedNumbers` against the current text. It replaces in place.
-  - Both are owner-scoped, both go through runAI (so the cap applies), and both return `{error, code}`.
-- **Why:** D40 and D43 (CONTEXT §11.1).
-- **Test:** Regenerate with a different tone replaces the same row with new sources. "Shorter" lowers the word count and keeps the sources. `findCliches` flags known phrases.
+  - Add the `InterviewAnswer` model (D45): `id`, `userId`, `sessionId`, `questionIndex`, `question`, `topic`, `answerText`, `rubric` Json, `overall`, `createdAt`, with `@@unique([sessionId, questionIndex])` and an index on `(userId, topic)`.
+  - `generateOpenQuestions({count=5 (3–10), jobDescription?})` asks one `write` call for questions, each with `{question, topic, timeLimitSec, sourceIds}`. Sources are job-description lines or profile skills. Unsourced questions are dropped with one retry (D28).
+  - The questions are stored in `QuizSession` with `type:"open"`. The action returns `{sessionId, questions}` (no answers or rubric).
+- **Why:** D45 and D46.
+- **Test:** `prisma validate` passes. A generated session has 5 sourced questions, and the MCQ `generateQuiz` is unchanged.
 
-### 2. BACKEND: Cold email migration and generator
-- **Files:** `prisma/schema.prisma`, new migration `cold_email_fields` (SQL only), `src/actions/ColdEmail.js`, `src/actions/Dashboard.js`
+### 2. BACKEND: Scoring, history and weak areas
+- **Files:** the same actions file, new `src/lib/interview/rubric.js` (the weights constant, shared with the UI)
 - **What:**
-  - Add optional `recipientName`, `recipientRole`, `recipientEmail`, `subject` and `followUpAt` to `ColdEmail` (D34).
-  - The generator accepts the recipient name and role, and the greeting uses the name. **`recipientEmail` is never sent to the model.**
-  - The generator also returns a short `subject`, sourced to company, role or job-description ids and number-checked, with no open-rate claims.
-  - `updateColdEmail` accepts the new fields, with zod validating the email address.
-  - New `setColdEmailFollowUp(id, date|null)`.
-  - `getDashboardData` adds `dueFollowUps[]` (followUpAt ≤ today, owner-scoped).
-  - Nothing ever sends anything.
-- **Why:** D34, D35 and D40 (CONTEXT §11.2).
-- **Test:** `prisma validate` passes. A new email has a sourced subject. The recipient email never appears in the prompt (check AI_DEBUG logs in dev). A due follow-up appears in the dashboard data.
+  - `scoreOpenAnswer(sessionId, index, answerText)` is owner-scoped and scores each question once (the unique index; a repeat returns `ALREADY_SCORED` with the stored result). It makes one `fast` call.
+  - The zod rubric is `{criteria:[{name, score, quote, feedback}], overall}`, with weights from `rubric.js` (clarity 30, depth 40, evidence 30). The overall score is recomputed on the server from the weights.
+  - Each `quote` must appear verbatim (after normalization) in `answerText`; otherwise that criterion's quote is dropped. Feedback passes `inventedNumbers` against the answer and the question.
+  - The result is saved as an `InterviewAnswer`.
+  - `getOpenSession(sessionId)` returns the questions and any scored answers. `getPracticeHistory()` returns them too.
+  - `getWeakAreas()` averages the overall score per topic across your own `InterviewAnswer` rows, with no AI. It needs at least 2 answers per topic and returns the counts.
+- **Why:** D46, plus the weak-areas feature.
+- **Test:** A quote not found in the answer is dropped, and the overall score matches the weights. A second score call returns `ALREADY_SCORED`. Weak areas reflect only real answers.
 
-### 3. BACKEND: Deleting ATS results, purging resume text and showing years
-- **Files:** `src/actions/ResumeParser.js`
+### 3. BACKEND: Roadmap undo, gap frequency and "closes gaps for"
+- **Files:** `src/actions/CareerRoadmap.js`, `src/actions/ResumeParser.js` (read only, or a new helper)
 - **What:**
-  - `deleteATSScore` is owner-scoped and returns `{error, code}`.
-  - Purge `evidence.resumeText` (setting `hasResumeText` to false) from the user's results older than 90 days. It runs opportunistically in `getUserATSScores` and `createATSAnalysis`, is bounded per call, and a failure never breaks the request (D42).
-  - The ATS getters return `candidateYears` from `User.experience` (profile data, no AI).
-- **Why:** D42, and the scout's MED privacy problem. This also covers ATS parity ("3 years exp").
-- **Test:** Deleting removes only your own result. A result with `createdAt` older than 90 days loses its text on the next history load, and its fix returns `NEEDS_REUPLOAD`.
+  - `setRoadmapStepDone(id, stepId, done)` is owner-scoped and recomputes progress. Also fix `updateRoadmapProgress`, which currently ignores its `progress` argument.
+  - `getGapFrequency()` counts normalized `missingSkills` across your ATS results and returns `[{skill, count}]` plus `resultCount`, with no AI.
+  - `getStepTargets(roadmapId)`: for each step, it finds your targets (D18: ATS, cover letters and cold emails, with company and role) whose stored job description mentions the step's skill or title. It returns `{stepId: [{company, role, jdExcerpt}]}`. This is deterministic, uses `normalizeText`, and uses no AI.
+- **Why:** roadmap parity (CONTEXT §11.2).
+- **Test:** Toggling a step done and then undoing it updates progress. Gap counts match your ATS rows. Targets appear only where a job description really names the skill.
 
-### 4. BACKEND: Redirects for retired previews
-- **Files:** `next.config.mjs`, `scripts/capture_screenshots.js`, `scripts/capture_via_cdp.js`
+### 4. BACKEND: The cold email migration check and redirects
+- **Files:** `src/actions/ColdEmail.js`, `next.config.mjs`, `src/middleware.js`, `scripts/capture_screenshots.js`, `scripts/capture_via_cdp.js`
 - **What:**
-  - Add permanent redirects: `/tools/resume`→`/resume`, `/tools/ats`→`/resume-parser`, `/tools/cover-letter`→`/cover-letter`, `/tools/cold-email`→`/cold-email`.
-  - Point the capture scripts' URL lists at the real routes.
-  - The middleware stays as it is, since the real routes are guarded.
-- **Why:** D41.
-- **Test:** Each old URL redirects to its real route once the frontend has removed the page.
+  - Before the AI call in `generateColdEmail`, run a cheap check of the Phase 5 columns (e.g. a `findFirst` selecting `subject` with `take:1`). On P2022, return `MIGRATION_PENDING` without spending an AI call (CONTEXT §8 MED).
+  - Add redirects: `/tools/interview`→`/interview`, `/tools/roadmap`→`/roadmap`, `/tools`→`/dashboard`.
+  - Keep the middleware's `/tools(.*)` guard harmless, or remove it once the redirects cover everything.
+  - Point the capture scripts at the real routes.
+- **Why:** D44, and the scout's MED problem.
+- **Test:** With no migration applied, generate returns `MIGRATION_PENDING` and no `AiUsage` row. All `/tools/*` URLs redirect.
 
-### 5. FRONTEND: Cover letter parity UI
-- **Files:** `(gated)/cover-letter/**` (`CoverLetterGen.jsx`, `CoverLetterPreview.jsx`, the `[id]` page)
+### 5. FRONTEND: Interview practice route
+- **Files:** new `(gated)/interview/practice/**`, plus a link from `(gated)/interview/page.jsx`
 - **What:**
-  - Add a tone selector to the generator.
-  - On the letter page, add Regenerate (with tone), More formal and Shorter. Each shows a confirm dialog warning that edits will be lost (D43), then refreshes the content and sources.
-  - Show a live word count against the range from `writing.js`.
-  - Highlight clichés from `findCliches`, with a short hint and no fake examples.
-  - Handle errors via `generationError.js`.
-- **Why:** D40 and D43.
-- **Test:** Each action replaces the letter after the confirm. The word count and clichés update as you type.
+  - Setup: an optional job description and a question count (3–10, default 5).
+  - Then one question at a time, showing its topic and `SourceChips`, and a per-question timer that shows "time's up" and never auto-submits (D46).
+  - A typed answer box plus a voice button using `src/hooks/use-speech-to-text.js` that fills the editable textarea, with no upload.
+  - Submit leads to a rubric card: per-criterion score, quote highlighted inside the answer, feedback, and an overall score labelled "AI estimate".
+  - Show the cap and other errors via `generationError.js` (`ALREADY_SCORED` shows the stored result).
+- **Why:** D46.
+- **Test:** Complete a 3-question session with one typed and one voice answer. Quotes highlight inside the answers, and the timer never submits on its own.
 
-### 6. FRONTEND: Cold email parity UI and dashboard follow-ups
-- **Files:** `(gated)/cold-email/**`, `(gated)/dashboard/_component/DashboardView.jsx`
+### 6. FRONTEND: Practice history and weak areas on `/interview`
+- **Files:** `(gated)/interview/page.jsx` and its components (PerformanceChart and the like)
 - **What:**
-  - Add recipient name, role and email fields (typed by the user) to the generator and the edit view.
-  - Show and edit the subject.
-  - Show a live word counter against the target from `writing.js`.
-  - Highlight paragraphs whose sources include `proj:` ids ("Matched project").
-  - Add a follow-up date picker (`setColdEmailFollowUp`).
-  - Add an **"Open in mail client"** button: explicit click only, using the typed address, subject and body. Note that long bodies may be cut, and suggest copying. It never opens automatically (D35).
-  - The dashboard shows a "Follow-ups due" list linking to each email.
-- **Why:** D34, D35 and D40.
-- **Test:** The mailto opens only on click, with the right fields. A due follow-up shows on the dashboard. The project highlight matches the chips.
+  - Add an "Open practice" history section (sessions, scores, and a link to review each).
+  - Add a weak areas panel from `getWeakAreas` (topic, average and count), with an empty state until there's enough data.
+  - The existing MCQ history and chart stay unchanged.
+- **Why:** the weak-areas feature.
+- **Test:** After two sessions, weak areas show real topics with counts. The MCQ quiz still works.
 
-### 7. FRONTEND: ATS deletion, years and the purge note
-- **Files:** `(gated)/resume-parser/**` (`AtsHistory.jsx`, `AtsResult.jsx`)
+### 7. FRONTEND: Roadmap parity UI
+- **Files:** `(gated)/roadmap/**` (`RoadmapDetailView.jsx`, the list page)
 - **What:**
-  - Add "Delete result" with a confirm dialog to history and to the detail view.
-  - Show years of experience from `candidateYears` next to the level badge.
-  - Where `hasResumeText` is false because of the purge, explain it ("Resume text is removed after 90 days; re-upload to use fixes").
-- **Why:** D42 and ATS parity.
-- **Test:** Delete removes the row. The years show, and the purge note appears for old results.
+  - A weekly or phase-grouped checklist built from the existing phase breakdown, labelled as an AI estimate (D47).
+  - A step toggle with undo using `setRoadmapStepDone`, which reverts if the save fails.
+  - "Closes gaps for" chips from `getStepTargets`, with the job-description excerpt as a tooltip.
+  - A "Gaps ranked by frequency" panel on `/roadmap` from `getGapFrequency`, reading "based on N ATS results", with an empty state.
+- **Why:** roadmap parity.
+- **Test:** Toggle and undo survive a reload, and the targets and gap counts match real data.
 
-### 8. FRONTEND: Retire 4 previews
-- **Files:** delete `src/app/(main)/(gated)/tools/{resume,ats,cover-letter,cold-email}/`; edit `tools/layout.jsx` (the banner map), `src/components/shared/AppSidebar.jsx` (the Previews group keeps only interview and roadmap), `src/app/page.js` (landing tool hrefs and footer), `(gated)/resume/page.jsx:31` (the preview link)
+### 8. FRONTEND: Retire the last previews and `mock.ts`
+- **Files:** delete `src/app/(main)/(gated)/tools/` and `src/lib/mock.ts`; edit `AppSidebar.jsx` (remove the Previews group), and `src/app/page.js` (hrefs at :70,94 and the footer)
 - **What:**
-  - Remove the 4 preview pages and every link to them.
-  - Keep `ResumePaperDoc.jsx` (used by the landing page) and `mock.ts` (still used by the interview and roadmap previews).
-  - Check with a grep that nothing references the removed routes.
-- **Why:** D41. Their features are now in the real routes.
-- **Test:** The 4 old URLs redirect. The sidebar and landing links go to the real routes. The interview and roadmap previews still work with their banner.
+  - Remove the remaining previews and every reference to them.
+  - Grep `src` and `scripts` for `tools/` and `lib/mock` and confirm both are empty.
+- **Why:** D41 and D44.
+- **Test:** The build route list has no `/tools`, and the old URLs redirect.
+
+### 9. FRONTEND: An honest landing page
+- **Files:** `src/app/page.js` (job demo at :22-50, "live interactive demo" at :218-224, copy at :77,85), `src/components/shared/ResumePaperDoc.jsx`, `src/components/landingPage/PricingSection.jsx`
+- **What:**
+  - Label the job demo and the paper resume "Sample", and replace real company names with fictional ones.
+  - Reword "live interactive demo" if it isn't live.
+  - Reword the pricing bullets ("Unlimited AI Credits", "1-on-1 AI Career Coaching") to match reality: 50 AI actions per day by default, and Pip as an AI assistant.
+  - Align the copy at :77,85 with the actual features.
+  - No layout or design change (D48).
+- **Why:** D48 and the "nothing invented" promise.
+- **Test:** The landing page shows no unlabelled fake data or claims that contradict the limits.
 
 ---
 
 **New env var names:** none.
-**New migration (you apply it):** `cold_email_fields`.
+**New migration (you apply it):** `interview_answer`.

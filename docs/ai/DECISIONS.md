@@ -85,3 +85,13 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D41 | Retiring previews | Each preview is removed once its real route has every real-data feature, with a redirect from `/tools/<x>` to the real page. `mock.ts` is removed when the last preview goes (Phase 6). |
 | D42 | Stored resume text | Add "Delete result" to ATS history. Strip `evidence.resumeText` from results older than 90 days, opportunistically per user (there's no job runner). Those results then need a re-upload to use the fix. |
 | D43 | Cover letter regenerate | Regenerate, more formal, a tone change and "shorter" replace the same letter in place, with new sources, after a confirm dialog warning that edits will be lost. |
+
+## Phase 6 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D44 | Phase 6 scope | Interview and roadmap parity, then retire the last previews and `mock.ts`, plus make the landing page honest. **Done when:** every real-data feature of the interview and roadmap previews works in the real routes (sources, number check and cap apply); every `/tools/*` URL redirects; `mock.ts` and the tools folder are gone; the landing page has no unlabelled fake data or claims that contradict the limits; `npm run build` passes; all 6 tools still work (the MCQ quiz is kept). |
+| D45 | Open interview storage | A **new `InterviewAnswer` model** (one migration) holds each scored open answer: session, question index, topic, answer text, rubric and overall score. Generated open questions live in `QuizSession` with `type:"open"`. The MCQ flow is unchanged. |
+| D46 | Practice sessions | Default 5 open questions (the user can pick 3–10). Each answer is scored when submitted (one `fast` call), labelled "AI estimate", and every rubric quote must appear verbatim in the user's answer. The timer shows "time's up" but never auto-submits. Voice uses browser speech-to-text only, with no audio upload, and the transcript is editable. |
+| D47 | Roadmap weeks | Group the existing steps in the UI by the roadmap's phase breakdown, labelled as an AI estimate. No regeneration and no schema change. |
+| D48 | Honest landing page | Label demos "Sample", use fictional company names, and reword pricing bullets to match real limits (50 AI actions per day by default). No design change. |
