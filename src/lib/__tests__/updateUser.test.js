@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const auth = vi.fn();
 const tx = {
-  industryInsight: { findUnique: vi.fn(), create: vi.fn() },
   user: { update: vi.fn() },
 };
 const db = { user: { findUnique: vi.fn() }, $transaction: vi.fn((fn) => fn(tx)) };
@@ -17,7 +16,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   auth.mockResolvedValue({ userId: "clerk_1" });
   db.user.findUnique.mockResolvedValue({ id: "u1" });
-  tx.industryInsight.findUnique.mockResolvedValue({ industry: "tech-software" });
   tx.user.update.mockImplementation(async ({ data }) => ({ id: "u1", ...data }));
 });
 

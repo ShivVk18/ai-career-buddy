@@ -41,34 +41,6 @@ export async function updateUser(data) {
 
   try {
     const updatedUser = await db.$transaction(async (tx) => {
-      // Ensure the IndustryInsight record exists to satisfy the User.industry foreign key.
-      // PLACEHOLDER ONLY: these rows carry no real data (growthRate 0, "Medium", "Neutral"). Nothing reads or
-      // shows them; keep it that way until Phase 8 (sourced industry insights) replaces them.
-      let industryInsight = await tx.industryInsight.findUnique({
-        where: {
-          industry: input.industry,
-        },
-      });
-
-      if (!industryInsight) {
-        await tx.industryInsight.create({
-          data: {
-            industry: input.industry,
-            salaryRanges: [],
-            growthRate: 0.0,
-            demandLevel: "Medium",
-            topSkills: [],
-            marketOutlook: "Neutral",
-            keyTrends: [],
-            recommendedSkills: [],
-            jobAvailability: [],
-            hiringTrends: [],
-            hybridWorkTrends: [],
-            nextUpdate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Far future update
-          },
-        });
-      }
-
       // Update the user details
       return await tx.user.update({
         where: {

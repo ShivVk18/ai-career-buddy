@@ -15,11 +15,12 @@ Folders sort by name; `prisma migrate deploy` applies the pending ones in this o
 | 4 | `20261117030000_cold_email_fields` | cold email recipient, subject, follow-up columns |
 | 5 | `20261117040000_interview_answer` | `InterviewAnswer` (needs #2) |
 | 6 | `20261117050000_ai_usage_action_id` | nullable `AiUsage.actionId` plus index `(userId, createdAt)` |
+| 7 | `20261117060000_remove_industry_insight` | drops `User_industry_fkey` and the `IndustryInsight` table (placeholder rows only; `User.industry` values are kept) |
 
 Folders 3 to 5 were renamed from `20261118000000_phase3_sources`, `20261119000000_cold_email_fields`, `20261120000000_interview_answer`
 (same SQL, same order; the old names were dated in the future). If a database already recorded the old names in
 `_prisma_migrations`, `migrate status` will show them as missing locally and the new names as pending; see "Drift" below.
-All six are additive (CREATE TABLE, ADD COLUMN, CREATE INDEX, DROP NOT NULL on `User.email`); none drops data.
+Migrations 1 to 6 are additive (CREATE TABLE, ADD COLUMN, CREATE INDEX, DROP NOT NULL on `User.email`). Migration 7 is destructive: it drops the `IndustryInsight` table, which holds only placeholder rows created by the old `updateUser` (no real data), so the backup in step 1 matters. `User.industry` values stay.
 
 ## 2. Steps (production)
 
