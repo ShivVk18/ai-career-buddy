@@ -276,6 +276,21 @@ export async function updateColdEmail(id, content, fields) {
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
+    if (data.subject !== undefined) {
+      const existing = await db.coldEmail.findFirst({
+        where: { id: parsed.data.id, userId: user.id },
+        select: { subject: true, sources: true },
+      });
+      if (!existing) return fail("NOT_FOUND", "We couldn't find that item.");
+      const next = (data.subject ?? "").trim();
+      const prev = (existing.subject ?? "").trim();
+      const src = existing.sources;
+      if (next !== prev && src && typeof src === "object" && !Array.isArray(src) && "subject" in src) {
+        const { subject: _drop, ...rest } = src;
+        data.sources = rest;
+      }
+    }
+
     const result = await db.coldEmail.updateMany({
       where: { id: parsed.data.id, userId: user.id },
       data,

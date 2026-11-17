@@ -471,6 +471,8 @@ Row shape (`getColdEmail`, `getColdEmails`, create/update results) gains: `recip
 - `MIGRATION_PENDING`: returned (not thrown) when the Phase 5 columns are missing in the database (Prisma P2022). `getColdEmail(id)` returns `{ error, code: "MIGRATION_PENDING" }` instead of a row (the detail page must check `result.error`); `generateColdEmail`, `updateColdEmail`, `setColdEmailFollowUp` return it instead of `FAILED` in that case. `getColdEmails()` selects only the pre-Phase-5 columns (`id, userId, content, jobDescription, companyName, jobTitle, status, sources, createdAt, updatedAt`), so list rows do NOT include `recipientName`, `recipientRole`, `recipientEmail`, `subject`, `followUpAt`; use `getColdEmail(id)` for those. The subject fallback has whitespace collapsed and is capped at 80 characters.
 - `setColdEmailFollowUp(id: string, date: string | null)`: `date` is `"YYYY-MM-DD"` (a real calendar day) or an ISO-8601 string (only the UTC date part is kept); `null` clears the reminder. Stored as 00:00 UTC of that day. A reminder only; nothing is ever sent. Returns the updated row (with `followUpAt`) or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
 
+When `updateColdEmail` saves a `subject` that differs (after trim) from the stored one, or clears it, the server removes `sources.subject` (all other `sources` keys are kept), so the UI shows no subject chips for an edited subject; an unchanged subject keeps them.
+
 ### 8.4 `getDashboardData()` adds `dueFollowUps`
 
 ```ts
