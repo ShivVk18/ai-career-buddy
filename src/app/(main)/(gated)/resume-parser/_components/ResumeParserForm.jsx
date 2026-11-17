@@ -5,28 +5,12 @@ import { Upload, FileText, Loader, AlertCircle, CheckCircle, Target, TrendingUp,
 import { createATSAnalysis } from '@/actions/ResumeParser';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import SourceChips, { LegacySourcesLabel } from "@/components/shared/SourceChips";
+import { generationErrorMessage } from "@/components/shared/generationError";
+import { getATSScoreById } from "@/actions/ResumeParser";
+import AtsResult from "./AtsResult";
+import AtsHistory from "./AtsHistory";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
-
-// Evidence list for one strength/weakness/recommendation (or the legacy label)
-const EvidenceList = ({ item, legacy }) => {
-  if (legacy) return <LegacySourcesLabel className="mt-2" />;
-  const sources = item?.sources;
-  if (!Array.isArray(sources) || sources.length === 0) return null;
-  const quotes = sources.filter((x) => x.type === "resume_quote");
-  const jd = sources.filter((x) => x.type === "jd");
-  return (
-    <div className="mt-2 space-y-2">
-      {quotes.map((q, i) => (
-        <p key={i} className="text-xs italic text-muted-foreground border-l-2 border-accent/40 pl-3">
-          From your resume: &quot;{q.quote}&quot;
-        </p>
-      ))}
-      <SourceChips sources={jd} />
-    </div>
-  );
-};
 
 const ResumeParserComponent = () => {
 
@@ -41,6 +25,8 @@ const ResumeParserComponent = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [historyKey, setHistoryKey] = useState(0);
 
   // Convert PDF → base64
   const fileToBase64 = (file) => {
@@ -80,18 +66,14 @@ const ResumeParserComponent = () => {
       });
 
       if (!response || !response.success) {
-        if (response?.code === "AI_LIMIT") {
-          setError("Daily AI limit reached. Please try again tomorrow.");
-        } else if (response?.code === "INVALID_FILE") {
-          setError(response.error || "Please upload a valid PDF resume (up to 5 MB) that contains selectable text.");
-        } else {
-          setError(response?.error || response?.message || "Something went wrong while scanning. Please try again.");
-        }
+        setError(generationErrorMessage(response, "Something went wrong while scanning. Please try again."));
         setLoading(false);
         return;
       }
 
       setResult(response.data);
+      setNotice('');
+      setHistoryKey((k) => k + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (err) {
@@ -137,11 +119,37 @@ const ResumeParserComponent = () => {
     handleFileSelection(file);
   };
 
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-accent';
-    if (score >= 80) return 'text-accent/80';
-    if (score >= 70) return 'text-accent/60';
-    return 'text-destructive';
+  const resetAll = () => {
+    setResult(null);
+    setFormData({ companyName: "", jobTitle: "", jobDescription: "", resumePdf: null });
+    setNotice('');
+    setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Pre-fill company, title and job description; the user only re-uploads the PDF.
+  const handleRerun = (row) => {
+    setResult(null);
+    setFormData({
+      companyName: row.companyName || '',
+      jobTitle: row.jobTitle || '',
+      jobDescription: row.jobDescription || '',
+      resumePdf: null,
+    });
+    setError('');
+    setNotice('Job details are filled in from your earlier scan. Upload your resume PDF to run it again.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openScore = async (id) => {
+    setError('');
+    try {
+      const data = await getATSScoreById(id);
+      setResult(data);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      setError("We couldn't open that result. Please try again.");
+    }
   };
 
   return (
@@ -165,6 +173,7 @@ const ResumeParserComponent = () => {
 
       {/* If no result → show form */}
       {!result ? (
+        <>
         <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="border border-border bg-background p-10 rounded-sm shadow-xl">
             <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-10 flex items-center gap-3">
@@ -234,6 +243,12 @@ const ResumeParserComponent = () => {
               </label>
             </div>
 
+            {notice && (
+              <div className="mb-8 p-4 border border-accent/30 bg-accent/5 text-foreground rounded-sm text-xs">
+                {notice}
+              </div>
+            )}
+
             {error && (
               <div className="mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive flex items-center rounded-sm text-xs font-bold uppercase tracking-widest animate-pulse">
                 <AlertCircle className="w-4 h-4 mr-3" /> {error}
@@ -258,148 +273,23 @@ const ResumeParserComponent = () => {
             </Button>
           </div>
         </div>
+        <AtsHistory onOpen={openScore} onRerun={handleRerun} refreshKey={historyKey} />
+        </>
       ) : (
-        <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-top-4 duration-700">
-          {/* RESULT UI */}
-          <div className="border border-border bg-background p-10 rounded-sm mb-12 shadow-xl">
-            <h2 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-10 flex items-center gap-3">
-              <span className="w-4 h-[1px] bg-divider"></span>
-              Scan Results
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 text-center">
-              <div className="p-8 border border-divider rounded-sm bg-divider/5">
-                <p className={`text-6xl md:text-8xl font-clash font-bold mb-2 ${getScoreColor(result.atsScore)}`}>{result.atsScore}</p>
-                <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">ATS Score</p>
-              </div>
-
-              <div className="p-8 border border-divider rounded-sm bg-divider/5">
-                <p className={`text-6xl md:text-8xl font-clash font-bold mb-2 ${getScoreColor(result.matchPercentage)}`}>
-                  {result.matchPercentage}%
-                </p>
-                <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">Job Match</p>
-              </div>
-            </div>
+        <>
+        {error && (
+          <div className="max-w-5xl mx-auto mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive rounded-sm text-xs font-bold uppercase tracking-widest">
+            {error}
           </div>
-
-          {/* Summary */}
-          <div className="border border-border bg-background p-10 rounded-sm mb-12 shadow-sm">
-            <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-              <span className="w-4 h-[1px] bg-divider"></span>
-              AI Feedback
-            </h3>
-            <p className="text-muted-foreground leading-relaxed font-light italic text-lg md:text-xl">
-               &quot;{result.finalSummary}&quot;
-            </p>
-          </div>
-
-          {/* Strengths / Weaknesses */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-            <div className="border border-border bg-background p-10 rounded-sm shadow-sm hover:border-accent transition-editorial">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                <span className="w-4 h-[1px] bg-accent"></span>
-                Key Strengths
-              </h3>
-              <ul className="space-y-4">
-                {result.strengths.map((s, i) => (
-                  <li key={i} className="text-sm font-general text-foreground flex items-start gap-4">
-                    <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      {s}
-                      <EvidenceList item={result.evidence?.strengths?.[i]} legacy={!result.evidence} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border border-border bg-background p-10 rounded-sm shadow-sm hover:border-destructive transition-editorial">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                <span className="w-4 h-[1px] bg-destructive"></span>
-                Areas to Improve
-              </h3>
-              <ul className="space-y-4">
-                {result.weaknesses.map((w, i) => (
-                  <li key={i} className="text-sm font-general text-muted-foreground flex items-start gap-4">
-                    <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      {w}
-                      <EvidenceList item={result.evidence?.weaknesses?.[i]} legacy={!result.evidence} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Recommendations */}
-          {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
-            <div className="border border-border bg-background p-10 rounded-sm mb-12 shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                <span className="w-4 h-[1px] bg-accent"></span>
-                Recommendations
-              </h3>
-              <ul className="space-y-6">
-                {result.recommendations.map((r, i) => (
-                  <li key={i} className="text-sm font-general text-foreground">
-                    {(r.category || r.priority) && (
-                      <p className="text-[10px] font-bold tracking-widest uppercase text-accent mb-1">
-                        {[r.category, r.priority].filter(Boolean).join(" / ")}
-                      </p>
-                    )}
-                    <p>{r.action}</p>
-                    {r.impact && <p className="text-xs text-muted-foreground mt-1">{r.impact}</p>}
-                    <EvidenceList item={result.evidence?.recommendations?.[i]} legacy={!result.evidence} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Skills */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-            <div className="border border-border bg-background p-10 rounded-sm shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                <span className="w-4 h-[1px] bg-accent"></span>
-                Your Top Skills
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {result.relevantSkills.map((skill, i) => (
-                  <span key={i} className="px-3 py-1 border border-accent/30 text-[10px] font-bold text-accent-foreground uppercase tracking-widest bg-accent rounded-sm">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="border border-border bg-background p-10 rounded-sm shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                <span className="w-4 h-[1px] bg-destructive"></span>
-                Skills to Add
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {result.missingSkills.map((skill, i) => (
-                  <span key={i} className="px-3 py-1 border border-destructive/20 text-[10px] font-bold text-destructive-foreground uppercase tracking-widest bg-destructive rounded-sm">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Back Button */}      
-          <Button
-            onClick={() => {
-              setResult(null);
-              setFormData({ companyName: "", jobTitle: "", jobDescription: "", resumePdf: null });
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            variant="outline"
-            className="w-full h-16 tracking-[0.2em] mb-20"
-          >
-            Scan Another Resume
-          </Button>
-        </div>
+        )}
+        <AtsResult
+          key={result.id}
+          result={result}
+          onScanAnother={resetAll}
+          onRerun={handleRerun}
+          onOpenScore={openScore}
+        />
+        </>
       )}
     </div>
   );

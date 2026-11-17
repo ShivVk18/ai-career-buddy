@@ -1,9 +1,20 @@
-// Friendly text for { error, code } results returned by generator server actions.
+// Friendly text for { error, code } results returned by server actions.
 export function generationErrorMessage(result, fallback = "Something went wrong. Please try again.") {
   if (!result) return fallback;
-  if (result.code === "NO_SOURCES") {
-    return "We couldn't ground this in your details. Add more detail to your profile or resume, or paste a fuller job description, then try again.";
+  switch (result.code) {
+    case "NO_SOURCES":
+      return "We couldn't ground this in your details. Add more detail to your profile or resume, or paste a fuller job description, then try again.";
+    case "AI_LIMIT":
+      return "Daily AI limit reached. Please try again tomorrow.";
+    case "AI_UNAVAILABLE":
+      return "AI is temporarily unavailable. Please try again later.";
+    case "NEEDS_REUPLOAD":
+      return "This result was saved before we kept the analyzed resume text, so we can't test a fix on it. Please upload your PDF again and re-run the analysis.";
+    case "STALE":
+      return result.error || "This has expired or your resume changed. Please start again.";
+    case "NOT_RESTORABLE":
+      return "This older copy only kept plain text, so it can't be restored. Your resume was not changed.";
+    default:
+      return result.error || fallback;
   }
-  if (result.code === "AI_LIMIT") return "Daily AI limit reached. Please try again tomorrow.";
-  return result.error || fallback;
 }

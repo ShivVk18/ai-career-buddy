@@ -3,14 +3,36 @@
 import { useState } from "react"
 import MDEditor from "@uiw/react-md-editor"
 import { Button } from "@/components/ui/button"
-import { Download, Copy, Edit3, FileText, CheckCircle2, Eye, Sparkles, Zap, Save, FileDown } from "lucide-react"
+import { Download, Copy, Edit3, FileText, CheckCircle2, Eye, Sparkles, Zap, Save, FileDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { ParagraphSources } from "@/components/shared/SourceChips";
+import { generationErrorMessage } from "@/components/shared/generationError";
+import { updateColdEmail } from "@/actions/ColdEmail";
 
-const ColdEmailPreview = ({ content, sources }) => {
+const ColdEmailPreview = ({ id, content, sources }) => {
   const [editedContent, setEditedContent] = useState(content)
   const [previewMode, setPreviewMode] = useState("preview")
+  const [savedContent, setSavedContent] = useState(content)
+  const [saving, setSaving] = useState(false)
+  const isDirty = (editedContent ?? "") !== (savedContent ?? "")
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await updateColdEmail(id, editedContent)
+      if (!res || res.error) {
+        toast.error(generationErrorMessage(res, "Failed to save your changes"))
+        return
+      }
+      setSavedContent(editedContent)
+      toast.success("Changes saved")
+    } catch (error) {
+      toast.error(error?.message || "Failed to save your changes")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleCopy = async () => {
     try {
@@ -77,6 +99,17 @@ const ColdEmailPreview = ({ content, sources }) => {
                 Preview
               </Button>
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || !isDirty || !id}
+              className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase transition-editorial"
+            >
+              {saving ? <Loader2 className="h-4 w-4 mr-3 animate-spin" /> : <Save className="h-4 w-4 mr-3" />}
+              {saving ? "Saving..." : isDirty ? "Save changes" : "Saved"}
+            </Button>
 
             <Button
               variant="outline"

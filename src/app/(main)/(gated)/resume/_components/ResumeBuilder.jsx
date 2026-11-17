@@ -36,6 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { saveResume } from "@/actions/Resume";
 import { EntryForm } from "./EntryForm";
+import ResumeToolsPanel from "./ResumeToolsPanel";
 import { AITextarea } from "./AITextarea";
 import useFetch from "@/hooks/use-fetch";
 import { useUser } from "@clerk/nextjs";
@@ -267,6 +268,44 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     return <TemplateComponent data={templateData} photo={photoPreview} />;
   }, [formValues, currentTemplate, photoPreview]);
 
+  // Versions and tailoring use the SAVED resume, so make sure the form is saved first.
+  // Resolves true when saved (or nothing to save), false (with a toast) when it can't be.
+  const ensureSaved = async () => {
+    if (!isDirty) return true;
+    let ok = false;
+    await handleSubmit(
+      async (data) => {
+        try {
+          await saveResume({
+            content: JSON.stringify(data),
+            templateId: selectedTemplate,
+            photoUrl: photoPreview,
+            contactInfo: data.contactInfo,
+            summary: data.summary,
+            skills: data.skills,
+            experience: data.experience,
+            education: data.education,
+            projects: data.projects,
+          });
+          ok = true;
+        } catch (e) {
+          toast.error("Save your resume first", { description: e?.message || "Saving failed." });
+        }
+      },
+      () => toast.error("Fix the highlighted resume fields and save, then try again.")
+    )();
+    return ok;
+  };
+
+  // Unsaved form values for the keyword match card (no AI).
+  const getResumeLike = () => ({
+    summary: formValues.summary || "",
+    skills: formValues.skills || "",
+    experience: formValues.experience || [],
+    education: formValues.education || [],
+    projects: formValues.projects || [],
+  });
+
   // Form submission
   const onSubmit = async (data) => {
     try {
@@ -488,8 +527,19 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                 <FileText className="h-4 w-4" />
                 Edit Details
               </TabsTrigger>
+              <TabsTrigger 
+                value="tailor"
+                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-sm px-10 py-3 transition-editorial font-clash font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
+              >
+                <Sparkles className="h-4 w-4" />
+                Tailor &amp; Versions
+              </TabsTrigger>
             </TabsList>
           </div>
+
+          <TabsContent value="tailor" className="animate-in fade-in duration-500">
+            <ResumeToolsPanel ensureSaved={ensureSaved} getResumeLike={getResumeLike} />
+          </TabsContent>
 
           {/* Template Selection */}
           <TabsContent value="template" className="animate-in fade-in duration-500">

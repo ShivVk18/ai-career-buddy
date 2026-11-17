@@ -6,6 +6,7 @@ import { improveWithAI } from "@/actions/Resume";
 import useFetch from "@/hooks/use-fetch";
 import { toast } from "sonner";
 import SourceChips from "@/components/shared/SourceChips";
+import { generationErrorMessage } from "@/components/shared/generationError";
 
 export const AITextarea = React.forwardRef(({ label, type, value, onChange, placeholder, ...props }, ref) => {
   const [initialText, setInitialText] = useState("");
@@ -38,9 +39,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
       });
       if (!result || result.error || typeof result.text !== "string") {
         toast.error(
-          result?.code === "AI_LIMIT"
-            ? "Daily AI limit reached. Please try again tomorrow."
-            : result?.error || "Failed to improve content"
+          generationErrorMessage(result, "Failed to improve content")
         );
         return;
       }
