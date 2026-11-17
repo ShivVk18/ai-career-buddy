@@ -63,3 +63,15 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D29 | Pre-Phase-3 records | Show a subtle "Created before sources were added" label. Nothing is regenerated or changed. |
 | D30 | AI cap default (amends D21) | Unset `AI_DAILY_LIMIT` now means **50 calls per user per day**; `0` disables the cap. |
 | D31 | FAQ copy | Reword the landing FAQ now to describe what exists. Restore the weekly-insights promise when insights ship. |
+
+## Phase 4 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D32 | Phase 4 scope | No BUILD-PLAN.md exists, so Phase 4 is **Resume + ATS parity, including the large items**: tailoring with accept/strike, computed match %, resume versions, the ATS requirement checklist, candidate level, the weights panel, score history, re-run and the 1-click fix with a real re-score. Also fix lost cover letter and cold email edits, and make the cap fail closed in production. The other 4 tools' parity, `/tools/*` retirement and insights come later. **Done when:** every Resume and ATS preview feature that has a real-data equivalent works in `/resume` and `/resume-parser` with sources and no auto-apply; letter and email edits persist; the cap fails closed in production; `npm run build` passes; all 6 tools still work. |
+| D33 | Cap safety (amends D21) | In production, if `AiUsage` can't be read, AI calls are blocked with a clear "temporarily unavailable" error. In dev it fails open with a warning. |
+| D34 | Cold email (later phase) | When cold email parity is built: one migration adds optional recipient name, role and email, subject and `followUpAt`. The recipient email is only ever typed by the user. The follow-up is a dashboard reminder and never sends. |
+| D35 | mailto (later phase) | "Open in mail client" is allowed on an explicit click only, with the address the user typed. It never opens automatically and never sends. |
+| D36 | Tailoring | The AI proposes sourced bullet edits, and the user accepts or strikes each. Accepted edits are saved as a `ResumeVersion` for that job. The main resume is untouched until the user chooses "Restore this version", which first snapshots the current resume as a version. |
+| D37 | Match % | Deterministic keyword overlap between the job description and the resume, with no AI. Show the % plus the matched and missing terms. |
+| D38 | ATS 1-click fix | The AI proposes a sourced rewrite of one flagged bullet. Once the user accepts it, the bullet is applied to the analyzed resume text (stored in `evidence`) and a real `fast` re-score runs. The result is saved as a new ATS result linked to the old one. The main resume is never changed automatically. Scores from before the stored text existed must be re-uploaded to use the fix. |
