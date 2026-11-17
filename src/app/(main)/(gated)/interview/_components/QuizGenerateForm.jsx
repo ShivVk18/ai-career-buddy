@@ -62,7 +62,7 @@ export default function SkillQuizForm({ onQuizGenerated }) {
       
       // Notify parent component
       if (onQuizGenerated) {
-        onQuizGenerated();
+        onQuizGenerated(quizData);
       }
     }
   }, [quizData, error, onQuizGenerated]);

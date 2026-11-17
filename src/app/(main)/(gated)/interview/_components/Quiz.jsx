@@ -11,58 +11,54 @@ import {
   ArrowRight,
   ArrowLeft,
   Home,
-  Loader2,
-  HelpCircle
+  Loader2
 } from "lucide-react";
 
-import { saveQuizResult, getLatestQuiz } from "@/actions/Interview";
+import { submitQuiz } from "@/actions/Interview";
 import useFetch from "@/hooks/use-fetch";
 import QuizResult from "./QuizResult";
 import { Button } from "@/components/ui/button";
 
 export default function Quiz({ onComplete, initialQuestions }) {
+  // initialQuestions is the generateQuiz() response: { quizId, questions: [{ question, options }] }
+  const quizId = initialQuestions?.quizId || null;
+  const quizData = initialQuestions?.questions?.length ? initialQuestions.questions : null;
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [quizData, setQuizData] = useState(initialQuestions || null);
   const [answers, setAnswers] = useState([]);
-  const [showExplanation, setShowExplanation] = useState(false);
-
-  // Load quiz that was ALREADY generated from Skill Form
-  const {
-    loading: loadingQuiz,
-    fn: loadQuizFn,
-    data: fetchedQuizData,
-  } = useFetch(getLatestQuiz);
 
   const {
     loading: savingResult,
-    fn: saveQuizResultFn,
-    data: resultData,
-  } = useFetch(saveQuizResult);
-
-  // Load quiz on mount if not provided as prop
-  useEffect(() => {
-    if (!initialQuestions) {
-      loadQuizFn();
-    }
-  }, [initialQuestions, loadQuizFn]);
-
-  useEffect(() => {
-    if (fetchedQuizData) {
-      setQuizData(fetchedQuizData);
-    }
-  }, [fetchedQuizData]);
-
-  useEffect(() => {
-    if (initialQuestions) {
-      setQuizData(initialQuestions);
-    }
-  }, [initialQuestions]);
+    fn: submitQuizFn,
+    data: submitData,
+  } = useFetch(submitQuiz);
 
   useEffect(() => {
     if (quizData) {
       setAnswers(new Array(quizData.length).fill(null));
+      setCurrentQuestion(0);
     }
-  }, [quizData]);
+  }, [initialQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (submitData) toast.success("Interview completed");
+  }, [submitData]);
+
+  // Shape the server response like a saved Assessment so QuizResult renders both.
+  const resultData = submitData
+    ? {
+        quizScore: submitData.score,
+        correctCount: submitData.correctCount,
+        total: submitData.total,
+        improvementTip: submitData.improvementTip,
+        questions: submitData.results.map((r) => ({
+          question: r.question,
+          answer: r.correctAnswer,
+          userAnswer: r.userAnswer,
+          isCorrect: r.isCorrect,
+          explanation: r.explanation,
+        })),
+      }
+    : null;
 
   const handleAnswer = (answer) => {
     const updated = [...answers];
@@ -73,7 +69,6 @@ export default function Quiz({ onComplete, initialQuestions }) {
   const handleNext = () => {
     if (currentQuestion < quizData.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
-      setShowExplanation(false);
     } else {
       finishQuiz();
     }
@@ -82,26 +77,12 @@ export default function Quiz({ onComplete, initialQuestions }) {
   const handlePrevious = () => {
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
-      setShowExplanation(false);
     }
-  };
-
-  const calculateScore = () => {
-    let correct = 0;
-    answers.forEach((ans, idx) => {
-      if (ans === quizData[idx].correctAnswer) correct++;
-    });
-    return (correct / quizData.length) * 100;
   };
 
   const finishQuiz = async () => {
-    const score = calculateScore();
-    try {
-      await saveQuizResultFn(quizData, answers, score);
-      toast.success("Great job! Interview completed 🎉");
-    } catch (err) {
-      toast.error(err.message || "Failed to save your results");
-    }
+    // Errors (e.g. "Quiz already submitted") are toasted by useFetch.
+    await submitQuizFn(quizId, answers);
   };
 
   const handleBackToHome = () => {
@@ -109,20 +90,6 @@ export default function Quiz({ onComplete, initialQuestions }) {
       onComplete();
     }
   };
-
-  // Loading screen
-  if (loadingQuiz) {
-    return (
-      <div className="border border-border bg-background rounded-sm p-12 text-center shadow-lg">
-        <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mb-8 mx-auto border border-accent/20 animate-pulse">
-          <Brain className="w-8 h-8 text-accent" />
-        </div>
-        <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight mb-4">Preparing Your Interview</h3>
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-8">Getting your questions ready...</p>
-        <BarLoader width={200} color="var(--accent)" className="mx-auto" />
-      </div>
-    );
-  }
 
   // Show quiz result
   if (resultData) {
@@ -199,12 +166,12 @@ export default function Quiz({ onComplete, initialQuestions }) {
           <button
             key={index}
             onClick={() => handleAnswer(option)}
-            disabled={showExplanation}
+            disabled={savingResult}
             className={`group text-left p-6 border transition-editorial flex items-center gap-6 rounded-sm ${
               answers[currentQuestion] === option
                 ? "border-accent bg-accent/5 shadow-sm"
                 : "border-divider/50 hover:border-accent hover:bg-divider/5"
-            } ${showExplanation ? 'cursor-not-allowed opacity-50' : ''}`}
+            } ${savingResult ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             <div className={`w-5 h-5 border flex items-center justify-center transition-editorial rounded-sm ${
               answers[currentQuestion] === option
@@ -222,16 +189,6 @@ export default function Quiz({ onComplete, initialQuestions }) {
         ))}
       </div>
 
-      {/* Intelligence Explanation */}
-      {showExplanation && (
-        <div className="mb-12 p-8 bg-divider/5 border border-divider/30 rounded-sm animate-in fade-in slide-in-from-top-4 duration-500">
-          <p className="text-accent text-[10px] font-bold uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
-            <Brain className="w-4 h-4" /> Coach&apos;s Explanation
-          </p>
-          <p className="text-muted-foreground font-general font-light leading-relaxed text-sm md:text-base">{question.explanation}</p>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-6">
         <div className="flex gap-4">
@@ -246,17 +203,6 @@ export default function Quiz({ onComplete, initialQuestions }) {
             </Button>
           )}
 
-          {!showExplanation && (
-            <Button
-              variant="outline"
-              onClick={() => setShowExplanation(true)}
-              disabled={!answers[currentQuestion]}
-              className="h-14 px-8 border-divider"
-            >
-              <HelpCircle className="w-4 h-4 mr-3" />
-              Explain
-            </Button>
-          )}
         </div>
 
         <Button
@@ -284,8 +230,7 @@ export default function Quiz({ onComplete, initialQuestions }) {
             key={idx}
             onClick={() => {
               setCurrentQuestion(idx);
-              setShowExplanation(false);
-            }}
+                    }}
             className={`h-1 transition-editorial rounded-full ${
               idx === currentQuestion
                 ? 'bg-accent w-10'

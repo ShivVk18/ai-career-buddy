@@ -6,6 +6,7 @@ import Quiz from "../_components/Quiz";
 import { useState } from "react";
 import { generateQuiz } from "@/actions/Interview";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -22,18 +23,23 @@ export default function MockInterviewPage() {
   const router = useRouter();
   const [skills, setSkills] = useState("");
   const [quizReady, setQuizReady] = useState(false);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
     try {
       setLoading(true);
       const arr = skills.split(",").map(s => s.trim()).filter(Boolean);
-      const generatedQuestions = await generateQuiz(arr);
-      setQuestions(generatedQuestions);
+      const generated = await generateQuiz(arr); // { quizId, questions }
+      setQuestions(generated);
       setQuizReady(true);
     } catch (e) {
-      console.error(e);
+      const msg = e?.message || "";
+      toast.error(
+        msg.startsWith("AI_LIMIT")
+          ? "You've reached today's AI limit. Try again tomorrow."
+          : msg || "Failed to generate quiz"
+      );
     } finally {
       setLoading(false);
     }
@@ -113,7 +119,7 @@ export default function MockInterviewPage() {
               initialQuestions={questions} 
               onComplete={() => {
                 setQuizReady(false);
-                setQuestions([]);
+                setQuestions(null);
               }}
             />
           </div>

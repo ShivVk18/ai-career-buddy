@@ -47,16 +47,17 @@ export default function ChatMessage({ message }) {
       {/* Soft Panel Content */}
       <div className="flex-1 min-w-0 space-y-2">
         <div className="panel-cozy p-3.5 sm:p-4 bg-white border border-[#ECEAE4] text-xs sm:text-sm leading-relaxed text-[#23222B] break-words">
-          {message.content}
+          <span className="whitespace-pre-wrap">{message.content}</span>
         </div>
 
         {/* Tool Result if present */}
-        {message.toolResult && (
+        {(message.toolResults || []).map((r, i) => (
           <ToolResultCard
-            type={message.toolResult.tool}
-            data={message.toolResult.data}
+            key={r?.data?.recordId || i}
+            type={r.tool}
+            data={r.data}
           />
-        )}
+        ))}
       </div>
     </div>
   );

@@ -3,14 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useUser } from "@clerk/nextjs";
 import PixelScene from "@/components/pixel/PixelScene";
 import PipStatus from "@/components/pixel/PipStatus";
-import {
-  MOCK_JOBS,
-  MOCK_WEEKLY_ROADMAP,
-  MOCK_ATS_REQUIREMENTS,
-} from "@/lib/mock";
 import {
   ScrollText,
   Sparkles,
@@ -20,105 +14,115 @@ import {
   ClipboardCheck,
   ArrowRight,
   Send,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
   ChevronRight,
-  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import ChatSlideOver from "@/components/chat/ChatSlideOver";
 
-export default function DashboardView() {
-  const { user } = useUser();
-  const [jobs, setJobs] = useState(MOCK_JOBS);
+const EMPTY_DATA = {
+  firstName: null,
+  avgAtsScore: null,
+  counts: {
+    atsScores: 0,
+    coverLetters: 0,
+    coldEmails: 0,
+    roadmaps: 0,
+    assessments: 0,
+    hasResume: false,
+  },
+  targets: [],
+  totalTargets: 0,
+  nextTasks: [],
+};
+
+export default function DashboardView({ data }) {
+  const d = data || EMPTY_DATA;
+  const counts = d.counts || EMPTY_DATA.counts;
+  const targets = d.targets || [];
+  const nextTasks = d.nextTasks || [];
   const [selectedToolId, setSelectedToolId] = useState("resume");
   const [quickInput, setQuickInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
-  const [tasks, setTasks] = useState(
-    MOCK_WEEKLY_ROADMAP[1].tasks.map((t, idx) => ({ ...t, id: idx }))
-  );
 
-  const candidateName = user?.firstName || "Aarav";
+  const candidateName = d.firstName || null;
+  const scoreText =
+    d.avgAtsScore === null || d.avgAtsScore === undefined
+      ? "No score yet"
+      : `${d.avgAtsScore}/100`;
 
-  // AscendAI Signature: Time of day = pipeline progress
-  // dawn (just started) → noon (applying) → sunset (interviewing) → night with stars (offer received)
-  const hasOffer = jobs.some((j) => j.status === "offer");
-  const hasInterview = jobs.some((j) => j.status === "interviewing");
-  const hasApplying = jobs.some((j) => j.status === "applying");
-
-  let sceneVariant = "morning"; // dawn
-  let progressStatusText = "dawn • profile ready, exploring targets";
+  // AscendAI Signature: Time of day = pipeline progress, derived from real records only.
+  let sceneVariant = "morning";
+  let progressStatusText = "dawn • no targets yet, start with a resume or an ats check";
   let pipOutfit = "coffee";
 
-  if (hasOffer) {
-    sceneVariant = "dusk"; // night with stars
-    progressStatusText = "night with stars • offer received from cred!";
-    pipOutfit = "rocket";
-  } else if (hasInterview) {
-    sceneVariant = "pink"; // sunset
-    progressStatusText = "sunset • 2 active interview loops in progress";
+  if (targets.length > 0 && counts.assessments > 0) {
+    sceneVariant = "pink";
+    progressStatusText = `sunset • ${targets.length} target${targets.length === 1 ? "" : "s"}, interview practice under way`;
     pipOutfit = "headphones";
-  } else if (hasApplying) {
-    sceneVariant = "noon"; // noon
-    progressStatusText = "noon • applications dispatched, monitoring responses";
+  } else if (targets.length > 0) {
+    sceneVariant = "noon";
+    progressStatusText = `noon • ${targets.length} target${targets.length === 1 ? "" : "s"} in progress`;
     pipOutfit = "thinking";
   }
+
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   const toolCards = [
     {
       id: "resume",
       name: "resume builder",
       icon: ScrollText,
-      href: "/tools/resume",
-      status: "tailored for razorpay (92% match)",
-      badge: "paper doc",
-      preview: "3 quantifiable bullets verified with telemetry footnotes. ready to download pdf.",
+      href: "/resume",
+      status: counts.hasResume ? "resume saved" : "no resume yet",
+      badge: "resume",
+      preview: counts.hasResume
+        ? "Your resume is saved. Open it to edit or export."
+        : "Build your resume to get started. Other tools use it.",
     },
     {
       id: "interview",
       name: "interview prep",
       icon: Sparkles,
-      href: "/tools/interview",
-      status: "next: swiggy web vitals simulation",
-      badge: "rubric scoring",
-      preview: "practice 10 real interview questions with evidence quotes and live timer.",
+      href: "/interview",
+      status: counts.assessments ? plural(counts.assessments, "quiz taken", "quizzes taken") : "no quizzes yet",
+      badge: "quiz",
+      preview: "Take a quiz on your skills and see your scores over time.",
     },
     {
       id: "cover-letter",
       name: "cover letter",
       icon: FileText,
-      href: "/tools/cover-letter",
-      status: "razorpay letter drafted (280 words)",
-      badge: "tone slider",
-      preview: "confident tone, no corporate fluff, directly addresses checkout challenges.",
+      href: "/cover-letter",
+      status: counts.coverLetters ? plural(counts.coverLetters, "letter", "letters") : "no letters yet",
+      badge: "letters",
+      preview: "Generate a cover letter for a specific company and role.",
     },
     {
       id: "cold-email",
       name: "cold email",
       icon: Mail,
-      href: "/tools/cold-email",
-      status: "zomato outreach ready (118 words)",
-      badge: "<120 words",
-      preview: "highlights food aggregator menu management experience with mailto launch.",
+      href: "/cold-email",
+      status: counts.coldEmails ? plural(counts.coldEmails, "email", "emails") : "no emails yet",
+      badge: "emails",
+      preview: "Draft a short outreach email to a recruiter or hiring manager.",
     },
     {
       id: "roadmap",
       name: "career roadmap",
       icon: BrainCircuit,
-      href: "/tools/roadmap",
-      status: "week 2: headless components (4 gaps)",
-      badge: "weekly sync",
-      preview: "closing accessibility & playwright testing gaps across 5 target roles.",
+      href: "/roadmap",
+      status: counts.roadmaps ? plural(counts.roadmaps, "active roadmap", "active roadmaps") : "no roadmap yet",
+      badge: "roadmap",
+      preview: "Create a step-by-step plan toward your target role.",
     },
     {
       id: "ats",
       name: "ats scanner",
       icon: ClipboardCheck,
-      href: "/tools/ats",
-      status: "score: 88/100 average across targets",
-      badge: "1-click fix",
-      preview: "upload any resume pdf and test match against real Indian tech JDs.",
+      href: "/resume-parser",
+      status: counts.atsScores ? `avg score ${scoreText}` : "no score yet",
+      badge: "ats",
+      preview: "Check your resume against a job description.",
     },
   ];
 
@@ -129,13 +133,6 @@ export default function DashboardView() {
     if (!quickInput.trim()) return;
     toast.success("pip received your request!");
     setChatOpen(true);
-  };
-
-  const toggleTask = (id) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
-    );
-    toast.success("task progress updated");
   };
 
   return (
@@ -160,7 +157,7 @@ export default function DashboardView() {
           <div className="absolute bottom-3 left-3 sm:left-6 z-10 max-w-[calc(100%-1.5rem)]">
             <PipStatus
               step={pipOutfit}
-              text={`welcome back, ${candidateName.toLowerCase()}. pip is tuned to your tech pipeline.`}
+              text={`${candidateName ? `welcome back, ${candidateName.toLowerCase()}.` : "welcome back."} pip is looking at your own records.`}
               size="md"
             />
           </div>
@@ -177,7 +174,7 @@ export default function DashboardView() {
                 type="text"
                 value={quickInput}
                 onChange={(e) => setQuickInput(e.target.value)}
-                placeholder="paste a job link, or ask pip anything (e.g. 'tailor for razorpay')…"
+                placeholder="ask pip about your scores, roadmap or documents…"
                 className="w-full bg-[#FBFAF7] text-text placeholder:text-[#A8A6AE] text-xs sm:text-sm px-4 py-3 rounded-full border border-[#ECEAE4] focus:border-pip focus:bg-white outline-none transition"
               />
             </div>
@@ -246,72 +243,74 @@ export default function DashboardView() {
             <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
               <div>
                 <h2 className="font-bold text-base text-text lowercase">
-                  active applications & pipeline
+                  targets & pipeline
                 </h2>
                 <span className="text-xs text-muted">
-                  tracked next action for every company
+                  companies and roles from your own documents
                 </span>
               </div>
               <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full">
-                {jobs.length} in progress
+                {d.totalTargets ?? targets.length} {(d.totalTargets ?? targets.length) === 1 ? "target" : "targets"}
               </span>
             </div>
 
-            <div className="space-y-3">
-              {jobs.map((job) => {
-                const statusStyles = {
-                  offer: "bg-[#E3F4EC] text-pip-ink border-pip/30",
-                  interviewing: "bg-[#BCAEF2]/20 text-[#543F8A] border-[#BCAEF2]/40",
-                  applying: "bg-[#FFE48A]/30 text-[#8B6B45] border-[#FFE48A]/50",
-                  draft: "bg-[#F4F2EC] text-muted border-[#ECEAE4]",
-                };
-
-                return (
+            {targets.length === 0 ? (
+              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+                <p className="text-sm text-text mb-1">No targets yet.</p>
+                <p className="text-xs text-muted mb-3">
+                  Targets appear here when you run an ATS check or write a cover letter or cold email for a company and role.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Link href="/resume-parser" className="btn-pill-secondary text-xs py-1 px-3">run an ats check</Link>
+                  <Link href="/cover-letter" className="btn-pill-secondary text-xs py-1 px-3">write a cover letter</Link>
+                  <Link href="/cold-email" className="btn-pill-secondary text-xs py-1 px-3">draft a cold email</Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {targets.map((t) => (
                   <div
-                    key={job.id}
+                    key={t.key}
                     className="p-3.5 rounded-xl border border-[#ECEAE4] hover:border-pip/50 transition bg-[#FBFAF7]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="font-semibold text-sm text-text">
-                          {job.company}
+                          {t.company || "company not set"}
                         </span>
-                        <span className="text-xs text-muted truncate">• {job.role}</span>
-                        <span
-                          className={`font-pixel text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${
-                            statusStyles[job.status] || ""
-                          }`}
-                        >
-                          {job.status}
-                        </span>
+                        <span className="text-xs text-muted truncate">• {t.role || "role not set"}</span>
                       </div>
-
-                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 text-xs text-[#23222B]">
-                        <span className="font-pixel text-[11px] text-pip-ink font-medium shrink-0">
-                          next action:
-                        </span>
-                        <span className="break-words">{job.nextAction}</span>
-                      </div>
+                      <span className="text-[10px] text-muted">
+                        last activity {new Date(t.lastActivityAt).toLocaleDateString()}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <span className="font-pixel text-xs text-pip font-bold">
-                          {job.matchRate}% match
-                        </span>
-                        <span className="block text-[10px] text-muted">{job.salary}</span>
-                      </div>
-                      <Link
-                        href="/tools/resume"
-                        className="btn-pill-secondary text-xs py-1 px-3"
-                      >
-                        tailor
-                      </Link>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {t.ats && (
+                        <Link href={t.ats.href} className="btn-pill-secondary text-xs py-1 px-3">
+                          ats {t.ats.score}/100
+                        </Link>
+                      )}
+                      {t.coverLetter && (
+                        <Link href={t.coverLetter.href} className="btn-pill-secondary text-xs py-1 px-3">
+                          cover letter
+                        </Link>
+                      )}
+                      {t.coldEmail && (
+                        <Link href={t.coldEmail.href} className="btn-pill-secondary text-xs py-1 px-3">
+                          cold email
+                        </Link>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+                {d.totalTargets > targets.length && (
+                  <p className="text-[11px] text-muted px-1">
+                    showing {targets.length} of {d.totalTargets} targets
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* This Week List */}
@@ -322,48 +321,49 @@ export default function DashboardView() {
                   this week with pip
                 </h2>
                 <span className="text-xs text-muted">
-                  high-frequency gaps holding back multiple applications
+                  next steps from your active roadmap
                 </span>
               </div>
               <Link
-                href="/tools/roadmap"
+                href="/roadmap"
                 className="text-xs text-pip hover:underline flex items-center gap-1 font-medium"
               >
                 view full roadmap <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            <div className="space-y-2.5">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => toggleTask(task.id)}
-                  className="p-3 rounded-xl border border-[#ECEAE4] hover:bg-[#FBFAF7] transition flex items-center justify-between gap-3 cursor-pointer select-none"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-5 h-5 rounded flex items-center justify-center transition ${
-                        task.done
-                          ? "bg-pip text-white"
-                          : "border border-[#ECEAE4] bg-white"
-                      }`}
-                    >
-                      {task.done && <Check className="w-3.5 h-3.5" />}
-                    </div>
-                    <span
-                      className={`text-xs ${
-                        task.done ? "line-through text-muted" : "text-text font-medium"
-                      }`}
-                    >
-                      {task.text}
-                    </span>
-                  </div>
-                  <span className="font-pixel text-[10px] text-pip-ink bg-pip-soft px-2 py-0.5 rounded">
-                    closes gaps for razorpay & swiggy
-                  </span>
-                </div>
-              ))}
-            </div>
+            {nextTasks.length === 0 ? (
+              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+                <p className="text-sm text-text mb-1">
+                  {counts.roadmaps ? "All roadmap steps are done." : "No roadmap steps yet."}
+                </p>
+                <p className="text-xs text-muted mb-3">
+                  {counts.roadmaps
+                    ? "Open your roadmap to review it."
+                    : "Create a career roadmap and your next steps show up here."}
+                </p>
+                <Link href="/roadmap" className="btn-pill-secondary text-xs py-1 px-3">
+                  {counts.roadmaps ? "open roadmap" : "create a roadmap"}
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {nextTasks.map((task) => (
+                  <Link
+                    key={`${task.roadmapId}-${task.stepId}`}
+                    href={task.href}
+                    className="p-3 rounded-xl border border-[#ECEAE4] hover:bg-[#FBFAF7] transition flex items-center justify-between gap-3"
+                  >
+                    <span className="text-xs text-text font-medium">{task.title}</span>
+                    {task.roadmapTitle && (
+                      <span className="font-pixel text-[10px] text-pip-ink bg-pip-soft px-2 py-0.5 rounded shrink-0">
+                        {task.roadmapTitle}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -422,7 +422,7 @@ export default function DashboardView() {
               <div>
                 <h4 className="text-xs font-semibold text-text">pip is ready</h4>
                 <span className="font-pixel text-[10px] text-pip-ink">
-                  need live mock scoring or bullet rewrites?
+                  ask about your own scores and plans
                 </span>
               </div>
             </div>

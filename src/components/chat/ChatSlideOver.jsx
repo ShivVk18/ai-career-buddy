@@ -5,14 +5,30 @@ import Image from "next/image";
 import { X, Send, Sparkles, MessageSquare, ArrowUpRight } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import PipStatus from "../pixel/PipStatus";
-import { MOCK_CHAT_PROMPTS } from "@/lib/mock";
+
+const SUGGESTED_PROMPTS = [
+  "What's my latest ATS score?",
+  "What should I work on next?",
+  "Which cover letters have I written?",
+  "How am I doing on my roadmap?",
+];
+
+const LIMIT_MESSAGE = "You've reached today's AI limit. Try again tomorrow.";
+const GENERIC_ERROR_MESSAGE =
+  "sorry, something went wrong on my side. please try again in a moment.";
+
+function friendlyError(code) {
+  if (code === "AI_LIMIT") return LIMIT_MESSAGE;
+  if (code === "UNAUTHORIZED") return "Your session has expired. Please sign in again.";
+  return GENERIC_ERROR_MESSAGE;
+}
 
 export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
   const [messages, setMessages] = useState([
     {
       id: "welcome",
       role: "assistant",
-      content: "hey there! i'm pip. i can tailor your resume, prep you for interviews, diagnose your ats score, or build your weekly roadmap. what are you working on today?",
+      content: "hey there! i'm pip. i can look through your saved ats scores, roadmaps, cover letters and cold emails. what are you working on today? ask me about your own scores, roadmap or documents.",
       outfit: "coffee",
     },
   ]);
@@ -42,7 +58,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsWorking(true);
-    setCurrentStep({ step: "detective", text: "reading the job requirements…" });
+    setCurrentStep({ step: "detective", text: "reading your records…" });
 
     try {
       const res = await fetch("/api/chat", {
@@ -51,19 +67,31 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
         body: JSON.stringify({ message: text }),
       });
 
-      if (!res.ok) throw new Error("Network error");
+      if (!res.ok) {
+        // Pre-stream JSON error: { error, code } with status 400/401/500
+        let code = "INTERNAL";
+        try {
+          const body = await res.json();
+          code = body?.code || code;
+        } catch {
+          // non-JSON body; keep generic code
+        }
+        throw Object.assign(new Error("chat request failed"), { code });
+      }
 
       const reader = res.body?.getReader();
+      if (!reader) throw new Error("no stream");
       const decoder = new TextDecoder();
       let assistantMsg = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "",
         outfit: "detective",
-        toolResult: null,
+        toolResults: [],
       };
 
       let buffer = "";
+      let sawTerminal = false;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -84,8 +112,16 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
             } else if (event.type === "text") {
               assistantMsg.content += event.content;
             } else if (event.type === "tool_result") {
-              assistantMsg.toolResult = event;
+              assistantMsg.toolResults.push(event);
+            } else if (event.type === "error") {
+              // Terminal: replace anything partial with a friendly message, no cards.
+              assistantMsg.content = friendlyError(event.code);
+              assistantMsg.toolResults = [];
+              assistantMsg.outfit = "thinking";
+              sawTerminal = true;
+              setCurrentStep(null);
             } else if (event.type === "done") {
+              sawTerminal = true;
               setCurrentStep(null);
             }
           } catch (e) {
@@ -94,15 +130,19 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
         }
       }
 
+      if (!sawTerminal && !assistantMsg.content) {
+        assistantMsg.content = GENERIC_ERROR_MESSAGE;
+        assistantMsg.outfit = "thinking";
+      }
+
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
-      console.error(err);
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 2).toString(),
           role: "assistant",
-          content: "sorry, i ran into a brief snag connecting to my brain. please try again in a second!",
+          content: err?.code ? friendlyError(err.code) : "sorry, i ran into a brief snag connecting to my brain. please try again in a second!",
           outfit: "thinking",
         },
       ]);
@@ -132,7 +172,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
               chat with pip
             </h2>
             <span className="font-pixel text-[11px] text-pip-ink">
-              ai career companion • 6 tools connected
+              ai career companion • read-only
             </span>
           </div>
         </div>
@@ -175,7 +215,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
             suggested prompts:
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {MOCK_CHAT_PROMPTS.map((promptText, i) => (
+            {SUGGESTED_PROMPTS.map((promptText, i) => (
               <button
                 key={i}
                 onClick={() => handleSend(promptText)}
@@ -201,7 +241,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="paste a job link, or ask pip anything…"
+            placeholder="ask pip about your scores, roadmap or documents…"
             disabled={isWorking}
             className="flex-1 min-w-0 bg-[#F4F2EC] text-text placeholder:text-[#A8A6AE] text-xs sm:text-sm px-4 py-2.5 rounded-full border border-transparent focus:border-pip focus:bg-white outline-none transition"
           />

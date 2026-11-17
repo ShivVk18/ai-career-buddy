@@ -21,17 +21,17 @@ export default async function ResumePage() {
         <div className="panel-cozy p-4 bg-white border border-[#ECEAE4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-2.5 py-0.5 rounded-full font-medium">
-              pip paper doc view
+              preview: pip paper doc view
             </span>
             <span className="text-xs text-muted">
-              looking for tracked bullet edits with telemetry source footnotes?
+              sample-data preview of tracked bullet edits.
             </span>
           </div>
           <Link
             href="/tools/resume"
             className="btn-pill-primary text-xs py-1.5 px-4 flex items-center gap-1.5 w-fit shadow-xs"
           >
-            <span>open cozy paper doc</span>
+            <span>open cozy paper doc (preview)</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

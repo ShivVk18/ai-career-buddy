@@ -38,12 +38,21 @@ export default function AppSidebar() {
   ];
 
   const tools = [
-    { label: "resume builder", href: "/tools/resume", icon: ScrollText, tag: "paper doc" },
-    { label: "interview prep", href: "/tools/interview", icon: Sparkles, tag: "rubric" },
-    { label: "cover letter", href: "/tools/cover-letter", icon: FileText, tag: "tone bar" },
-    { label: "cold email", href: "/tools/cold-email", icon: Mail, tag: "<120 words" },
-    { label: "career roadmap", href: "/tools/roadmap", icon: BrainCircuit, tag: "weekly" },
-    { label: "ats scanner", href: "/tools/ats", icon: ClipboardCheck, tag: "1-click fix" },
+    { label: "resume builder", href: "/resume", icon: ScrollText },
+    { label: "ats checker", href: "/resume-parser", icon: ClipboardCheck },
+    { label: "interview prep", href: "/interview", icon: Sparkles },
+    { label: "cover letter", href: "/cover-letter", icon: FileText },
+    { label: "cold email", href: "/cold-email", icon: Mail },
+    { label: "career roadmap", href: "/roadmap", icon: BrainCircuit },
+  ];
+
+  const previews = [
+    { label: "resume builder", href: "/tools/resume", icon: ScrollText },
+    { label: "interview prep", href: "/tools/interview", icon: Sparkles },
+    { label: "cover letter", href: "/tools/cover-letter", icon: FileText },
+    { label: "cold email", href: "/tools/cold-email", icon: Mail },
+    { label: "career roadmap", href: "/tools/roadmap", icon: BrainCircuit },
+    { label: "ats scanner", href: "/tools/ats", icon: ClipboardCheck },
   ];
 
   return (
@@ -116,19 +125,19 @@ export default function AppSidebar() {
             })}
           </div>
 
-          {/* Tools Group (All 6) */}
+          {/* Tools Group (All 6, real routes) */}
           <div className="space-y-1">
             <span className="font-pixel text-[10px] uppercase text-muted tracking-wider px-2.5 block mb-1">
               tools (six tools. one pip.)
             </span>
             {tools.map((t) => {
-              const active = pathname === t.href || pathname.startsWith(t.href);
+              const active = pathname === t.href || pathname.startsWith(t.href + "/");
               const Icon = t.icon;
               return (
                 <Link
                   key={t.label}
                   href={t.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition group ${
+                  className={`flex items-center px-3 py-2 rounded-xl text-xs font-medium transition group ${
                     active
                       ? "bg-pip-soft text-pip-ink font-semibold"
                       : "text-[#6D6B75] hover:text-[#23222B] hover:bg-[#F4F2EC]"
@@ -138,9 +147,33 @@ export default function AppSidebar() {
                     <Icon className={`w-4 h-4 ${active ? "text-pip" : "text-[#A8A6AE] group-hover:text-text"}`} />
                     <span>{t.label}</span>
                   </div>
-                  <span className="font-pixel text-[9px] text-[#A8A6AE] group-hover:text-pip-ink">
-                    {t.tag}
-                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Previews (sample data) */}
+          <div className="space-y-1">
+            <span className="font-pixel text-[10px] uppercase text-muted tracking-wider px-2.5 block mb-1">
+              previews (sample data)
+            </span>
+            {previews.map((t) => {
+              const active = pathname === t.href || pathname.startsWith(t.href + "/");
+              const Icon = t.icon;
+              return (
+                <Link
+                  key={t.label}
+                  href={t.href}
+                  className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-medium transition group ${
+                    active
+                      ? "bg-pip-soft text-pip-ink font-semibold"
+                      : "text-[#8C8A93] hover:text-[#23222B] hover:bg-[#F4F2EC]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-3.5 h-3.5 text-[#A8A6AE]" />
+                    <span>{t.label}</span>
+                  </div>
                 </Link>
               );
             })}
@@ -156,10 +189,7 @@ export default function AppSidebar() {
               </div>
               <div className="overflow-hidden">
                 <span className="text-xs font-medium text-text truncate block leading-tight">
-                  {user?.fullName || "aarav sharma"}
-                </span>
-                <span className="font-pixel text-[10px] text-muted truncate block">
-                  frontend engineer
+                  {user?.fullName || "your account"}
                 </span>
               </div>
             </div>
@@ -223,6 +253,21 @@ export default function AppSidebar() {
               </Link>
             ))}
           </div>
+          <div className="pt-2 border-t border-[#ECEAE4]">
+            <span className="font-pixel text-[10px] uppercase text-muted block mb-1.5">previews (sample data)</span>
+            <div className="grid grid-cols-2 gap-1.5">
+              {previews.map((t) => (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-2.5 py-1.5 rounded-lg border border-[#ECEAE4] text-[11px] text-muted hover:border-pip"
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+          </div>
           <div className="pt-2 border-t border-[#ECEAE4] flex justify-between items-center text-xs text-muted">
             <span>logged in as {user?.firstName || "candidate"}</span>
             <button onClick={() => signOut()} className="text-pip font-medium">sign out</button>
@@ -242,7 +287,7 @@ export default function AppSidebar() {
           <span>home</span>
         </Link>
         <Link
-          href="/tools/resume"
+          href="/resume"
           className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
             pathname.includes("/resume") ? "text-pip font-semibold" : "text-muted"
           }`}
@@ -260,7 +305,7 @@ export default function AppSidebar() {
           <span>pip</span>
         </button>
         <Link
-          href="/tools/interview"
+          href="/interview"
           className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
             pathname.includes("/interview") ? "text-pip font-semibold" : "text-muted"
           }`}

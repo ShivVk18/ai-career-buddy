@@ -33,6 +33,9 @@ export default function QuizResult({
               {score.toFixed(1)}%
             </div>
             <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">Overall Score</p>
+            {typeof result.correctCount === "number" && typeof result.total === "number" && (
+              <p className="text-xs text-muted-foreground mt-3">{result.correctCount} of {result.total} correct</p>
+            )}
           </div>
 
           {result.improvementTip && (
@@ -90,7 +93,7 @@ export default function QuizResult({
                 <div className="border border-divider bg-divider/10 rounded-sm p-5">
                   <p className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase mb-3">Your Answer:</p>
                   <p className={`text-sm font-medium ${q.isCorrect ? 'text-accent' : 'text-destructive'}`}>
-                    {q.userAnswer}
+                    {q.userAnswer ?? "Not answered"}
                   </p>
                 </div>
                 {!q.isCorrect && (
