@@ -53,3 +53,12 @@ NOT resolved: #5.
 | Severity | File:line | Owner | Problem | Fix |
 |---|---|---|---|---|
 | must-fix | src/actions/ColdEmail.js updateColdEmail (~lines 270-280) | BACKEND | updateColdEmail writes the subject but never touches `sources.subject`. After the user saves an edited subject and reloads, `fields.subject === subject` holds again, so ColdEmailPreview.jsx:260 shows "Subject based on" with the old AI subject's sources for text the AI did not write. | When a supplied `subject` differs from the stored one, clear `sources.subject` (or set it to a user-edited marker) in the same update, owner-scoped (read the row by id and userId, then updateMany). |
+
+## Fix round 2 (d5057bd)
+
+Lint 0 errors (1 pre-existing font warning), build passes.
+
+RESOLVED: the earlier must-fix (stale `sources.subject` after an edited subject). In updateColdEmail, when `subject` is supplied the row is read with findFirst scoped by id and userId (NOT_FOUND if missing or not owned). If the trimmed subject differs from the stored one (including cleared), `sources.subject` is dropped and all other keys are kept. An unchanged subject keeps it. updateMany stays scoped by id and userId. Updates without `subject` skip the new block. After save and reload, `sources.subject` is gone, so ColdEmailPreview.jsx:261 renders no chips.
+
+### MUST-FIX
+None.
