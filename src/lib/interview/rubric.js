@@ -5,7 +5,7 @@
 export const RUBRIC_WEIGHTS = { clarity: 30, depth: 40, evidence: 30 }; // sums to 100
 export const RUBRIC_CRITERIA = ["clarity", "depth", "evidence"];
 export const CRITERION_SCORE_MAX = 10;
-export const ANSWER_MIN_CHARS = 1;
+export const ANSWER_MIN_CHARS = 20;
 export const ANSWER_MAX_CHARS = 5000;
 export const OPEN_QUESTION_COUNT = { min: 3, max: 10, default: 5 };
 export const WEAK_AREA_MIN_ANSWERS = 2;

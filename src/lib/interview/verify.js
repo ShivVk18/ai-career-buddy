@@ -14,7 +14,8 @@ export function verifyQuote(quote, answerText) {
   const q = String(quote ?? "").trim();
   if (!q) return null;
   const nq = normalizeText(q);
-  if (!nq || !normalizeText(answerText).includes(nq)) return null;
+  if (!nq || (nq.split(" ").length < 3 && q.length < 12)) return null; // too short to count as evidence
+  if (!normalizeText(answerText).includes(nq)) return null;
   const parts = q.split(/\s+/).map(escapeRe);
   const m = new RegExp(parts.join("\\s+"), "i").exec(String(answerText));
   if (m) return { quote: m[0], range: [m.index, m.index + m[0].length] };

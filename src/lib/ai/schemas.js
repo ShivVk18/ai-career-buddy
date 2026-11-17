@@ -156,7 +156,8 @@ export const rubricSchema = z.object({
         feedback: z.string().default(""),
       })
     )
-    .length(3),
+    .length(3)
+    .refine((cs) => new Set(cs.map((c) => c.name)).size === 3, { message: "criteria must be clarity, depth and evidence, each exactly once" }),
   summary: z.string().default(""),
   overall: z.number().optional(),
 });

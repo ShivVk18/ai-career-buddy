@@ -90,6 +90,7 @@ const usableSingle = (t) => t.length >= 3 && !GENERIC_SINGLE.has(t);
 /** Candidate terms from the step's stored source snapshots: profile skills (comma list) and vocabulary terms in excerpts. */
 export function sourceTerms(step) {
   const out = new Set();
+  const stepText = normalizeText([step?.title, step?.description, step?.skill].filter((x) => typeof x === "string").join(" "));
   for (const src of Array.isArray(step?.sources) ? step.sources : []) {
     if (!src || typeof src.excerpt !== "string") continue;
     if (src.kind === "profile" && src.id === "profile:skills") {
@@ -105,7 +106,8 @@ export function sourceTerms(step) {
       }
     }
   }
-  return [...out];
+  // A source-derived term counts only if the step's own text also names it (whole word); otherwise drop it.
+  return [...out].filter((t) => hasTerm(stepText, t));
 }
 
 /**

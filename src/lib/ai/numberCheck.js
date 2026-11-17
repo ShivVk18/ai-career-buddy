@@ -51,7 +51,7 @@ export function inventedNumbers(output, input) {
 // Counting words/digits that are harmless in an interview QUESTION ("Describe two approaches", "Name 3 trade-offs").
 // Not harmless: years, percentages, currency, durations, numbers above 10, compounds ("twenty-two"), decimals.
 const COUNT_WORDS = "two|three|four|five|six|seven|eight|nine|ten";
-const UNIT_AFTER = "(?!\\s*(?:%|percent|per\\s*cent|dollars?|usd|euros?|eur|gbp|years?|yrs?|months?|weeks?|days?|hours?|k\\b|hundred|thousand|million|billion|dozen))";
+const UNIT_AFTER = "(?!\\s*(?:%|percent|per\\s*cent|dollars?|usd|euros?|eur|gbp|years?|yrs?|months?|weeks?|days?|hours?|hrs?|minutes?|mins?|seconds?|secs?|k\\b|hundred|thousand|million|billion|dozen))";
 const COUNT_WORD_RE = new RegExp(`(?<![\\w$€£.-])(?:${COUNT_WORDS})(?![\\w%-])${UNIT_AFTER}`, "gi");
 const COUNT_DIGIT_RE = new RegExp(`(?<![\\w$€£.,-])(?:10|[2-9])(?![\\w%])(?![.,]\\d)${UNIT_AFTER}`, "g");
 

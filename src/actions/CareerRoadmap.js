@@ -263,11 +263,9 @@ export async function updateRoadmapProgress(id, stepId, progress) {
 
   if (!careerPath) throw new Error("Career path not found");
 
-  // Use the progress the caller passed (clamped to 0-100). Only when it is missing or not a number is it
-  // recomputed from the completed steps. (It used to ignore the argument.)
+  // The caller's number is ignored (kept for signature compatibility): progress is recomputed from the steps.
   const steps = Array.isArray(careerPath.steps) ? careerPath.steps : [];
-  const given = typeof progress === "number" && Number.isFinite(progress) ? Math.min(100, Math.max(0, progress)) : null;
-  const newProgress = given ?? stepProgress(steps);
+  const newProgress = stepProgress(steps);
 
   return await db.careerPath.update({
     where: {

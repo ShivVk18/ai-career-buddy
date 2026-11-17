@@ -104,6 +104,9 @@ for (const g of Object.values(WEIGHT_GROUPS)) {
   assert.ok(verifyQuote("full-stack build time", ans)); // matches through normalization
   assert.equal(verifyQuote("then   I wrote tests", ans).quote, "Then I wrote tests");
   assert.equal(verifyQuote("I led a team of ten", ans), null);
+  assert.equal(verifyQuote("React", ans), null); // too short to verify (1 word, < 12 chars)
+  assert.equal(verifyQuote("I used", ans), null); // 2 words, < 12 chars
+  assert.ok(verifyQuote("then I wrote", ans)); // 3 words
   assert.equal(verifyQuote("", ans), null);
   assert.equal(verifyQuote(null, ans), null);
   const allowed = "Tell me about a project. I built a tool for 5 users.";
@@ -138,14 +141,17 @@ for (const g of Object.values(WEIGHT_GROUPS)) {
   assert.deepEqual(t["4"], []);
   // Steps with no vocabulary skill: source snapshots and title phrases.
   const src = { id: 5, title: "Ship something real", sources: [{ id: "profile:skills", kind: "profile", label: "Profile: skills", excerpt: "Figma, Product Analytics, Go, skills" }] };
-  assert.ok(matchStepToJd(src, "Own product analytics for the team."));
-  assert.ok(matchStepToJd(src, "Design in Figma daily."));
+  assert.equal(matchStepToJd(src, "Own product analytics for the team."), null); // not named by the step text
+  assert.equal(matchStepToJd(src, "Design in Figma daily."), null); // profile skill not named by the step text: dropped
+  const srcNamed = { ...src, id: 9, description: "Practice Figma prototyping and product analytics with a small team." };
+  assert.ok(matchStepToJd(srcNamed, "Design in Figma daily."));
+  assert.ok(matchStepToJd(srcNamed, "Own product analytics for the team."));
   assert.equal(matchStepToJd(src, "Strong skills and experience required. Go getter."), null); // generic / too short
   const ph = { id: 6, title: "Master event driven architecture patterns" };
   assert.ok(matchStepToJd(ph, "You know event driven architecture."));
   assert.equal(matchStepToJd(ph, "Event planning and architecture of homes."), null); // phrase must appear whole
   assert.equal(matchStepToJd({ id: 7, title: "Learn and build skills" }, "Build team skills and learn."), null); // only stopwords
-  const jdSrc = { id: 8, title: "Ship it", sources: [{ id: "jd:1", kind: "jd", label: "JD", excerpt: "Experience with Kubernetes required." }] };
+  const jdSrc = { id: 8, title: "Ship it", description: "Deploy on Kubernetes.", sources: [{ id: "jd:1", kind: "jd", label: "JD", excerpt: "Experience with Kubernetes required." }] };
   assert.ok(matchStepToJd(jdSrc, "Run Kubernetes clusters."));
   assert.equal(matchStepToJd(jdSrc, "Experience with teams."), null);
 }
@@ -161,6 +167,9 @@ for (const g of Object.values(WEIGHT_GROUPS)) {
   qbad("How did you handle a $5 budget?");
   qbad("What happened in 2019?");
   qbad("Describe twenty approaches.");
+  qbad("You have 5 minutes to explain it.");
+  qbad("Spend 10 mins on it, or two hours.");
+  qbad("Answer in three seconds or 4 secs or 2 hrs.");
   qbad("Describe 25 approaches.");
   qbad("Describe two years of experience.");
   qbad("Describe twenty-two cases.");
