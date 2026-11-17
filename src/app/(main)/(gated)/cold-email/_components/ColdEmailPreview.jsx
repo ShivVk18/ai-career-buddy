@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Download, Copy, Edit3, FileText, CheckCircle2, Eye, Sparkles, Zap, Save, FileDown } from "lucide-react"
 import { toast } from "sonner"
 
-const ColdEmailPreview = ({ content }) => {
+import { ParagraphSources } from "@/components/shared/SourceChips";
+
+const ColdEmailPreview = ({ content, sources }) => {
   const [editedContent, setEditedContent] = useState(content)
   const [previewMode, setPreviewMode] = useState("preview")
 
@@ -141,6 +143,9 @@ const ColdEmailPreview = ({ content }) => {
           />
         </div>
       </div>
+
+      <ParagraphSources content={editedContent} sources={sources} />
+
 
       {/* Optimization Tips */}
       <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl">

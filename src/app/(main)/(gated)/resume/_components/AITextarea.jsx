@@ -5,6 +5,7 @@ import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { improveWithAI } from "@/actions/Resume";
 import useFetch from "@/hooks/use-fetch";
 import { toast } from "sonner";
+import SourceChips from "@/components/shared/SourceChips";
 
 export const AITextarea = React.forwardRef(({ label, type, value, onChange, placeholder, ...props }, ref) => {
   const [initialText, setInitialText] = useState("");
@@ -21,6 +22,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
   };
 
   const [isImproving, setIsImproving] = useState(false);
+  const [improvedSources, setImprovedSources] = useState([]);
 
   const handleImprove = async () => {
     if (!value) {
@@ -30,13 +32,22 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
 
     setIsImproving(true);
     try {
-      const improvedContent = await improveWithAI({
+      const result = await improveWithAI({
         current: value,
         type: type,
       });
-      if (onChange) {
-        onChange({ target: { value: improvedContent } });
+      if (!result || result.error || typeof result.text !== "string") {
+        toast.error(
+          result?.code === "AI_LIMIT"
+            ? "Daily AI limit reached. Please try again tomorrow."
+            : result?.error || "Failed to improve content"
+        );
+        return;
       }
+      if (onChange) {
+        onChange({ target: { value: result.text } });
+      }
+      setImprovedSources(result.sources || []);
       toast.success(`${label || 'Content'} improved by AI! ✨`);
     } catch (error) {
       toast.error(error.message || `Failed to improve content`);
@@ -92,6 +103,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
         className="h-40 w-full px-4 py-4 bg-divider/5 border border-border rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed"
         {...props}
       />
+      <SourceChips sources={improvedSources} heading="Based on" />
     </div>
   );
 });

@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { completeRoadmapStep } from "@/actions/CareerRoadmap";
+import SourceChips from "@/components/shared/SourceChips";
 
 const RoadmapDetailView = ({ roadmap }) => {
   const [completingStep, setCompletingStep] = useState(null);
@@ -255,6 +256,12 @@ const RoadmapDetailView = ({ roadmap }) => {
                           <p className="text-[#b0b0b0] leading-relaxed">
                             {step.description}
                           </p>
+
+                          <SourceChips
+                            sources={step.sources}
+                            legacy={!Array.isArray(step.sources)}
+                            heading="Based on"
+                          />
 
                           {step.resources && step.resources.length > 0 && (
                             <div className="space-y-2">

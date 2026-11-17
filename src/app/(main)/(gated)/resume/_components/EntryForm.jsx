@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import useFetch from "@/hooks/use-fetch";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { Mic } from "lucide-react";
+import SourceChips from "@/components/shared/SourceChips";
 
 const formatDisplayDate = (dateString) => {
   if (!dateString) return "";
@@ -69,6 +70,7 @@ export function EntryForm({ type, entries, onChange }) {
     onChange([...entries, formattedEntry]);
 
     reset();
+    setImprovedSources([]);
     setIsAdding(false);
   });
 
@@ -78,6 +80,7 @@ export function EntryForm({ type, entries, onChange }) {
   };
 
   const [isImproving, setIsImproving] = useState(false);
+  const [improvedSources, setImprovedSources] = useState([]);
 
   const handleImproveDescription = async () => {
     const description = watch("description");
@@ -88,11 +91,20 @@ export function EntryForm({ type, entries, onChange }) {
 
     setIsImproving(true);
     try {
-      const improvedContent = await improveWithAI({
+      const result = await improveWithAI({
         current: description,
         type: type.toLowerCase(),
       });
-      setValue("description", improvedContent);
+      if (!result || result.error || typeof result.text !== "string") {
+        toast.error(
+          result?.code === "AI_LIMIT"
+            ? "Daily AI limit reached. Please try again tomorrow."
+            : result?.error || "Failed to improve description"
+        );
+        return;
+      }
+      setValue("description", result.text);
+      setImprovedSources(result.sources || []);
       toast.success("Description improved by AI! ✨");
     } catch (error) {
       toast.error(error.message || "Failed to improve description");
@@ -107,7 +119,7 @@ export function EntryForm({ type, entries, onChange }) {
       <div className="space-y-6">
         {entries.map((item, index) => (
           <motion.div
-            key={index}
+            key={item.id ?? index}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -285,6 +297,7 @@ export function EntryForm({ type, entries, onChange }) {
                     className="h-40 w-full px-4 py-4 bg-divider/5 border border-divider/40 rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30"
                     {...register("description")}
                   />
+                  <SourceChips sources={improvedSources} heading="Based on" />
                   {errors.description && (
                     <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
                       {errors.description.message}
@@ -299,6 +312,7 @@ export function EntryForm({ type, entries, onChange }) {
                   type="button"
                   onClick={() => {
                     reset();
+                    setImprovedSources([]);
                     setIsAdding(false);
                   }}
                   className="h-12 px-8 text-xs text-muted-foreground hover:text-foreground"

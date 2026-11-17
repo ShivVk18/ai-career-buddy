@@ -5,6 +5,28 @@ import { Upload, FileText, Loader, AlertCircle, CheckCircle, Target, TrendingUp,
 import { createATSAnalysis } from '@/actions/ResumeParser';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SourceChips, { LegacySourcesLabel } from "@/components/shared/SourceChips";
+
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+
+// Evidence list for one strength/weakness/recommendation (or the legacy label)
+const EvidenceList = ({ item, legacy }) => {
+  if (legacy) return <LegacySourcesLabel className="mt-2" />;
+  const sources = item?.sources;
+  if (!Array.isArray(sources) || sources.length === 0) return null;
+  const quotes = sources.filter((x) => x.type === "resume_quote");
+  const jd = sources.filter((x) => x.type === "jd");
+  return (
+    <div className="mt-2 space-y-2">
+      {quotes.map((q, i) => (
+        <p key={i} className="text-xs italic text-muted-foreground border-l-2 border-accent/40 pl-3">
+          From your resume: &quot;{q.quote}&quot;
+        </p>
+      ))}
+      <SourceChips sources={jd} />
+    </div>
+  );
+};
 
 const ResumeParserComponent = () => {
 
@@ -53,11 +75,18 @@ const ResumeParserComponent = () => {
         companyName: formData.companyName,
         jobTitle: formData.jobTitle,
         jobDescription: formData.jobDescription,
-        resumeBase64: base64Resume
+        resumeBase64: base64Resume,
+        resumeType: formData.resumePdf.type
       });
 
       if (!response || !response.success) {
-        setError("Something went wrong while scanning. Please try again.");
+        if (response?.code === "AI_LIMIT") {
+          setError("Daily AI limit reached. Please try again tomorrow.");
+        } else if (response?.code === "INVALID_FILE") {
+          setError(response.error || "Please upload a valid PDF resume (up to 5 MB) that contains selectable text.");
+        } else {
+          setError(response?.error || response?.message || "Something went wrong while scanning. Please try again.");
+        }
         setLoading(false);
         return;
       }
@@ -79,12 +108,17 @@ const ResumeParserComponent = () => {
   };
 
   const handleFileSelection = (file) => {
-    if (file && file.type === 'application/pdf') {
-      setFormData(prev => ({ ...prev, resumePdf: file }));
-      setError('');
-    } else {
-      setError('Please select a valid PDF file');
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      setError('That file is not a PDF. Please upload your resume as a PDF.');
+      return;
     }
+    if (file.size > MAX_PDF_BYTES) {
+      setError('That file is larger than 5 MB. Please upload a smaller PDF.');
+      return;
+    }
+    setFormData(prev => ({ ...prev, resumePdf: file }));
+    setError('');
   };
 
   const handleDrag = (e) => {
@@ -270,7 +304,10 @@ const ResumeParserComponent = () => {
                 {result.strengths.map((s, i) => (
                   <li key={i} className="text-sm font-general text-foreground flex items-start gap-4">
                     <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                    {s}
+                    <div className="min-w-0">
+                      {s}
+                      <EvidenceList item={result.evidence?.strengths?.[i]} legacy={!result.evidence} />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -285,12 +322,39 @@ const ResumeParserComponent = () => {
                 {result.weaknesses.map((w, i) => (
                   <li key={i} className="text-sm font-general text-muted-foreground flex items-start gap-4">
                     <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                    {w}
+                    <div className="min-w-0">
+                      {w}
+                      <EvidenceList item={result.evidence?.weaknesses?.[i]} legacy={!result.evidence} />
+                    </div>
                   </li>
                 ))}
               </ul>
             </div>
           </div>
+
+          {/* Recommendations */}
+          {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
+            <div className="border border-border bg-background p-10 rounded-sm mb-12 shadow-sm">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+                <span className="w-4 h-[1px] bg-accent"></span>
+                Recommendations
+              </h3>
+              <ul className="space-y-6">
+                {result.recommendations.map((r, i) => (
+                  <li key={i} className="text-sm font-general text-foreground">
+                    {(r.category || r.priority) && (
+                      <p className="text-[10px] font-bold tracking-widest uppercase text-accent mb-1">
+                        {[r.category, r.priority].filter(Boolean).join(" / ")}
+                      </p>
+                    )}
+                    <p>{r.action}</p>
+                    {r.impact && <p className="text-xs text-muted-foreground mt-1">{r.impact}</p>}
+                    <EvidenceList item={result.evidence?.recommendations?.[i]} legacy={!result.evidence} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Skills */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">

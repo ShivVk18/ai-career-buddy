@@ -42,7 +42,7 @@ export default async function EditColdEmailPage({ params }) {
           </div>
         </div>
 
-        <ColdEmailPreview content={coldEmail?.content} />
+        <ColdEmailPreview content={coldEmail?.content} sources={coldEmail?.sources ?? null} />
       </div>
     </div>
   )

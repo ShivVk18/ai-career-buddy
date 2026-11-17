@@ -13,6 +13,7 @@ import useFetch from "@/hooks/use-fetch";
 import { coldEmailSchema } from "@/app/lib/schema";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { generationErrorMessage } from "@/components/shared/generationError";
 import { generateColdEmail } from "@/actions/ColdEmail";
 
 export default function ColdEmailGenerator() {
@@ -35,7 +36,11 @@ export default function ColdEmailGenerator() {
 
   
   useEffect(() => {
-    if (generatedLetter) {
+    if (generatedLetter?.error || generatedLetter?.code) {
+      toast.error(generationErrorMessage(generatedLetter));
+      return;
+    }
+    if (generatedLetter?.id) {
       toast.success("Cold email generated successfully! ✨");
       router.push(`/cold-email/${generatedLetter.id}`);
       reset();

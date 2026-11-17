@@ -70,7 +70,10 @@ export default function ResumePaperDoc({
     >
       {/* Header Bar with subtle Pip indicator */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECEAE4] pb-4 mb-6">
-        <div>
+        <div className="flex items-center gap-2">
+          <span className="font-pixel text-[10px] uppercase tracking-wide text-[#6D6B75] border border-[#ECEAE4] bg-[#F4F2EC] px-2 py-1 rounded-full inline-block">
+            Sample
+          </span>
           <span className="font-pixel text-[11px] text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full inline-block">
             pip's live edit • tailored for {company.toLowerCase()}
           </span>

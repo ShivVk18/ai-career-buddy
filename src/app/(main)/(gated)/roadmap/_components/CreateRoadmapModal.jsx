@@ -14,6 +14,7 @@ import { Loader2, Sparkles, Brain, Zap } from "lucide-react";
 import { generateCareerRoadmap } from "@/actions/CareerRoadmap";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { generationErrorMessage } from "@/components/shared/generationError";
 
 const CreateRoadmapModal = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,10 @@ const CreateRoadmapModal = ({ open, onClose }) => {
 
     try {
       const roadmap = await generateCareerRoadmap(formData);
+      if (!roadmap || roadmap.error || !roadmap.id) {
+        toast.error(generationErrorMessage(roadmap));
+        return;
+      }
       toast.success("Your roadmap is ready! 🎉");
       setFormData({ currentRole: "", targetRole: "", industry: "", timeline: "" });
       onClose();

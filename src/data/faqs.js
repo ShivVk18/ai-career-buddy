@@ -10,9 +10,9 @@ export const faqs = [
       "Sensai learns about your industry, experience, and skills during onboarding. It then uses this information to generate customized resumes, cover letters, and interview questions. The content is specifically aligned with your professional background and industry standards, making it highly relevant and effective.",
   },
   {
-    question: "How accurate and up-to-date are Sensai's industry insights?",
+    question: "Does Sensai include industry insights?",
     answer:
-      "We update our industry insights weekly using advanced AI analysis of current market trends. This includes salary data, in-demand skills, and industry growth patterns. Our system constantly evolves to ensure you have the most relevant information for your career decisions.",
+      "Sensai uses your industry, skills and experience from onboarding to tailor each tool, such as your ATS scan, cover letters, cold emails, career roadmap and interview practice. We don't publish weekly market or salary reports yet. Everything you see is based on your own profile, resume and the job descriptions you provide.",
   },
   {
     question: "Is my data secure with Sensai?",

@@ -14,6 +14,7 @@ import useFetch from "@/hooks/use-fetch";
 import { coverLetterSchema } from "@/app/lib/schema";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { generationErrorMessage } from "@/components/shared/generationError";
 
 export default function CoverLetterGenerator() {
   const router = useRouter();
@@ -35,7 +36,11 @@ export default function CoverLetterGenerator() {
 
   // Update content when letter is generated
   useEffect(() => {
-    if (generatedLetter) {
+    if (generatedLetter?.error || generatedLetter?.code) {
+      toast.error(generationErrorMessage(generatedLetter));
+      return;
+    }
+    if (generatedLetter?.id) {
       toast.success("Cover letter generated! ✨");
       router.push(`/cover-letter/${generatedLetter.id}`);
       reset();
