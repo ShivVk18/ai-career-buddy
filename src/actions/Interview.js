@@ -64,6 +64,7 @@ Ensure all 10 questions are unique and the correctAnswer exactly matches one of 
 
     const parsed = await runAIStructured("fast", quizSchema, () => [["user", prompt]], {
       userId,
+      temperature: 0.3,
     });
 
     return parsed.questions.slice(0, 10);
@@ -140,7 +141,7 @@ export async function saveQuizResult(questions, answers, score) {
 
     return assessment;
   } catch (error) {
-    console.error("Error saving quiz result:", error);
+    console.error("Error saving quiz result failed:", error?.message);
     throw new Error("Failed to save quiz result");
   }
 }
@@ -167,7 +168,7 @@ export async function getAssessments() {
 
     return assessments;
   } catch (error) {
-    console.error("Error fetching assessments:", error);
+    console.error("Error fetching assessments failed:", error?.message);
     throw new Error("Failed to fetch assessments");
   }
 }

@@ -83,7 +83,7 @@ export async function saveResume(data) {
     revalidatePath("/resume");
     return resume;
   } catch (error) {
-    console.error("Error saving resume:", error);
+    console.error("Error saving resume failed:", error?.message);
     throw new Error(error.message || "Failed to save resume");
   }
 }
@@ -118,7 +118,7 @@ export async function getResume() {
 
     return resume;
   } catch (error) {
-    console.error("Error fetching resume:", error);
+    console.error("Error fetching resume failed:", error?.message);
     return null;
   }
 }
@@ -135,7 +135,7 @@ export async function getResumeTemplates() {
 
     return templates;
   } catch (error) {
-    console.error("Error fetching templates:", error);
+    console.error("Error fetching templates failed:", error?.message);
     return [];
   }
 }
@@ -199,7 +199,11 @@ Requirements:
 7. Return only the improved content without any explanations or introductory text.`;
     }
 
-    const improvedText = await runAIText("write", () => [["user", prompt]], { userId });
+    const improvedText = await runAIText("write", () => [["user", prompt]], {
+      userId,
+      temperature: 0.7,
+      maxOutputTokens: 300,
+    });
 
    return improvedText.replace(/^\d+:/gm, "").trim();
   } catch (error) {
@@ -228,7 +232,7 @@ export async function deleteResume() {
     revalidatePath("/resume");
     return { success: true };
   } catch (error) {
-    console.error("Error deleting resume:", error);
+    console.error("Error deleting resume failed:", error?.message);
     throw new Error("Failed to delete resume");
   }
 }
@@ -263,7 +267,7 @@ export async function duplicateResume() {
     revalidatePath("/resume");
     return version;
   } catch (error) {
-    console.error("Error duplicating resume:", error);
+    console.error("Error duplicating resume failed:", error?.message);
     throw new Error("Failed to duplicate resume");
   }
 }
@@ -392,7 +396,7 @@ export async function seedResumeTemplates() {
 
     return { success: true, message: "Templates seeded successfully" };
   } catch (error) {
-    console.error("Error seeding templates:", error);
+    console.error("Error seeding templates failed:", error?.message);
     throw new Error("Failed to seed templates");
   }
 }

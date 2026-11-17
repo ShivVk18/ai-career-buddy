@@ -16,11 +16,14 @@ export class AIError extends Error {
 }
 
 function classify(err) {
-  const status = err?.status ?? err?.response?.status ?? err?.code;
+  const raw = [err?.status, err?.statusCode, err?.response?.status, err?.code].find(
+    (v) => v !== undefined && v !== null && /^\d{3}$/.test(String(v))
+  );
+  const status = raw === undefined ? undefined : Number(raw);
   const msg = String(err?.message || "").toLowerCase();
-  if (status === 429 || /\b429\b|rate.?limit|quota|resource.?exhausted/.test(msg)) return "rate_limited";
+  if (status === 429 || /\b429\b|rate.?limit|quota|resource_exhausted|resource exhausted/.test(msg)) return "rate_limited";
   if (err?.name === "TimeoutError" || /timed? ?out|timeout|etimedout|econnreset|fetch failed/.test(msg)) return "timeout";
-  if ((typeof status === "number" && status >= 500) || /\b5\d\d\b|overloaded|unavailable/.test(msg)) return "server_error";
+  if ((typeof status === "number" && status >= 500 && status < 600) || /overloaded|unavailable|internal ?(server )?error/.test(msg)) return "server_error";
   return null; // not retryable
 }
 
@@ -40,7 +43,7 @@ function withTimeout(promise) {
  * runAI(task, (model) => result, { userId })
  * Tries each provider:model in AI_ROUTE_<TASK> in order, rotating keys.
  */
-export async function runAI(task, callback, { userId } = {}) {
+export async function runAI(task, callback, { userId, temperature: tempOverride, maxOutputTokens } = {}) {
   if (!TASKS[task]) throw new AIError(`Unknown AI task: ${task}`, { code: "AI_CONFIG" });
   let route;
   try {
@@ -49,7 +52,7 @@ export async function runAI(task, callback, { userId } = {}) {
     throw new AIError(e.message, { code: "AI_CONFIG" });
   }
 
-  const { temperature } = TASKS[task];
+  const temperature = tempOverride ?? TASKS[task].temperature;
   const attempts = [];
 
   for (const { provider, model } of route) {
@@ -72,7 +75,7 @@ export async function runAI(task, callback, { userId } = {}) {
       tried.add(k.index);
       const started = Date.now();
       try {
-        const chat = createModel(provider, model, k.key, { temperature });
+        const chat = createModel(provider, model, k.key, { temperature, maxOutputTokens });
         const result = await withTimeout(Promise.resolve(callback(chat)));
         logAttempt({ userId, task, provider, model, ok: true, latencyMs: Date.now() - started });
         return result;
@@ -119,7 +122,7 @@ export function extractJson(text) {
 }
 
 /** Plain text generation. buildMessages() returns LangChain messages or [role, text] tuples. */
-export async function runAIText(task, buildMessages, { userId } = {}) {
+export async function runAIText(task, buildMessages, { userId, temperature, maxOutputTokens } = {}) {
   return runAI(
     task,
     async (model) => {
@@ -129,12 +132,12 @@ export async function runAIText(task, buildMessages, { userId } = {}) {
       debugLog("output", text);
       return text;
     },
-    { userId }
+    { userId, temperature, maxOutputTokens }
   );
 }
 
 /** Structured generation validated with zod; retries once on a parse/validation failure. */
-export async function runAIStructured(task, schema, buildMessages, { userId } = {}) {
+export async function runAIStructured(task, schema, buildMessages, { userId, temperature, maxOutputTokens } = {}) {
   return runAI(
     task,
     async (model) => {
@@ -153,7 +156,7 @@ export async function runAIStructured(task, schema, buildMessages, { userId } = 
       }
       throw lastErr;
     },
-    { userId }
+    { userId, temperature, maxOutputTokens }
   );
 }
 

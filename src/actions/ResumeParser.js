@@ -233,7 +233,7 @@ export async function getUserATSScores() {
 
     return scores;
   } catch (error) {
-    console.error("Error fetching ATS scores:", error);
+    console.error("Error fetching ATS scores failed:", error?.message);
     throw new Error("Failed to fetch ATS scores");
   }
 }
@@ -259,7 +259,7 @@ export async function getATSScoreById(scoreId) {
 
     return score;
   } catch (error) {
-    console.error("Error fetching ATS score:", error);
+    console.error("Error fetching ATS score failed:", error?.message);
     throw new Error("Failed to fetch ATS score details");
   }
 }
@@ -291,7 +291,7 @@ export async function deleteATSScore(scoreId) {
     return { success: true, message: "ATS score deleted successfully" };
 
   } catch (error) {
-    console.error("Error deleting ATS score:", error);
+    console.error("Error deleting ATS score failed:", error?.message);
     throw new Error("Failed to delete ATS score");
   }
 }
@@ -336,7 +336,7 @@ export async function getATSAnalytics() {
 
     return analytics;
   } catch (error) {
-    console.error("Error fetching ATS analytics:", error);
+    console.error("Error fetching ATS analytics failed:", error?.message);
     throw new Error("Failed to fetch analytics");
   }
 }
@@ -369,12 +369,11 @@ export async function updateATSScore(scoreId, updateData) {
     });
 
     revalidatePath("/resume-parser");
-    revalidatePath(`/ats-scores/${scoreId}`);
     
     return { success: true, message: "ATS score updated successfully", data: updated };
 
   } catch (error) {
-    console.error("Error updating ATS score:", error);
+    console.error("Error updating ATS score failed:", error?.message);
     throw new Error("Failed to update ATS score");
   }
 }

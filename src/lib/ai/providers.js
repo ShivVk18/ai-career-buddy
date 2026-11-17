@@ -1,8 +1,14 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const factories = {
-  google: (model, apiKey, { temperature }) =>
-    new ChatGoogleGenerativeAI({ model, apiKey, temperature, maxRetries: 0 }),
+  google: (model, apiKey, { temperature, maxOutputTokens }) =>
+    new ChatGoogleGenerativeAI({
+      model,
+      apiKey,
+      temperature,
+      ...(maxOutputTokens ? { maxOutputTokens } : {}),
+      maxRetries: 0,
+    }),
 };
 
 export function isSupportedProvider(provider) {
