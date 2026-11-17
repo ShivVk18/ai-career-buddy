@@ -29,6 +29,7 @@ import {
 import useFetch from "@/hooks/use-fetch";
 import { onboardingSchema } from "@/app/lib/schema";
 import { updateUser } from "@/actions/User";
+import { generationErrorMessage } from "@/components/shared/generationError";
 
 const OnboardingForm = ({ industries }) => {
   const router = useRouter();
@@ -66,6 +67,10 @@ const OnboardingForm = ({ industries }) => {
   };
 
   useEffect(() => {
+    if (updateResult?.error && !updateLoading) {
+      toast.error(generationErrorMessage(updateResult, "Could not save your profile."));
+      return;
+    }
     if (updateResult?.success && !updateLoading) {
       toast.success("Profile set up! Welcome aboard 🎉");
       router.push("/dashboard");

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChevronLeft, Loader2, Mic, Square, Timer, Target, ArrowRight, AlertCircle } from "lucide-react";
 import { generateOpenQuestions, scoreOpenAnswer } from "@/actions/Practice";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
-import { OPEN_QUESTION_COUNT, ANSWER_MAX_CHARS } from "@/lib/interview/rubric";
+import { OPEN_QUESTION_COUNT, ANSWER_MAX_CHARS, ANSWER_MIN_CHARS } from "@/lib/interview/rubric";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import SourceChips from "@/components/shared/SourceChips";
 import { Button } from "@/components/ui/button";
@@ -62,13 +62,18 @@ export default function PracticePage() {
 
   // Voice: transcript is appended to whatever was typed before recording started; the textarea stays editable.
   const baseRef = useRef("");
+  const typedRef = useRef(false);
   const onTranscript = useCallback((t) => {
+    if (typedRef.current) return; // user typed after stopping: late results must not overwrite
     const base = baseRef.current;
     setText((base ? base + " " : "") + t);
   }, []);
   const { isRecording, toggleRecording, isSupported } = useSpeechToText(onTranscript);
   const handleVoice = () => {
-    if (!isRecording) baseRef.current = text.trim();
+    if (!isRecording) {
+      baseRef.current = text.trim();
+      typedRef.current = false;
+    }
     toggleRecording();
   };
 
@@ -230,7 +235,13 @@ export default function PracticePage() {
               <div className="space-y-4">
                 <Textarea
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    if (isRecording) {
+                      typedRef.current = true;
+                      toggleRecording();
+                    }
+                    setText(e.target.value);
+                  }}
                   maxLength={ANSWER_MAX_CHARS}
                   rows={8}
                   placeholder="Type your answer, or use the microphone and edit the transcript."
@@ -252,8 +263,13 @@ export default function PracticePage() {
                     <span className="text-[10px] text-muted-foreground">
                       {text.length}/{ANSWER_MAX_CHARS}
                     </span>
+                    {text.trim().length < ANSWER_MIN_CHARS && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {ANSWER_MIN_CHARS - text.trim().length} more characters
+                      </span>
+                    )}
                   </div>
-                  <Button onClick={() => handleSubmit(0)} disabled={submitting || !text.trim()} className="h-11 px-8">
+                  <Button onClick={() => handleSubmit(0)} disabled={submitting || text.trim().length < ANSWER_MIN_CHARS} className="h-11 px-8">
                     {submitting ? (
                       <>
                         <Loader2 className="mr-3 h-4 w-4 animate-spin" />

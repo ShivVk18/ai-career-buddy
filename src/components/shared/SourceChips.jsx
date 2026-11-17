@@ -1,4 +1,5 @@
 import { Link2 } from "lucide-react";
+import { paragraphHash } from "@/lib/entryIds";
 
 export const LEGACY_SOURCES_LABEL = "Created before sources were added";
 
@@ -60,9 +61,44 @@ export function uniqueSources(lists) {
 }
 
 /**
- * Sources for a letter/email. Maps content.split(/\n{2,}/)[i] to sources.paragraphs[i].
+ * Maps content paragraphs to stored paragraph sources.
+ * - hashes present: match by paragraphHash(text); edited paragraphs get null sources.
+ * - legacy (no hashes): old index rule, only when paragraph counts agree.
+ * Returns { parts: [{ text, sources|null }], mode: "hash"|"index"|"none", unmatched: [snapshots] }.
+ */
+export function mapParagraphSources(content, sources) {
+  const meta = Array.isArray(sources?.paragraphs) ? sources.paragraphs : null;
+  const texts = (content || "").split(/\n{2,}/).filter(Boolean);
+  if (!meta) return { parts: texts.map((text) => ({ text, sources: null })), mode: "none", unmatched: [] };
+
+  const hashed = meta.length > 0 && meta.every((p) => typeof p?.hash === "string" && p.hash);
+  if (hashed) {
+    const used = new Set();
+    const parts = texts.map((text) => {
+      const h = paragraphHash(text);
+      const idx = meta.findIndex((p, j) => !used.has(j) && p.hash === h);
+      if (idx === -1) return { text, sources: null };
+      used.add(idx);
+      return { text, sources: meta[idx].sources || [] };
+    });
+    const unmatched = uniqueSources(meta.filter((_, j) => !used.has(j)).map((p) => p.sources));
+    return { parts, mode: "hash", unmatched };
+  }
+
+  if (texts.length === meta.length) {
+    return { parts: texts.map((text, i) => ({ text, sources: meta[i]?.sources || [] })), mode: "index", unmatched: [] };
+  }
+  return {
+    parts: texts.map((text) => ({ text, sources: null })),
+    mode: "index",
+    unmatched: uniqueSources(meta.map((p) => p.sources)),
+  };
+}
+
+/**
+ * Sources for a letter/email (see mapParagraphSources).
  * - sources null/undefined: legacy label
- * - paragraph count differs (user edited): one "Based on" list of all unique snapshots
+ * - edited/unmatched paragraphs show no chips; a "Based on" list covers unmatched sources
  */
 export function ParagraphSources({ content, sources }) {
   const wrap = (children) => (
@@ -75,15 +111,14 @@ export function ParagraphSources({ content, sources }) {
     </div>
   );
 
-  const paragraphsMeta = Array.isArray(sources?.paragraphs) ? sources.paragraphs : null;
-  if (!paragraphsMeta) return wrap(<LegacySourcesLabel />);
+  if (!Array.isArray(sources?.paragraphs)) return wrap(<LegacySourcesLabel />);
 
-  const parts = (content || "").split(/\n{2,}/).filter(Boolean);
-  if (parts.length !== paragraphsMeta.length) {
-    const all = uniqueSources(paragraphsMeta.map((p) => p.sources));
+  const { parts, unmatched } = mapParagraphSources(content, sources);
+  const anyMatched = parts.some((p) => p.sources);
+  if (!anyMatched) {
     return wrap(
-      all.length > 0 ? (
-        <SourceChips sources={all} heading="Based on" />
+      unmatched.length > 0 ? (
+        <SourceChips sources={unmatched} heading="Based on" />
       ) : (
         <p className="text-xs text-muted-foreground">No sources recorded.</p>
       )
@@ -91,20 +126,21 @@ export function ParagraphSources({ content, sources }) {
   }
 
   return wrap(
-    <ol className="space-y-5">
-      {parts.map((text, i) => {
-        const snippet = text.replace(/\s+/g, " ").trim();
-        return (
-          <li key={i} className="space-y-2">
-            <p className="text-xs text-muted-foreground font-general line-clamp-2">
-              {snippet.length > 140 ? `${snippet.slice(0, 140)}...` : snippet}
-            </p>
-            {paragraphsMeta[i]?.sources?.length > 0 && (
-              <SourceChips sources={paragraphsMeta[i].sources} />
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="space-y-5">
+      <ol className="space-y-5">
+        {parts.map(({ text, sources: ps }, i) => {
+          const snippet = text.replace(/\s+/g, " ").trim();
+          return (
+            <li key={i} className="space-y-2">
+              <p className="text-xs text-muted-foreground font-general line-clamp-2">
+                {snippet.length > 140 ? `${snippet.slice(0, 140)}...` : snippet}
+              </p>
+              {ps?.length > 0 && <SourceChips sources={ps} />}
+            </li>
+          );
+        })}
+      </ol>
+      {unmatched.length > 0 && <SourceChips sources={unmatched} heading="Based on" />}
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Sparkles, Mic } from "lucide-react";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -11,14 +11,19 @@ import { generationErrorMessage } from "@/components/shared/generationError";
 export const AITextarea = React.forwardRef(({ label, type, value, onChange, placeholder, ...props }, ref) => {
   const [initialText, setInitialText] = useState("");
   
+  const typedRef = useRef(false);
   const { isRecording, toggleRecording, isSupported } = useSpeechToText((text) => {
+    if (typedRef.current) return; // user typed after stopping: late results must not overwrite
     if (onChange) {
       onChange({ target: { value: initialText + (initialText && text ? " " : "") + text } });
     }
   });
 
   const handleToggleRecording = () => {
-    if (!isRecording) setInitialText(value || "");
+    if (!isRecording) {
+      setInitialText(value || "");
+      typedRef.current = false;
+    }
     toggleRecording();
   };
 
@@ -97,7 +102,13 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
       <Textarea
         ref={ref}
         value={value}
-        onChange={onChange}
+        onChange={(e) => {
+          if (isRecording) {
+            typedRef.current = true;
+            toggleRecording();
+          }
+          if (onChange) onChange(e);
+        }}
         placeholder={placeholder}
         className="h-40 w-full px-4 py-4 bg-divider/5 border border-border rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed"
         {...props}

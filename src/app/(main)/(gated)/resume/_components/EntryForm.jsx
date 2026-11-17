@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { parse, format } from "date-fns";
@@ -52,12 +52,17 @@ export function EntryForm({ type, entries, onChange }) {
 
   const current = watch("current");
 
+  const typedRef = useRef(false);
   const { isRecording, toggleRecording, isSupported } = useSpeechToText((text) => {
+    if (typedRef.current) return; // user typed after stopping: late results must not overwrite
     setValue("description", initialDescription + (initialDescription && text ? " " : "") + text);
   });
 
   const handleToggleRecording = () => {
-    if (!isRecording) setInitialDescription(watch("description") || "");
+    if (!isRecording) {
+      setInitialDescription(watch("description") || "");
+      typedRef.current = false;
+    }
     toggleRecording();
   };
 
@@ -297,7 +302,14 @@ export function EntryForm({ type, entries, onChange }) {
                   <Textarea
                     placeholder={`Tell us about your impact and key wins in this role...`}
                     className="h-40 w-full px-4 py-4 bg-divider/5 border border-divider/40 rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30"
-                    {...register("description")}
+                    {...register("description", {
+                      onChange: () => {
+                        if (isRecording) {
+                          typedRef.current = true;
+                          toggleRecording();
+                        }
+                      },
+                    })}
                   />
                   <SourceChips sources={improvedSources} heading="Based on" />
                   {errors.description && (

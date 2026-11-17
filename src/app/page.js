@@ -82,7 +82,7 @@ export default function LandingPage() {
       outfit: "rocket",
       scene: "sea",
       oldText: "templated spam messages sent to 50 recruiters that get ignored",
-      newText: "concise <120 word outreach with matched projects highlighted and mailto links",
+      newText: "concise 100-140 word outreach with matched projects highlighted and mailto links",
       href: "/cold-email",
     },
     {
@@ -98,7 +98,7 @@ export default function LandingPage() {
       outfit: "thinking",
       scene: "lemon",
       oldText: "cryptic percentage scores that leave you guessing what failed",
-      newText: "big pixel font score per role with 1-click fixes that count up live",
+      newText: "big pixel font score per role with sourced fixes you accept for a real re-score",
       href: "/resume-parser",
     },
   ];

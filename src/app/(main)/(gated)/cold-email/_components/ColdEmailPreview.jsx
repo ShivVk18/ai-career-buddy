@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Mail, Briefcase, CalendarClock, Download, Copy, Edit3, FileText, CheckCircle2, Eye, Sparkles, Zap, Save, FileDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
-import { ParagraphSources } from "@/components/shared/SourceChips";
+import { ParagraphSources, mapParagraphSources } from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import SourceChips from "@/components/shared/SourceChips";
 import { WordCount } from "@/components/shared/WritingHints";
@@ -120,11 +120,10 @@ const ColdEmailPreview = ({
     window.location.href = mailtoUrl
   }
 
-  const paragraphMeta = Array.isArray(sources?.paragraphs) ? sources.paragraphs : null
-  const paragraphs = (editedContent || "").split(/\n{2,}/).filter(Boolean)
-  const canMatch = paragraphMeta && paragraphs.length === paragraphMeta.length
+  const mappedParts = mapParagraphSources(editedContent, sources).parts
+  const paragraphs = mappedParts.map((p) => p.text)
   const hasProject = (i) =>
-    !!canMatch && (paragraphMeta[i]?.sources || []).some((s) => typeof s?.id === "string" && s.id.startsWith("proj:"))
+    (mappedParts[i]?.sources || []).some((s) => typeof s?.id === "string" && s.id.startsWith("proj:"))
 
   const handleCopy = async () => {
     try {
