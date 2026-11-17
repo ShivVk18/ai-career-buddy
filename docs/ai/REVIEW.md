@@ -1,99 +1,64 @@
-# REVIEW: Phase 3 (trust + hardening), branch `phase-3`, diff cf7e709..HEAD
+# REVIEW: Phase 4 (Resume + ATS parity), branch phase-4
 
-Phase 2's review is in git history: `git show 6e93d33:docs/ai/REVIEW.md`.
+Phase 3's review is at commit 29a233e (`git show 29a233e:docs/ai/REVIEW.md`).
 
-**Summary:** `npm run lint` passes (0 errors, 1 pre-existing font warning in layout.js). `npm run build` passes. 2 MUST-FIX, 8 NICE-TO-HAVE.
+**Result: PASS. 0 must-fix, 8 nice-to-have. `npm run lint`: 0 errors, 1 pre-existing warning (layout.js font). `npm run build`: passes. `node scripts/selfcheck-matching.mjs`: all self-checks passed.**
 
 ## MUST-FIX
-
-| # | Owner | File:line | Problem | Fix |
-|---|---|---|---|---|
-| 1 (RESOLVED in fix round 1) | BACKEND | src/actions/ResumeParser.js:429-453 (`updateATSScore`) | Exported server action with no callers. It spreads client-supplied `updateData` straight into `aTSScore.update`. Any signed-in user can overwrite `evidence` (forge sources and quotes), `userId` (move a row to another user) or scores. Phase 3 makes `evidence` a trust field, so this breaks the core promise. | Delete `updateATSScore` (grep shows zero callers). If it is kept, allowlist fields (never `evidence`, `userId`, `id`) and validate with zod. Update API-CONTRACT.md §6.4 if the function is removed. |
-| 2 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/sources.js:7,68,97 (`PROMPT_TEXT_MAX=400`, `JD_MAX_LINES=150`, `formatCatalogForPrompt`) | The job description now reaches the model only through the catalog. Each JD line is clipped to 400 chars and only the first 150 lines are kept. A JD pasted as one paragraph (very common) is cut to about 400 chars, so ATS scoring, letters, emails and roadmaps silently lose most of the JD. `createATSAnalysis`, `generateCoverLetter` and `generateColdEmail` all use this. It is a regression against Phase 2 behaviour (full JD up to 20000 chars). | In `buildSources`, split JD lines longer than about 350 chars into sentence or chunk ids (`jd:<line>` for short lines, `jd:<line>.<n>` for chunks) and raise the line cap so a 20000-char JD fits. Do not clip JD lines in `formatCatalogForPrompt`. Update the contract id note. |
+None.
 
 ## NICE-TO-HAVE
 
 | # | Owner | File:line | Problem | Fix |
-|---|---|---|---|---|
-| 3 (RESOLVED in fix round 1) | BACKEND | src/actions/Resume.js:225-231 (`improveWithAI`) | The deterministic `input:current` + `profile:industry` sources are decorative. They are always the same two chips, so they carry no information. `input:current` just says "based on what you typed", and the industry is a prompt flavour, not a fact the text cites. The prompt says "never invent numbers" but nothing checks it. | Recommended: return only `input:current` (labelled "Rewritten from your text"), and drop the industry chip. Add a server check that every number or percentage in the output also appears in `current`. Drop the sentence or retry once if it doesn't. Then the chip is a real guarantee. |
-| 4 (RESOLVED in fix round 1) | BACKEND | src/actions/ResumeParser.js:233,236 and 29-43 | A strength can be "sourced" only by a JD line. That cites the job, not the candidate, yet it is shown beside "From your resume". The quote minimum of 8 chars (line 34) lets near-trivial quotes such as "software" pass. For recommendations, `text` falls back to impact or category (line 236) while the contract says `text === action`. | Require at least one `resume_quote` for strengths. Raise the quote minimum to about 20 chars or 4 words. Keep `text = action`, and drop recommendations with an empty action. |
-| 5 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/sources.js:15 (`normalizeText`) | Quote matching only lowercases and collapses whitespace. PDF text often has ligatures (ﬁ), smart quotes, en dashes and hyphenation breaks. Honest quotes get dropped, which can cause false NO_SOURCES. | Apply `normalize("NFKC")` and map curly quotes and dashes to ASCII on both sides. Strip soft hyphens. |
-| 6 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/paragraphs.js:44; src/actions/ResumeParser.js:247; src/actions/CareerRoadmap.js (retry call) | If the retry call throws (rate limit, AI_LIMIT, timeout), the already-usable first result is discarded and the user gets FAILED or AI_LIMIT. | Wrap the retry in try/catch and fall back to the first result, which is dropped-and-filtered anyway. |
-| 7 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/paragraphs.js:47-48 | Only unsourced body paragraphs are checked. The model can return no greeting or closing, or several. Cited ids are verified to exist, not to support the claim (inherent limit, undocumented). | Enforce one greeting first and one closing last, or add them deterministically. Add one line to API-CONTRACT §6 saying that sources prove "built from these inputs", not entailment. |
-| 8 (RESOLVED in fix round 1) | BACKEND | src/lib/checkUser.js:29 | `user.emailAddresses[0].emailAddress` throws for a Clerk user with no email, and it ignores the primary email. This is the same sync gap Phase 3 fixed elsewhere. | Use `primaryEmail(user)` from src/lib/clerkEmail.js. |
-| 9 (RESOLVED in fix round 1) | FRONTEND | src/app/(main)/(gated)/resume/_components/EntryForm.jsx:122 | New entries have no id until saved, so keys mix `item.id` and the index. Harmless but could remount a row. | Give new entries a client temp id (the server keeps existing ids) or use `item.id ?? \`new-${index}\``. |
-| 10 (RESOLVED in fix round 1) | FRONTEND | src/data/faqs.js:10-18 | The FAQ still says "Sensai", but the product is AscendAI. Old FAQs already used it (8 occurrences at cf7e709), so the agent did not introduce it, but the rewritten FAQ (line 13-15) repeated it. | Replace "Sensai" with "AscendAI" in all FAQ entries. |
+|---|-------|-----------|---------|-----|
+| 1 | FRONTEND | src/app/(main)/(gated)/resume/_components/ResumeBuilder.jsx:273-298 and :309-323 | Entry ids are not stable for resumes whose entries have no id (saved before Phase 3 and never re-saved). `isDirty` is never cleared after a save (no `reset`), so every `ensureSaved` re-saves. The client entries still have no id, so `assignEntryIds` mints new random ids each time. A draft made after save #1 (`exp:e_X`) then fails with STALE/RESUME_CHANGED after save #2. Entries added in the form get a client UUID (EntryForm.jsx:64-70) and are stable. Failure is closed and recoverable (re-run tailoring), and a reload picks up the stored ids. | After a successful save, `reset(data)` the form with the ids the server returned (`saveResume` returns the row, so use `row.experience/education/projects`), or assign ids client-side on load for entries missing one. |
+| 2 | BACKEND | src/actions/ResumeParser.js:577-581 | Fix-token key is `HMAC key = "ats-fix:" + CLERK_SECRET_KEY`, a string prefix on the raw secret, not a derived key. Everything else in the scheme is sound: HMAC-SHA256, the `userId.` prefix binds the user, `fix.s` is checked against `scoreId`, comparison is `timingSafeEqual` with a length check, expiry is 24h with a future-skew bound, and `apply` re-verifies against the stored text. A missing secret fails closed (`propose` returns FAILED, `read` returns null so INVALID). Reusing the Clerk secret is acceptable (never sent anywhere, rotation only invalidates 24h-lived tokens), but it couples the Clerk key to an app feature. **Recommendation:** add a dedicated `ATS_FIX_SIGNING_SECRET` (new env var name only, documented in `.env.example`, never read by the reviewer), required in production, with a dev-only fallback to a derived key. | Derive the key as `createHmac("sha256", secret).update("ai-career-buddy/ats-fix/v1").digest()` (HKDF-style domain separation), and prefer the dedicated env var. |
+| 3 | BACKEND | src/actions/ResumeParser.js:760 | `resumeText.indexOf(fix.o)` replaces the first occurrence, which may not be the line the weakness quoted if the same text repeats. The effect is a slightly different re-score input, not a security issue. | Store the span offset (`start`) in the token and verify `resumeText.startsWith(fix.o, start)`. |
+| 4 | BACKEND | src/actions/ResumeParser.js:734-801 | A fix token can be applied repeatedly within 24h; each call makes a real AI re-score and a new ATSScore row. The daily cap bounds the cost, but duplicates clutter history. | Reject if a score already exists with `evidence.appliedFix.proposed === fix.p` and `previousScoreId === score.id`, or store the token nonce. |
+| 5 | BACKEND | src/actions/Resume.js:833-845 | "At most one draft per user" is a delete-then-create without a transaction. Two concurrent `tailorResume` calls can leave two drafts (both expire at 24h, neither is ever listed). Drafts are also never purged unless the user tailors again. | Wrap in `db.$transaction`, and optionally purge expired drafts in `listResumeVersions`. |
+| 6 | BACKEND | src/actions/ResumeParser.js:353-387 | `getUserATSScores` loads the full `evidence` (including up to 30k chars of `resumeText`) for every row just to compute flags. The text is stripped before returning, so there is no exposure, only wasted bandwidth. | Cap with `take`, or move flags to a lighter query. |
+| 7 | FRONTEND | src/components/chat/ChatSlideOver.jsx:19-23 | `AI_UNAVAILABLE` (chat API maps it server-side to "busy right now") reaches the client as a code and falls to the generic message. Acceptable, but it does not say "temporarily unavailable". | Add an `AI_UNAVAILABLE` branch in `friendlyError`. |
+| 8 | FRONTEND | src/app/(main)/(gated)/interview/mock/page.jsx:35-40, EntryForm.jsx:104-108 | Both special-case only `AI_LIMIT` and otherwise show the server's `error` string. `AI_UNAVAILABLE` still shows the right text because the server message is friendly, so this works today but is fragile. | Use `generationErrorMessage(result)` in both. |
 
-## Checks that passed
+## Checks against the brief
 
-- **Citation integrity.**
-  - `validateSourceIds` drops unknown ids, and `snapshot` is built only from the catalog.
-  - ATS quotes must appear in the normalized extracted PDF text; JD ids must exist.
-  - Retry runs once when a list has fewer than 2 verified items, then unsourced items are dropped (D28). Letters and emails drop unsourced body paragraphs after one retry, and NO_SOURCES is returned if no body is left.
-  - Greeting and closing are exempt, and body paragraphs are not.
-  - Sources come only from validated ids, so free text cannot add sources.
-  - `clean()` collapses `\n{2,}` inside a paragraph, and `join("\n\n")` keeps the `split(/\n{2,}/)` mapping aligned with `sources.paragraphs`. Single-newline lists are fine.
-- **PDF.**
-  - Validation order is zod, then `validateAndExtractPdf` (MIME, base64 shape, size estimate and exact size, `%PDF-` magic bytes, text >= 50 chars), then the user upsert, then AI.
-  - The limit is 5 MB. `next.config.mjs` `bodySizeLimit` is 10 MB, so a 5 MB file in base64 fits.
-  - `unpdf` is imported only from `lib/ai/pdf.js`, which is used only by a `'use server'` file. The /resume-parser client bundle stays at 5.55 kB.
-- **Data safety.**
-  - The migration SQL adds 3 nullable JSONB columns and `DROP NOT NULL` on `User.email`, and matches schema.prisma. The unique index is kept. No rows are rewritten.
-  - `assignEntryIds` keeps existing ids and regenerates only missing or duplicate ids. `entrySchema` now carries `id`, so the form round-trips ids.
-  - The `exp:i<index>` fallback is used only at generation time, and the snapshot (label and excerpt) is stored, so a later reorder can't change what an old record cites.
-- **Email.**
-  - No `placeholder.com` or `email: ""` remains. `primaryEmail()` returns null instead.
-  - ColdEmail no longer sends the email address to the model. Nothing else reads `user.email` (except checkUser, item 8).
-- **Errors.**
-  - All changed generators return `{error, code}` for expected failures. Signed-out still throws "Unauthorized".
-  - AITextarea, EntryForm, CoverLetterGen, ColdEmailGen, CreateRoadmapModal and ResumeParserForm all handle `error`, `code` and AI_LIMIT. NO_SOURCES and INVALID_FILE messages are user-safe strings (no env dependency).
-- **Removed code.** `getLatestQuiz` and `saveQuizResult` have no callers left. The cap default is 50 and `AI_DAILY_LIMIT=0` disables it. `.env.example` is updated. Old unsubmitted quiz sessions are pruned per user only (scoped by `userId`).
-- **UI.**
-  - Legacy labels show for null `evidence` and null `sources`. Roadmap steps without a `sources` key get the legacy label.
-  - The "Based on" fallback works when the paragraph count differs.
-  - The new Recommendations section in the ATS results is fine as an addition.
-  - Landing "Sample" pill is present (it also shows on /tools/resume, which is fine).
-  - /tools/ats has no leftover "Aarav" strings. Remaining "Aarav" is in /tools/cold-email preview data, ResumePaperDoc and mock.ts, which is acceptable under the preview banner.
+- **No auto-apply (D36/D38): OK.**
+  - `tailorResume` only writes a draft `ResumeVersion` row. `saveTailoredVersion` updates that row into a version, so the main `Resume` is never written.
+  - `restoreResumeVersion` creates the "Before restore" backup first, then calls `saveResume`.
+  - `proposeAtsFix` changes nothing. `applyAtsFix` creates a NEW `ATSScore` and never touches the old score, `updateATSScore` or the main resume, and the UI calls it only from a button click (AtsResult.jsx:164).
+  - Drafts live in a JSON envelope (`{"kind":"draft",...}`), and every row written by `encodeVersion` starts with `{"kind":`. A user label sits inside the envelope, so it cannot collide with the prefix. Legacy plain-string rows are not JSON envelopes and cannot start with the prefix.
+  - `listResumeVersions` excludes drafts (`NOT startsWith`). `getResumeVersion`, `restoreResumeVersion` and `computeMatch` treat `kind !== "version"` as NOT_FOUND or NOT_RESTORABLE.
+  - Drafts expire after 24h (STALE) and are replaced on each tailor run.
+  - `duplicateResume` writes a real `Copy of resume (<date>)` label inside a version envelope.
+- **Trust in client data: OK.**
+  - `saveTailoredVersion` takes only `draftId`, ids and an optional label. It loads the draft owner-scoped (`resumeId`), then re-checks that the bullet text is unchanged and re-runs `inventedNumbers` against the current resume and job description.
+  - `fixId` handling is covered in nice-to-have #2.
+- **Sources and numbers: OK.**
+  - `tailorResume` validates entry ids and bullet indexes against the catalog, requires at least one valid `jd:` id via `validateSourceIds`, runs `inventedNumbers(proposed, original + JD)`, drops failures, retries once, and returns INVENTED_DETAIL or NO_SOURCES.
+  - `proposeAtsFix` locates the weakness's verified quote in the stored text, requires a JD id and passes `inventedNumbers` (retry once).
+  - `scoreResume` is shared by `createATSAnalysis` and `applyAtsFix`, so the re-score has the same validation.
+  - `verifyRequirements`: matched needs a verified resume quote, gap needs a valid JD id.
+- **Data exposure: OK.**
+  - `publicScore` strips `resumeText` (used by `createATSAnalysis`, `getATSScoreById` and `updateATSScore`). `getUserATSScores` returns only `hasResumeText` and counts.
+  - `applyAtsFix` returns ids and scores only.
+  - Dashboard and chatContext do not select `evidence`.
+  - `getResumeVersion.applied` is owner-scoped.
+  - Every new action calls `auth()` and scopes queries by `userId` or `resumeId`.
+- **Cap: OK.**
+  - `checkDailyLimit` returns "unavailable" only when `NODE_ENV==="production"`, and dev fails open with one warning.
+  - `AI_UNAVAILABLE` is mapped in CoverLetter, ColdEmail, CareerRoadmap, Interview (MESSAGES entry), improveWithAI, tailorResume, createATSAnalysis, proposeAtsFix and applyAtsFix, and in `generationError.js`.
+  - The interview quiz UI displays the server message, and chat maps the code server-side (see #7 and #8).
+- **Match %: OK.** `src/lib/match.js` imports only `normalizeText`, with no AI import. The self-check passes.
+- **Frontend: OK apart from nice-to-have #1.**
+  - `ensureSaved` runs before Save version, Tailor and Restore.
+  - Restore reloads the page after success.
+  - The letter and email Save buttons call `updateCoverLetter` and `updateColdEmail`, which are owner-scoped, update only `content` and keep `sources`.
+  - Legacy versions are labelled "plain text copy" and are not restorable.
+  - The NEEDS_REUPLOAD message and the re-run action are present, and loading, empty and error states exist in the new panels.
 
 ## Done-when
-
-| Item | Result |
-|---|---|
-| New ATS items, improved text, letter and email body paragraphs and roadmap steps carry at least one valid source | PASS (improve sources are decorative, item 3; JD truncation affects quality, item 2) |
-| Server drops unsourced items, retrying once | PASS |
-| Pre-Phase-3 records show "created before sources" | PASS |
-| Invalid PDFs rejected | PASS |
-| No placeholder or empty emails written | PASS |
-| `npm run build` passes, all 6 tools still work | PASS for the build; the tools are wired (not run), but see must-fix 2 for JD handling |
-
-
-## Fix round 1 (320fa9c..HEAD)
-
-**Summary:** `npm run lint` passes (0 errors, same 1 pre-existing font warning). `npm run build` passes. 0 MUST-FIX. All 10 items above are resolved.
-
-Verified:
-- 1 updateATSScore: strict zod allowlist (jobTitle, companyName, jobDescription), ownership-scoped `updateMany` on `userId`, `{success:false, error, code}` shape. evidence, userId and scores can no longer be written.
-- 2 JD chunking: JD capped at 20000 chars, lines over 400 chars become `jd:<n>.<k>` chunks (sentence, then word, then hard split; the loop always advances). `formatCatalogForPrompt` no longer clips JD. A 20k single-paragraph JD becomes about 50 chunks, roughly 21k chars in the prompt, which is the same size as Phase 2.
-- 3 improveWithAI: sources are only `input:current`. Numbers are compared as tokens (commas stripped, list markers removed). One retry, then `INVENTED_DETAIL`, which AITextarea and EntryForm show as `result.error`.
-- 4 ATS: strengths and weaknesses need a verified resume_quote, quotes are at least 20 chars, `normalizeText` is applied to both resume and quote, and recommendation text is always the action.
-- 5 Retry in a try/catch keeps the first result in ResumeParser, paragraphs and CareerRoadmap.
-- 6 `normalizeShape` demotes extra greetings and non-final closings to body, so they need sources. The contract's "built from, not verified" line is present.
-- 7 checkUser uses `primaryEmail` and a null-safe name.
-- 8 No "Sensai" remains in src. The only mentions are in docs (CONTEXT.md, historical). EntryForm gives new entries a stable `crypto.randomUUID` id.
-
-New nits (not blocking):
-| Severity | File:line | Problem | Fix |
-|---|---|---|---|
-| nit | src/lib/ai/sources.js normalizeText | The `word-\nword` join also merges genuine line-end hyphens ("full-\nstack" becomes "fullstack"), so a correct "full-stack" quote may fail to match. | Also try a hyphen-preserving variant when matching. |
-| nit | src/actions/Resume.js numTokens | Spelled-out numbers ("three", "doubled") are not checked, and "24/7" is split into two tokens. | Acceptable; document as a known limit. |
-
-## Done-when (after fix round 1)
-
-| Item | Result |
-|---|---|
-| Sources on ATS items, improved text, letter/email paragraphs, roadmap steps | PASS |
-| Server drops unsourced items, retrying once | PASS |
-| Pre-Phase-3 records show "created before sources" | PASS |
-| Invalid PDFs rejected | PASS |
-| No placeholder or empty emails | PASS |
-| Build passes, all 6 tools wired | PASS |
+1. Resume and ATS features: PASS (tailoring accept/strike, computed match %, versions, requirement checklist, level, weights, history, re-run, 1-click fix with a real re-score).
+2. Verified sources, nothing applied without a click: PASS.
+3. Letter and email edits persist: PASS.
+4. Cap fails closed in production: PASS.
+5. `npm run build` passes and all 6 tools still wired: PASS.
