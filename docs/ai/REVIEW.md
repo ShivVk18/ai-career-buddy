@@ -6,6 +6,8 @@ Summary: FAIL, 1 must-fix. `npm run lint` 0 errors (1 old font warning), `npm ru
 
 ## MUST-FIX
 
+Resolved in fix round 1: #1 (see below).
+
 | # | Owner | File:line | Problem | Fix |
 |---|---|---|---|---|
 | 1 | BACKEND | src/lib/sentryScrub.js:36-37, 58-62 (scrubEvent exception values) | Exception messages are only redacted for emails and Clerk ids, then cut to 300 chars. Uncaught errors reach Sentry through `onRequestError` (src/instrumentation.js:11). Prisma validation errors echo the query arguments, so a failed write can send up to 300 chars of resume, letter or answer text to a third party. This breaks the "no personal data to third parties" rule. | In `scrubEvent`, replace each `exception.values[].value` with the error `type` (or a fixed string) unless `type === "SafeErr"`. Do the same for `e.message`. Add a unit test with a Prisma-style message that contains resume text. |
@@ -30,3 +32,17 @@ Summary: FAIL, 1 must-fix. `npm run lint` 0 errors (1 old font warning), `npm ru
 - Profile: the `updateUser` zod bounds are correct and return `{error, code}`. OnboardingForm toasts the error. Placeholder IndustryInsight is commented.
 - Paragraphs: `paragraphHash` is one shared function (src/lib/entryIds.js), used by the server and by SourceChips. `mapParagraphSources` handles edits, additions, reorders (hash match), and legacy (index rule). The cold-email matched-project highlight uses it. Shorten refreshes the hashes.
 - UI: practice submit is disabled under 20 chars with an "N more characters" hint. Typing while recording stops it in Practice, AITextarea and EntryForm. The `typedRef` guard drops late transcript results, so typed text is kept and nothing is stuck. The `typedRef` resets on the next start.
+
+## Fix round 1 (eb1d0fe)
+
+Summary: PASS, 0 must-fix. `npm run lint` 0 errors (1 old font warning), `npm run build` pass (DSN unset), `npm test` 14 files / 83 tests pass, `node scripts/selfcheck-matching.mjs` pass.
+
+Resolved: MUST-FIX 1 (exception values now `Type: [redacted]` unless type is SafeErr/AIError; `message` and `logentry` replaced; `extra` and non-device `contexts` strings pass through a short-token allowlist `^[A-Za-z0-9_.:/-]{1,60}$`; frames keep file/line/col/function only; breadcrumbs unchanged and still scrubbed; test uses a Prisma-style message with resume text and asserts none leaks). AIError messages checked in src/lib/ai/index.js: they contain only fixed strings, provider names, error codes, and env var names from tasks.js (no user content). NICE 1 (soft-cap note in limit.js), 2 (export moved), 3 (migration names fixed in CONTEXT.md:8), 4 (see below), 5 and 6 (accepted, no change needed).
+
+#4: `env: { NEXT_PUBLIC_SENTRY_DSN: ... ?? "" }` makes the bundler inline the value so the `if (process.env.NEXT_PUBLIC_SENTRY_DSN)` branch is dead-code removed. Redirects and other config are untouched; `withSentryConfig` still conditional. With the DSN set, the init is unchanged (dynamic import, `dsn` read from the same inlined var, replay/feedback removed). The grep of `.next/static` was blocked by a permission deny rule in this session, so the empty-bundle result is NOT verified by me; the build succeeded.
+
+| Severity | File:line | Problem | Fix |
+|---|---|---|---|
+| nit | src/lib/sentryScrub.js:47 | The allowlist still lets a single token up to 60 chars through in `extra`/`contexts` (a lone word or name). Low risk, since no code puts content in extra. | Optional: keep only a known code list. |
+| nit | src/lib/sentryScrub.js:80 | `tags` still use `scrubValue` (email/Clerk scrub only). Tags are code-set only. | Optional: use `scrubStrings`. |
+| nit | docs/ai/CONTEXT.md:113 | Stale "dated after today" phrase. | Next scout refresh. |
