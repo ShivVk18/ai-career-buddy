@@ -9,6 +9,8 @@ None.
 
 ## NICE-TO-HAVE
 
+**Status: items #1 to #8 are all RESOLVED in the follow-up round (see the end of this file).**
+
 | # | Owner | File:line | Problem | Fix |
 |---|-------|-----------|---------|-----|
 | 1 | FRONTEND | src/app/(main)/(gated)/resume/_components/ResumeBuilder.jsx:273-298 and :309-323 | Entry ids are not stable for resumes whose entries have no id (saved before Phase 3 and never re-saved). `isDirty` is never cleared after a save (no `reset`), so every `ensureSaved` re-saves. The client entries still have no id, so `assignEntryIds` mints new random ids each time. A draft made after save #1 (`exp:e_X`) then fails with STALE/RESUME_CHANGED after save #2. Entries added in the form get a client UUID (EntryForm.jsx:64-70) and are stable. Failure is closed and recoverable (re-run tailoring), and a reload picks up the stored ids. | After a successful save, `reset(data)` the form with the ids the server returned (`saveResume` returns the row, so use `row.experience/education/projects`), or assign ids client-side on load for entries missing one. |
@@ -62,3 +64,25 @@ None.
 3. Letter and email edits persist: PASS.
 4. Cap fails closed in production: PASS.
 5. `npm run build` passes and all 6 tools still wired: PASS.
+
+## Follow-up round (git diff 5d822d9..HEAD)
+
+**Result: PASS. 0 must-fix. `npm run lint`: 0 errors, 1 pre-existing warning (layout.js font). `npm run build`: passes. `node scripts/selfcheck-matching.mjs`: all self-checks passed.**
+
+### MUST-FIX
+None.
+
+### Resolved
+- #1 RESOLVED. ResumeBuilder.jsx `withIds` assigns ids on load for entries lacking one. `markSaved` calls `reset(saved)` only if `getValues()` still equals the submitted data, so edits made mid-save are kept dirty. Ids are not regenerated on later saves, so drafts do not go STALE needlessly. Residual: ids minted on load for never-saved legacy entries differ after a reload before the first save; this fails closed and is recoverable.
+- #2 RESOLVED. Key is `HMAC(ATS_FIX_SIGNING_SECRET, "ai-career-buddy/ats-fix/v1")`. Production with a missing or <32-char secret returns null, giving FIX_UNAVAILABLE from propose and apply. Dev uses an ephemeral `randomBytes(32)` with one warning. There is no CLERK_SECRET_KEY fallback. `.env.example` documents the name only.
+- #3 RESOLVED. Offset `a` and nonce `n` are signed in the token. Apply requires an integer `a >= 0`, checks `resumeText.startsWith(fix.o, a)` (mismatch gives STALE) and splices exactly at `a`.
+- #4 RESOLVED, with a small race noted. The nonce is checked before the AI call and again right before `create` (JSON path filters on `previousScoreId` and `appliedFix.nonce`, scoped by userId). ALREADY_APPLIED returns `newScoreId`. Tokens without `a` or `n` (old tokens) are rejected as INVALID. Remaining race: there is no unique DB constraint, so two truly concurrent applies can both pass the second check and create two rows (a duplicate history row plus an extra capped AI call only). It is bounded by the daily cap and the window is a few milliseconds. This is acceptable; a unique index would need a migration.
+- #5 RESOLVED. Draft delete+create runs in `db.$transaction`. Expired (24h) drafts are purged by `deleteMany` in `listResumeVersions`, scoped to `resumeId` and the draft prefix, with `.catch` so failures do not break the list. Note: under default isolation two concurrent transactions could still each insert one draft; the effect is harmless because drafts are never listed and expire.
+- #6 RESOLVED. `take: 50`, `createdAt desc`, same shape.
+- #7, #8 RESOLVED. ChatSlideOver, mock interview page and EntryForm use `generationErrorMessage`. FIX_UNAVAILABLE and ALREADY_APPLIED are added to it.
+- New codes in the UI: AtsResult.jsx opens `newScoreId` on ALREADY_APPLIED and shows an "Open result" button. INVALID shows "out of date, please propose the fix again" and returns to the propose button.
+
+### Nits
+| Severity | File:line | Problem | Fix |
+|---|---|---|---|
+| nit | src/actions/ResumeParser.js (signingKey) | Dev ephemeral key means fix tokens break on hot reload or restart (INVALID). The UI message covers this. | None needed. |
