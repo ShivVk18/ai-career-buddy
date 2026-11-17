@@ -1,64 +1,46 @@
-# REVIEW: Phase 5 (writing tools parity + retire 4 previews)
+# REVIEW: Phase 6 (diff 23fcff3..HEAD, branch phase-6)
 
-Phase 4's review is at commit cb54b26 (`git show cb54b26:docs/ai/REVIEW.md`).
+Phase 5 review: see commit 2293ce1 (`git show 2293ce1:docs/ai/REVIEW.md`).
 
-Summary (initial review): PASS with 0 must-fix. See the Fix round section at the end for the re-review. `npm run lint` passes (0 errors, 1 pre-existing font warning). `npm run build` passes. `node scripts/selfcheck-matching.mjs` prints "all self-checks passed". 8 nice-to-have items.
+Summary: FAIL, 3 must-fix. `npm run lint` passes (0 errors, 1 pre-existing font warning), `npm run build` passes (no /tools routes), `node scripts/selfcheck-matching.mjs` prints "all self-checks passed".
 
 ## MUST-FIX
 
-None.
+| # | Owner | File:line | Problem | Fix |
+|---|-------|-----------|---------|-----|
+| 1 | FRONTEND | src/hooks/use-speech-to-text.js:20-28 (used at practice/page.jsx:65-73) | `onresult` loops from `event.resultIndex`, so in continuous mode the callback only gets the newest chunk. Practice does `base + " " + t`, so after a pause the earlier finalized sentences are overwritten: a multi-sentence spoken answer loses text. AITextarea.jsx:14 and EntryForm have the same pattern. | In the hook, keep `finalRef`. On each event append the final results from `resultIndex` to `finalRef`, and call back with `finalRef.current + interim`. Reset `finalRef` in `toggleRecording` when starting. Callers' `base + text` then works unchanged. Also avoid clobbering manual edits made while recording (stop recording on textarea edit, or ignore). |
+| 2 | FRONTEND | src/app/page.js:426, 433-436, 449-458, 485, 61 | Landing still has unlabelled fake data and false claims (D48 "done when"): "pip connects to your actual GitHub PRs, telemetry logs, and release metrics" (no such integration); fake figures "4 squads adopted...", "₹14Cr+ monthly payment disbursements", "5 jobs need playwright testing", "3 jobs need WebSocket sync" with no Sample label; "targeted weekly plan" / "gaps this week" (roadmap is phase-based, no weekly plan); step 01 "paste any job link ... from linkedin, naukri" (no URL fetch, descriptions are pasted text); "source telemetry footnotes". Also FAQ at :117 says pip "asks you about that exact gap" in interview prep and "assigns a task to close it" in roadmap: neither is built (open questions come from profile skills or the pasted JD; roadmap steps come from the roadmap generator; pip assigns nothing). | Reword to what exists: "pip works from the resume, skills and job descriptions you provide"; label that panel's examples "Sample"/"example (made up)" or drop the figures; "gaps ranked by frequency across your ATS results"; "paste a job description"; FAQ: "pip can answer questions about your saved ATS results, roadmaps and practice" without promising tasks or targeted questions. |
+| 3 | BACKEND | src/lib/roadmap/derive.js:95-100 (sourceTerms) | For steps that cite the `profile:skills` source, every skill in the user's profile becomes a needle (the snapshot excerpt is the whole skills list). The step then "closes gaps for" any job whose JD names any skill the user ALREADY has, even if the step is unrelated (e.g. "Ship something real" matches any JD mentioning Figma). selfcheck line asserting `matchStepToJd(src, "Design in Figma daily.")` locks in this false positive. Violates plan test "targets appear only where a JD really names the skill". | Use source terms only to confirm, not to match: require the term to also occur in the step's own skill/title/description text, or drop profile-skill needles entirely and keep vocabulary terms from skill/title plus title phrases. Update the selfcheck cases accordingly. |
 
 ## NICE-TO-HAVE
 
 | # | Owner | File:line | Problem | Fix |
-|---|---|---|---|---|
-| 1 | BACKEND | src/lib/ai/paragraphs.js:19-30 (clean) with src/actions/ColdEmail.js prompt | The number check also applies to greeting/closing, and they are dropped when it fails. A closing like "Open to a 5-minute chat?" (the UI tip even suggests it) has an unbacked "5", so the closing and sign-off silently vanish. | Tell the prompt "no numbers in the greeting or closing", or exempt closing/greeting from the number check since they carry no sources. |
-| 2 | BACKEND | src/actions/ColdEmail.js getColdEmails / getColdEmail (and generate/update) | Until `20261119000000_cold_email_fields` is applied, the list and detail pages throw (Prisma selects the new columns) and generate/update/follow-up return FAILED. Dashboard follow-ups is guarded; chatContext and the dashboard use explicit selects, so they are safe. Acceptable only if the migration is applied before or with the deploy. | Apply the migration first (state it in the release note). Optionally give `getColdEmails` an explicit select of the list fields so the list survives a lag. |
-| 3 | FRONTEND | src/app/(main)/(gated)/cold-email/_components/ColdEmailPreview.jsx:93 (EMAIL_RE) | The client regex is looser than the server's zod email: `x,y@z.com` passes, and the mailto then carries `x%2Cy@z.com`, which some mail clients split into two recipients. Save is rejected by the server, but the mailto uses unsaved text. | Use a stricter client regex that rejects `, ; < > " ( )` or require saved details before enabling the mail button. |
-| 4 | BACKEND | src/actions/ColdEmail.js:~117 (fallback subject) | The fallback subject interpolates jobTitle/companyName, which allow newlines on input (only the recipient fields are single-line). It is not whitespace-collapsed, so a later "Save details" is rejected by the single-line rule. | `.replace(/\s+/g, " ")` the fallback text. |
-| 5 | FRONTEND | ColdEmailPreview.jsx:~214 (SourceChips under Subject) | After the user edits the subject, "Subject based on" still shows the AI's sources for the old text. | Hide the chips when `fields.subject !== savedFields.subject` or when the stored subject differs. |
-| 6 | BACKEND | src/actions/ResumeParser.js getATSScoreById | The purge does not run here, so an old result that has not been purged yet shows hasResumeText=true. "Propose fix" then fails with NEEDS_REUPLOAD (the safe behavior, but a poor UX). | In publicScore, set hasResumeText=false and resumePurged=true when `isPastResumeTextLimit(row.createdAt)`. |
-| 7 | BACKEND | src/actions/CoverLetter.js regenerateCoverLetter | The tone is not stored, so "More formal" uses whatever the UI dropdown currently says (default confident) rather than the tone of the existing letter. | Optional: store the tone, or document that "More formal" uses the selected tone. |
-| 8 | FRONTEND | ColdEmailPreview.jsx tips ("under 100 words") and "Ready to send" label | The tip contradicts the 100-140 target. The label could be read as auto-send. | Reword the tip to the 100-140 range and the label to "Draft". |
+|---|-------|-----------|---------|-----|
+| 1 | BACKEND | src/lib/ai/numberCheck.js:54 | UNIT_AFTER lacks minutes/seconds/mins/hrs/ms, so "in 5 minutes" or "two seconds" pass as harmless counts (durations were meant to be blocked). Years, %, currency, months/weeks/days, numbers above 10 are blocked correctly (self-checks pass). | Add `minutes?|mins?|seconds?|secs?|ms|hrs?` to UNIT_AFTER and a selfcheck case. |
+| 2 | BACKEND | src/lib/interview/rubric.js:8 | ANSWER_MIN_CHARS = 1, so a one-character answer spends an AI call. | Raise to about 20 (UI hint too). |
+| 3 | BACKEND | src/lib/interview/verify.js:13-17 | A quote can be one or two characters ("a") and still verify. | Require at least 3 words or 12 characters, else drop. |
+| 4 | BACKEND | src/actions/Practice.js:220-225, schemas.js:147-160 | `.length(3)` allows duplicate names (clarity twice, no depth); the missing criterion silently scores 0 and lowers the overall. | Refine the schema: names must be exactly {clarity, depth, evidence}, so the one internal retry can fix it. |
+| 5 | BACKEND | src/lib/interview/prune.js:30 | Open-session delete does not re-check "no scored answers" in the deleteMany `where` (small race with a concurrent score). Also both parts share `take:200` of oldest rows. | Add `answers: { none: { overall: { not: null } } }` to that where; filter the type in the query where possible. |
+| 6 | BACKEND | src/actions/CareerRoadmap.js:266-279 | `updateRoadmapProgress` now trusts the caller's progress number (clamped), which can disagree with the steps. Owner-scoped, so low risk. | Prefer recomputing from steps, or deprecate it in favour of `setRoadmapStepDone`. |
+| 7 | BACKEND | prisma/migrations/20261120000000_interview_answer | Folder timestamp is in the future relative to now; later migrations must sort after it. | Rename before merge if another migration lands first. |
+| 8 | FRONTEND | roadmap/[id]/_components/RoadmapDetailView.jsx | Local `steps` state is not re-synced from the `roadmap` prop after `router.refresh()` (fine in practice since the server result is applied). | Optional `useEffect` to resync. |
 
-## Verification notes (all focus areas)
+## Checks (results)
 
-- **Privacy:** `recipientEmail` appears in ColdEmail.js only in zod, the DB create/update and a comment. It is not in the prompt, `extra` sources, `allowedNumberText` (name and role only) or any log (`safeErr`). chatContext selects only company, role, status. No AiUsage content. PASS.
-- **Purge (D42):** table "ATSScore" and columns evidence, createdAt, userId match the migrations. Only `- 'resumeText'` is removed and `resumePurgedAt` is added. It is owner-scoped, bounded (LIMIT 50, oldest first) and atomic. Failure is caught and logged. The race fix is correct: the same `resumeTextCutoff()` is used by the purge and by `isPastResumeTextLimit` in propose and apply; inside the advisory-lock tx the source row is re-read with FOR UPDATE (userId-scoped), and a missing text or a past-limit row returns `{reupload}` which maps to NEEDS_REUPLOAD. PASS.
-- **No auto-send (D35):** the mailto is built in render but only navigated in `handleMailto` on a click. The address must pass the regex, the subject and body use encodeURIComponent (CR/LF become %0D%0A, `&` and `?` are encoded, so no param injection), and URLs over 1800 characters are refused with a toast. Only the comma caveat (item 3) remains. PASS.
-- **Sources and numbers:** generation, regenerate and subject use `allowedNumberText` and `inventedNumbers`. Subject needs a valid id, no claims (%, open rate, etc.) and no invented numbers. The fallback subject uses only typed values and input: source ids. Shorten keeps the stored sources untouched (content-only update, guarded by `content: row.content`), rejects longer or invented rewrites with INVENTED_DETAIL, and returns NOT_SHORTENABLE when the sources and paragraphs do not line up. PASS.
-- **D43:** regenerate/formal/shorter use updateMany scoped by userId, return the fresh row, and the UI sets content, saved content and sources from the returned row after the AlertDialog confirm. PASS.
-- **Migration:** SQL matches schema.prisma (5 optional columns plus the index `ColdEmail_userId_followUpAt_idx`). See item 2 for pre-migration behavior.
-- **Retirement (D41):** the 4 preview dirs are deleted. The `redirects()` in next.config.mjs run before middleware, so signed-out users get 308 then the sign-in redirect at the real route. No `tools/(resume|ats|cover-letter|cold-email)` references remain in src or scripts (only next.config.mjs). Interview and roadmap previews, the banner map and mock.ts are intact. The removed resume-page banner was only a link to the preview. Landing links to gated routes are fine (sign-in first).
-- **ATS:** deleteATSScore uses deleteMany scoped by userId and returns `{error, code}`; the UI confirms via AlertDialog and updates history. candidateYears comes from User.experience. The purge note shows from resumePurged.
-- **Dashboard:** dueFollowUps are scoped by userId, take 10, wrapped in try/catch, and have an empty state.
-- Clerk auth is present on every new action.
+- **MCQ intact:** `generateQuiz`/`getAssessments` unchanged except the pruning call. `submitQuiz` rejects sessions containing a `type:"open"` item (Interview.js:156-159). `/interview/mock` still builds. Pass.
+- **Pruning:** MCQ part runs without the InterviewAnswer table, open part is wrapped separately. Both filter by `userId`, `submittedAt:null`, older than 7 days, take 200. Open sessions with any scored answer are never selected. Pass (nice #5).
+- **Scoring claim flow:** unique insert is the claim and also the missing-table probe before any AI call. A stale claim (over 2 minutes) is deleted only `where overall:null` and retried (max 3). Only the creator makes the AI call (one `fast` call, no extra loop apart from runAIStructured's built-in parse retry inside the same runAI/cap). The update is `updateMany where {id: claim.id, overall:null}`; on failure the claim is deleted only if overall is null. Readers (`getOpenSession`, `getPracticeHistory`, `getWeakAreas`, the session-complete count) all filter `overall not null`. Overall recomputed by `computeOverall` from rubric.js weights; the model's `overall` is ignored. Quotes verified against the answer with `quoteRange` into the original text (null when only normalized match, UI handles null). Feedback and summary are sentence-stripped with `inventedNumbers` against question + answer. Answer length 1-5000 validated by zod. Pass.
+- **Questions:** every question needs valid sourceIds (D28), is deduped, and passes `inventedQuestionNumbers`; one retry, max 2 AI calls. The payload uses `publicQuestion` (no answers or rubric). Counts 2-10 are allowed; years, %, currency, months/weeks/days, and numbers above 10 are blocked; durations in minutes/seconds are not (nice #1). Pass.
+- **Migration:** SQL matches schema.prisma: nullable `rubric` JSONB and `overall` DOUBLE PRECISION, unique (sessionId, questionIndex), index (userId, topic), FK User RESTRICT, QuizSession CASCADE. CASCADE risk: pruning only selects unsubmitted open sessions with zero scored answers, so only claim rows can cascade; no other code deletes QuizSessions. There is no account-deletion flow today; RESTRICT means a future one must delete answers first. Pass.
+- **Roadmap:** `setRoadmapStepDone` is owner-scoped (findFirst + updateMany with userId and an updatedAt optimistic lock, 3 attempts), recomputes progress and currentStep. `getGapFrequency` queries only the user's ATS rows (take 200, one count per result per skill). `getStepTargets` is owner-scoped on the roadmap and the three doc tables, capped at 5 per step and 100 docs per table; false positive found: must-fix #3. Generic words are handled by STOP/GENERIC_SINGLE and 3-char minimum.
+- **Cold email:** column probe runs before the AI call (ColdEmail.js:97-108) and returns MIGRATION_PENDING. Pass.
+- **Retirement:** `src/app/(main)/(gated)/tools/` and `src/lib/mock.ts` are gone; grep of src and scripts for `tools/`, `lib/mock`, `MOCK_` finds nothing apart from the middleware `/tools(.*)` guard and next.config redirects. Redirects for /tools/interview, /tools/roadmap, /tools are permanent. Sidebar has no Previews group (desktop and mobile). Pass.
+- **Landing:** company names replaced (Northwind Pay, Brightfork, Lumenly, Fictional Labs, Example Kitchens), "Sample" labels in demo and paper doc, pricing bullets honest ("Up to 50 AI actions per day", nothing unbuilt), no "unlimited", "1-on-1", "live demo". But see must-fix #2 for the remaining false copy.
+- **UI:** timer shows "Time's up" and never submits (page.jsx:25-44, 96). Voice is browser SpeechRecognition only, no upload; transcript goes into an editable textarea. "AI estimate" label on RubricCard and the roadmap phase grouping note. SCORING_IN_PROGRESS auto-retries at most twice at 4 s, then the button becomes "Check again"; the timeout is cleared on next question and unmount. The roadmap toggle is optimistic, reverts on error, toast Undo calls the same action. Loading, empty and error states present for practice, history, weak areas, gap frequency and targets. Pass except must-fix #1.
+- **Auth/ownership:** every new action calls `auth()`; all id lookups include `userId`. No secrets in code or logs (`safeErr`). `.env` not read.
 
 ## Done-when
-
-1. Cover letter and cold email parity with sources: PASS
-2. 4 old URLs redirect: PASS (config verified; build output has no /tools/{resume,ats,cover-letter,cold-email})
-3. ATS delete and 90-day purge: PASS
-4. Build passes and the 6 tools still routable: PASS (build only; no runtime click-through done)
-
-## Fix round (d64f358 + 230bf43)
-
-Lint 0 errors (1 pre-existing font warning), build passes, selfcheck-matching prints "all self-checks passed".
-
-Resolved: #1 (greeting becomes "Hello,", closing becomes "Best regards," plus the user name only; body paragraphs keep the number rule; the prompt also forbids numbers there), #2 (LIST_SELECT of pre-Phase-5 columns, the list UI uses none of the new fields, getColdEmail returns MIGRATION_PENDING on P2022, generate/update/follow-up map it, the detail page shows the message), #3 (the regex rejects `, ; < > " ( )` and a second @; mailto holds only the one validated address), #4 (whitespace-collapsed and capped at 80), #6 (publicScore uses isPastResumeTextLimit), #7 (sources.tone stored, regenerate falls back to it, "More formal" sends only formality, dropdown preselected), #8 (tip from COLD_EMAIL_WORDS, label "Draft ready to review").
-
-NOT resolved: #5.
-
-### MUST-FIX
-| Severity | File:line | Owner | Problem | Fix |
-|---|---|---|---|---|
-| must-fix | src/actions/ColdEmail.js updateColdEmail (~lines 270-280) | BACKEND | updateColdEmail writes the subject but never touches `sources.subject`. After the user saves an edited subject and reloads, `fields.subject === subject` holds again, so ColdEmailPreview.jsx:260 shows "Subject based on" with the old AI subject's sources for text the AI did not write. | When a supplied `subject` differs from the stored one, clear `sources.subject` (or set it to a user-edited marker) in the same update, owner-scoped (read the row by id and userId, then updateMany). |
-
-## Fix round 2 (d5057bd)
-
-Lint 0 errors (1 pre-existing font warning), build passes.
-
-RESOLVED: the earlier must-fix (stale `sources.subject` after an edited subject). In updateColdEmail, when `subject` is supplied the row is read with findFirst scoped by id and userId (NOT_FOUND if missing or not owned). If the trimmed subject differs from the stored one (including cleared), `sources.subject` is dropped and all other keys are kept. An unchanged subject keeps it. updateMany stays scoped by id and userId. Updates without `subject` skip the new block. After save and reload, `sources.subject` is gone, so ColdEmailPreview.jsx:261 renders no chips.
-
-### MUST-FIX
-None.
+1. Real-route parity of the previews' features: FAIL until must-fix #3 (targets false positives) and #1 (voice) are fixed; everything else works.
+2. /tools/* redirects, mock.ts and tools folder gone: PASS.
+3. Landing has no unlabelled fake data or contradicting claims: FAIL (must-fix #2).
+4. Build passes and all 6 tools (MCQ kept) still work: PASS.
