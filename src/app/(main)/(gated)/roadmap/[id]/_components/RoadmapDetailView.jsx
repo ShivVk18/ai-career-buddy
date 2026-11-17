@@ -32,6 +32,14 @@ const RoadmapDetailView = ({ roadmap }) => {
   const [targets, setTargets] = useState(null); // { [stepId]: [...] }
   const [targetsState, setTargetsState] = useState("loading"); // loading | ready | error
 
+  // Resync from server props after router.refresh(), but never while a toggle is in flight.
+  const inFlightRef = React.useRef(false);
+  useEffect(() => {
+    if (inFlightRef.current) return;
+    setSteps(roadmap.steps);
+    setProgress(roadmap.progress);
+  }, [roadmap.steps, roadmap.progress]);
+
   const completedSteps = steps.filter((step) => step.completed).length;
   const totalSteps = steps.length;
 
@@ -62,6 +70,7 @@ const RoadmapDetailView = ({ roadmap }) => {
     setSteps(nextSteps);
     setProgress((nextSteps.filter((st) => st.completed).length / (nextSteps.length || 1)) * 100);
     setCompletingStep(stepId);
+    inFlightRef.current = true;
     try {
       const res = await setRoadmapStepDone(roadmap.id, stepId, done);
       if (res?.error || !res?.success) throw new Error(generationErrorMessage(res, "Failed to save"));
@@ -79,6 +88,7 @@ const RoadmapDetailView = ({ roadmap }) => {
       setProgress(prevProgress);
       toast.error(error?.message || "Failed to update step");
     } finally {
+      inFlightRef.current = false;
       setCompletingStep(null);
       router.refresh();
     }

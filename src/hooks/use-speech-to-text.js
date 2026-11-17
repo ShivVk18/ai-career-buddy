@@ -4,6 +4,7 @@ export function useSpeechToText(onTranscriptUpdate) {
   const [isRecording, setIsRecording] = useState(false);
   const [recognition, setRecognition] = useState(null);
   
+  const finalRef = useRef('');
   const callbackRef = useRef(onTranscriptUpdate);
   useEffect(() => {
     callbackRef.current = onTranscriptUpdate;
@@ -18,12 +19,18 @@ export function useSpeechToText(onTranscriptUpdate) {
         rec.interimResults = true;
 
         rec.onresult = (event) => {
-          let currentTranscript = '';
+          let interim = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
+            const piece = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalRef.current = (finalRef.current + ' ' + piece).trim();
+            } else {
+              interim += piece;
+            }
           }
-          if (callbackRef.current && currentTranscript) {
-             callbackRef.current(currentTranscript);
+          const full = (finalRef.current + ' ' + interim).trim();
+          if (callbackRef.current && full) {
+            callbackRef.current(full);
           }
         };
 
@@ -46,6 +53,7 @@ export function useSpeechToText(onTranscriptUpdate) {
       recognition?.stop();
       setIsRecording(false);
     } else {
+      finalRef.current = '';
       recognition?.start();
       setIsRecording(true);
     }

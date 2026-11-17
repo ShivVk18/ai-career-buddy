@@ -58,7 +58,7 @@ export default function LandingPage() {
       outfit: "wizard",
       scene: "morning",
       oldText: "generic resume stuffed with buzzwords and unverified claims",
-      newText: "paper doc with match highlights, struck lines, and source telemetry footnotes",
+      newText: "paper doc with match highlights, struck lines, and source chips from your resume, profile and job description",
       href: "/resume",
     },
     {
@@ -114,7 +114,7 @@ export default function LandingPage() {
     },
     {
       q: "are the 6 tools really connected to one pip?",
-      a: "yes. when pip reviews your resume for a sample role, it remembers the missing web vitals metric. when you jump into interview prep, pip asks you about that exact gap. when you open roadmap, it assigns a task to close it.",
+      a: "yes. gaps found in your ats results feed your roadmap, which ranks gaps by frequency and shows which gaps each step closes. interview practice can also use a job description you paste in. each tool works from your profile and what you give it.",
     },
     {
       q: "can i download my resume as a real pdf?",
@@ -423,11 +423,11 @@ export default function LandingPage() {
                 verified project evidence
               </h3>
               <p className="text-xs text-muted leading-relaxed mb-3">
-                pip connects to your actual GitHub PRs, telemetry logs, and release metrics so bullet points never fabricate numbers.
+                pip works from your resume, profile and pasted job descriptions, so bullet points stay grounded in what you actually provided.
               </p>
               <div className="p-2.5 rounded bg-white border border-[#ECEAE4] text-[11px] font-pixel text-pip-ink">
-                • 4 squads adopted shared UI components
-                <br />• ₹14Cr+ monthly payment disbursements
+                sample: led a shared UI kit rollout
+                <br />sample: cut checkout load time (made-up figures)
               </div>
             </div>
 
@@ -440,28 +440,28 @@ export default function LandingPage() {
                 real answer coaching
               </h3>
               <p className="text-xs text-muted leading-relaxed mb-3">
-                when you hesitate on web vitals or state machines in mock rounds, pip flags it with quoted evidence and retrains you.
+                practice answers are scored against a rubric, and your weak areas are tracked so you know what to revisit.
               </p>
               <div className="p-2.5 rounded bg-white border border-[#ECEAE4] text-[11px] font-pixel text-[#A45564]">
-                • flagged: INP input delay explanation
-                <br />• practice: scheduler.yield() code pattern
+                sample: flagged INP input delay explanation
+                <br />sample: practice scheduler.yield() pattern
               </div>
             </div>
 
             {/* Panel 3: Gaps This Week */}
             <div className="panel-soft p-5 bg-[#FBFAF7] border border-[#ECEAE4]">
               <span className="font-pixel text-[11px] text-[#8B6B45] uppercase tracking-wider block mb-2">
-                3. gaps this week
+                3. roadmap gaps
               </span>
               <h3 className="text-sm font-semibold text-text mb-2">
-                targeted weekly plan
+                phase-based plan
               </h3>
               <p className="text-xs text-muted leading-relaxed mb-3">
-                gaps are ranked by how often they show up across your active job targets, so you only learn what gets you interviews.
+                gaps from your ats scans are ranked by frequency in your roadmap, and each step shows which gaps it closes.
               </p>
               <div className="p-2.5 rounded bg-white border border-[#ECEAE4] text-[11px] font-pixel text-[#8B6B45]">
-                • 5 jobs need playwright testing
-                <br />• 3 jobs need WebSocket sync
+                sample: playwright testing appears in 5 scans
+                <br />sample: WebSocket sync appears in 3 scans
               </div>
             </div>
           </div>
@@ -481,8 +481,8 @@ export default function LandingPage() {
           {[
             {
               step: "01",
-              title: "paste any job link",
-              desc: "paste a link from linkedin, naukri, or company careers page. pip extracts hard requirements and company context.",
+              title: "paste a job description",
+              desc: "copy the job description from any site and paste it in. pip pulls out the hard requirements to match against.",
             },
             {
               step: "02",
