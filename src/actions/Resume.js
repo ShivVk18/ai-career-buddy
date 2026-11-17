@@ -5,6 +5,8 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { runAIText } from "@/lib/ai";
 import { safeErr } from "@/lib/utils";
+import { z } from "zod";
+import { assignEntryIds, buildSources, snapshot } from "@/lib/ai/sources";
 
 // Helper function to validate and sanitize resume data
 async function validateResumeData(data) {
@@ -37,9 +39,10 @@ async function validateResumeData(data) {
     contactInfo: data.contactInfo || null,
     summary: data.summary || null,
     skills: data.skills || null,
-    experience: Array.isArray(data.experience) ? data.experience : [],
-    education: Array.isArray(data.education) ? data.education : [],
-    projects: Array.isArray(data.projects) ? data.projects : [],
+    // Stable entry ids are assigned only here, on save. Existing ids are kept.
+    experience: assignEntryIds(data.experience),
+    education: assignEntryIds(data.education),
+    projects: assignEntryIds(data.projects),
   };
 }
 
@@ -142,19 +145,31 @@ export async function getResumeTemplates() {
   }
 }
 
-export async function improveWithAI({ current, type }) {
-  try {
-    const { userId } = await auth();
-    if (!userId) throw new Error("Unauthorized");
+const improveSchema = z.object({
+  current: z.string().trim().min(1).max(5000),
+  type: z.string().trim().min(1).max(40),
+});
 
+/**
+ * Returns { text, sources } where sources is a snapshot of what the improvement is based on:
+ * the user's own input text plus the profile industry used in the prompt.
+ * Expected failures are RETURNED as { error, code } (INVALID | NOT_FOUND | AI_LIMIT | FAILED).
+ */
+export async function improveWithAI(input) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const parsed = improveSchema.safeParse(input ?? {});
+  if (!parsed.success) return { error: "Please enter some text to improve first.", code: "INVALID" };
+  const { current, type } = parsed.data;
+
+  try {
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
-      include: {
-        industryInsight: true,
-      },
+      select: { id: true, industry: true },
     });
 
-    if (!user) throw new Error("User not found");
+    if (!user) return { error: "We couldn't find your profile. Please finish onboarding first.", code: "NOT_FOUND" };
 
     const industryContext = user.industry 
       ? `for a ${user.industry} industry professional` 
@@ -193,7 +208,7 @@ Current content: "${current}"
 
 Requirements:
 1. Use strong action verbs (led, achieved, developed, implemented).
-2. Include metrics and quantifiable results where possible.
+2. Keep any metrics already in the content; never invent numbers, employers or achievements.
 3. Highlight relevant technical and soft skills.
 4. Keep it concise (2-4 bullet points or 100-150 words).
 5. Focus on achievements and impact, not just responsibilities.
@@ -207,10 +222,16 @@ Requirements:
       maxOutputTokens: 300,
     });
 
-   return improvedText.replace(/^\d+:/gm, "").trim();
+    const text = improvedText.replace(/^\d+:/gm, "").trim();
+    const catalog = buildSources({
+      profile: { industry: user.industry },
+      extra: [{ id: "input:current", kind: "input", label: "Your text", text: current }],
+    });
+    return { text, sources: snapshot(["input:current", "profile:industry"], catalog) };
   } catch (error) {
     console.error("improveWithAI failed:", safeErr(error));
-    throw new Error("Failed to improve content");
+    if (error?.code === "AI_LIMIT") return { error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" };
+    return { error: "Failed to improve content. Please try again.", code: "FAILED" };
   }
 }
 

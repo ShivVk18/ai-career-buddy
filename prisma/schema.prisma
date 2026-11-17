@@ -11,7 +11,7 @@ datasource db {
 model User {
   id            String    @id @default(uuid())
   clerkUserId   String    @unique 
-  email         String    @unique
+  email         String?   @unique
   name          String?
   imageUrl      String?
   industry      String?   
@@ -152,6 +152,7 @@ model CoverLetter {
   companyName     String    
   jobTitle        String    
   status          String    @default("draft") 
+  sources         Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -334,6 +335,7 @@ model ATSScore {
   relevantSkills String[]
   missingSkills  String[]
   recommendations Json[]
+  evidence       Json?
 
   finalSummary   String   @db.Text
   analyzedBy     String?
@@ -357,6 +359,7 @@ model ColdEmail {
   companyName     String    
   jobTitle        String    
   status          String    @default("draft") 
+  sources         Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

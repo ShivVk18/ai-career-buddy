@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { safeErr } from "@/lib/utils";
+import { primaryEmail } from "@/lib/clerkEmail";
 
 export async function updateUser(data) {
   const { userId } = await auth();
@@ -83,7 +84,7 @@ export async function getUserOnboardingStatus() {
     user = await db.user.create({
       data: {
         clerkUserId: userId,
-        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        email: primaryEmail(clerkUser),
         industry: null,
         experience: null,
         bio: "",

@@ -5,16 +5,42 @@ import { auth } from "@clerk/nextjs/server";
 import { runAIStructured, runAIText } from "@/lib/ai";
 import { roadmapSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
+import { z } from "zod";
+import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
 
-export async function generateCareerRoadmap(data) {
+const NO_SOURCES_MSG =
+  "We couldn't ground a roadmap in your details. Add skills or experience to your profile or resume, then try again.";
+const inputSchema = z.object({
+  currentRole: z.string().trim().min(1).max(200),
+  targetRole: z.string().trim().min(1).max(200),
+  industry: z.string().trim().max(200).default(""),
+});
+const fail = (code, error) => ({ error, code });
+
+export async function generateCareerRoadmap(rawData) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
+  const parsedInput = inputSchema.safeParse(rawData ?? {});
+  if (!parsedInput.success) return fail("INVALID", "Please enter your current and target role.");
+  const data = parsedInput.data;
+
   const user = await db.user.findUnique({
     where: { clerkUserId: userId },
-    select: { id: true, industry: true, skills: true },
+    select: { id: true, industry: true, skills: true, bio: true, experience: true },
   });
-  if (!user) throw new Error("User not found");
+  if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+
+  const resume = await db.resume.findUnique({ where: { userId: user.id } });
+  const catalog = buildSources({
+    profile: user,
+    resume,
+    extra: [
+      { id: "input:currentRole", kind: "input", label: "Your current role", text: data.currentRole },
+      { id: "input:targetRole", kind: "input", label: "Your target role", text: data.targetRole },
+      ...(data.industry ? [{ id: "input:industry", kind: "input", label: "Your industry", text: data.industry }] : []),
+    ],
+  });
 
   const prompt = `
 You are an expert AI career coach.
@@ -37,6 +63,13 @@ CRITICAL RULES:
 - Ensure logical career progression
 - Steps must be practical and achievable
 
+SOURCES (the ONLY facts about the user you may rely on; each line is [id] label: text):
+${formatCatalogForPrompt(catalog)}
+
+SOURCE RULE:
+- Every step MUST have "sourceIds": one or more ids copied exactly from the SOURCES list that justify the step (for example the target role, a current skill or an experience entry).
+- Never claim the user has skills, jobs or credentials that are not in the SOURCES.
+
 IMPORTANT RESOURCE RULE:
 - Do NOT generate URLs
 - Only provide resource names
@@ -53,7 +86,8 @@ OUTPUT STRUCTURE:
       "category": "skill | experience | networking | education | certification",
       "priority": "high | medium | low",
       "resources": ["resource name"],
-      "completed": false
+      "completed": false,
+      "sourceIds": ["id from SOURCES"]
     }
   ],
   "milestones": [
@@ -111,9 +145,30 @@ Return ONLY JSON.
 `;
 
   try {
-    const roadmapData = await runAIStructured("write", roadmapSchema, () => [["user", prompt]], {
-      userId,
-    });
+    const generate = async (note) => {
+      const r = await runAIStructured("write", roadmapSchema, () => [["user", prompt + note]], { userId });
+      const kept = r.steps
+        .map((st) => ({ ...st, sourceIds: validateSourceIds(st.sourceIds, catalog) }))
+        .filter((st) => st.sourceIds.length > 0);
+      return { r, kept };
+    };
+
+    let { r: roadmapData, kept } = await generate("");
+    if (kept.length < roadmapData.steps.length) {
+      const retry = await generate(
+        "\n\nIMPORTANT: your previous answer had steps without valid sourceIds. Every step MUST list at least one id copied exactly from the SOURCES list."
+      );
+      const dropped = (x) => x.r.steps.length - x.kept.length;
+      if (dropped(retry) <= roadmapData.steps.length - kept.length) ({ r: roadmapData, kept } = retry);
+    }
+    if (kept.length === 0) return fail("NO_SOURCES", NO_SOURCES_MSG);
+
+    // Renumber so step ids stay 1..n after dropping unsourced steps.
+    roadmapData.steps = kept.map((st, idx) => ({
+      ...st,
+      id: idx + 1,
+      sources: snapshot(st.sourceIds, catalog),
+    }));
 
     // ✅ Ensure timeline is properly formatted as a JSON object
     const timelineData = roadmapData.timeline || {
@@ -140,7 +195,8 @@ Return ONLY JSON.
     return careerPath;
   } catch (error) {
     console.error("generateCareerRoadmap failed:", safeErr(error));
-    throw new Error("Failed to generate career roadmap");
+    if (error?.code === "AI_LIMIT") return fail("AI_LIMIT", "Daily AI limit reached. Please try again tomorrow.");
+    return fail("FAILED", "Failed to generate career roadmap. Please try again.");
   }
 }
 

@@ -4,9 +4,13 @@ import { db } from "../prisma.js";
 
 let warned = false;
 
+export const DEFAULT_DAILY_LIMIT = 50;
+
+/** Unset, empty or invalid => 50 (D30). "0" => cap disabled (returns null). */
 export function getDailyLimit() {
   const n = Number.parseInt(process.env.AI_DAILY_LIMIT ?? "", 10);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_DAILY_LIMIT;
+  return n === 0 ? null : n;
 }
 
 /** Returns true when the user is at or over today's limit. */
@@ -21,7 +25,7 @@ export async function isOverDailyLimit(userId) {
   } catch {
     if (!warned) {
       warned = true;
-      console.warn("[ai] AI_DAILY_LIMIT is set but AiUsage could not be read (migration not applied?); cap skipped");
+      console.warn("[ai] daily AI cap is active but AiUsage could not be read (migration not applied?); cap skipped");
     }
     return false;
   }

@@ -88,6 +88,17 @@ Ensure all 10 questions are unique and the correctAnswer exactly matches one of 
       .slice(0, 10);
     if (valid.length < 5) return fail("FAILED", "Could not generate a quiz. Please try again.");
 
+    // Housekeeping: drop this user's own unsubmitted sessions older than 7 days.
+    await db.quizSession
+      .deleteMany({
+        where: {
+          userId: user.id,
+          submittedAt: null,
+          createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      })
+      .catch(() => {});
+
     const session = await db.quizSession.create({
       data: { userId: user.id, questions: valid },
       select: { id: true },
@@ -216,11 +227,6 @@ export async function submitQuiz(quizId, answers) {
   }
 }
 
-/** @deprecated The client can no longer supply a score. Use submitQuiz(quizId, answers). */
-export async function saveQuizResult() {
-  throw new Error("saveQuizResult is removed: use submitQuiz(quizId, answers)");
-}
-
 export async function getAssessments() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
@@ -246,22 +252,4 @@ export async function getAssessments() {
     console.error("getAssessments failed:", safeErr(error));
     throw new Error("Failed to fetch assessments");
   }
-}
-
-export async function getLatestQuiz() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
-
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
-
-  if (!user) throw new Error("User not found");
-
-  const quiz = await db.assessment.findFirst({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" }
-  });
-
-  return quiz?.questions || null;
 }

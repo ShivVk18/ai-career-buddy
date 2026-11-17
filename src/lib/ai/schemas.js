@@ -15,12 +15,20 @@ export const quizSchema = z.object({
 
 const strList = z.array(z.string()).default([]);
 
+// The model proposes sources; the server verifies them (quotes against the PDF text, jd ids against the catalog).
+const atsSource = z.object({
+  type: z.string(),
+  quote: z.string().optional(),
+  id: z.string().optional(),
+});
+const atsItem = z.object({ text: z.string().min(1), sources: z.array(atsSource).default([]) });
+
 export const atsSchema = z.object({
   candidateLevel: z.string().optional(),
   atsScore: z.number().min(0).max(100),
   matchPercentage: z.number().min(0).max(100).nullable().optional(),
-  strengths: strList,
-  weaknesses: strList,
+  strengths: z.array(atsItem).default([]),
+  weaknesses: z.array(atsItem).default([]),
   improvements: strList,
   relevantSkills: strList,
   missingSkills: strList,
@@ -31,6 +39,7 @@ export const atsSchema = z.object({
         priority: z.string().default(""),
         action: z.string().default(""),
         impact: z.string().default(""),
+        sources: z.array(atsSource).default([]),
       })
     )
     .default([]),
@@ -48,6 +57,7 @@ export const roadmapSchema = z.object({
         priority: z.string(),
         resources: z.array(z.string()).default([]),
         completed: z.boolean().default(false),
+        sourceIds: z.array(z.string()).default([]),
       })
     )
     .min(1),
@@ -70,4 +80,17 @@ export const roadmapSchema = z.object({
         .default([]),
     })
     .optional(),
+});
+
+// Cover letters and cold emails: paragraphs with the catalog ids each body paragraph is based on.
+export const paragraphsSchema = z.object({
+  paragraphs: z
+    .array(
+      z.object({
+        kind: z.enum(["greeting", "body", "closing"]),
+        text: z.string().min(1),
+        sourceIds: z.array(z.string()).default([]),
+      })
+    )
+    .min(2),
 });

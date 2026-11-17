@@ -1,6 +1,6 @@
-# API Contract (Phase 2)
+# API Contract (Phase 2, plus Phase 3 Sources in section 6)
 
-Source of truth for frontend and backend. Branch `phase-2`. Decisions: D18-D21 in DECISIONS.md.
+Source of truth for frontend and backend. Branches `phase-2`, `phase-3`. Decisions: D18-D21, D25-D31 in DECISIONS.md.
 
 Conventions
 - All server actions run on the server, require a signed-in Clerk user, and scope every query by the user's DB id. Unauthenticated: they throw `Error("Unauthorized")` (actions) or return HTTP 401 (routes).
@@ -124,12 +124,11 @@ Examples:
 Example: `{ error: "This quiz has already been submitted.", code: "ALREADY_SUBMITTED" }`. Success shape is the object above (no `error`/`code` keys).
 - A tip failure (including `AI_LIMIT`) never fails the submit; the tip is just `null`.
 
-### `saveQuizResult(questions, answers, score)`  - DEPRECATED
-Kept exported so the build stays green until the Quiz UI switches (task 9). It now ignores its arguments and always throws `Error("saveQuizResult is removed: use submitQuiz(quizId, answers)")`. Nothing is written. The only caller is `interview/_components/Quiz.jsx` (task 9 replaces it).
+### Removed in Phase 3
+`saveQuizResult` and `getLatestQuiz` no longer exist (zero callers).
 
 ### Unchanged
 - `getAssessments()`: same as before.
-- `getLatestQuiz()`: same as before. It returns the questions of the latest saved `Assessment` (already-submitted results, with `answer`, `userAnswer`, `isCorrect`, `explanation`), not an unsubmitted session. It never leaks an active quiz's answers.
 - Assessment `questions[]` entry shape stays `{ question, answer, userAnswer, isCorrect, explanation }`.
 
 ---
@@ -220,17 +219,115 @@ Grounding: the model gets only the user's profile (industry, skills, experience,
 
 ## 4. Daily AI cap and the `AI_LIMIT` error
 
-- Env `AI_DAILY_LIMIT` (positive integer). Unset, empty or invalid: no cap.
+- Env `AI_DAILY_LIMIT` (D30): unset, empty or invalid means **50** calls per user per day; `0` disables the cap; a positive integer sets it.
 - `runAI` (when it has a `userId`) counts that user's `AiUsage` rows with `createdAt` since 00:00 UTC today. Every attempt, including failed ones, is a row. If `count >= AI_DAILY_LIMIT` it throws `AIError` with `code = "AI_LIMIT"` and message `"Daily AI limit reached"` before any provider call.
 - If the `AiUsage` table is missing (migration not applied) or the count fails, the cap is skipped (fail open) with one console warning per process.
 - The count is checked once per `runAI` call. A call that retries providers still counts one attempt per provider try.
 - Surfacing it:
   - `/api/chat`: SSE `error` event with `code: "AI_LIMIT"` (section 3).
-  - Server actions that use AI (`generateQuiz`, `generateCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `createATSAnalysis`, `improveWithAI`, `generateProgressRecommendations`): Next.js hides thrown messages in production for uncaught errors, so the existing catch blocks in those actions keep their current generic messages. Only `generateQuiz` surfaces it reliably: it RETURNS `{ error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" }` (no message-prefix convention anymore). For the other actions, the UI will see their existing failure message; improving this is out of scope for Phase 2.
+  - Server actions that use AI (`generateQuiz`, `generateCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `createATSAnalysis`, `improveWithAI`, `generateProgressRecommendations`): Next.js hides thrown messages in production for uncaught errors, so the existing catch blocks in those actions keep their current generic messages. `generateQuiz`, `generateCoverLetter`, `generateColdEmail`, `generateCareerRoadmap`, `improveWithAI` and `createATSAnalysis` now RETURN `code: "AI_LIMIT"` (see section 6). `generateQuiz` was first: it RETURNS `{ error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" }` (no message-prefix convention anymore). For the other actions, the UI will see their existing failure message; improving this is out of scope for Phase 2.
 
 Frontend handling: on `AI_LIMIT` show a friendly "daily limit reached, try again tomorrow" message, not a generic failure.
 
 ---
 
 ## 5. Other actions
-Unchanged. Existing actions keep their signatures and return shapes.
+Unchanged unless listed in section 6. `generateQuiz` also deletes the caller's own unsubmitted `QuizSession` rows older than 7 days.
+
+---
+
+## 6. Sources (Phase 3, D26-D31)
+
+Every newly generated item cites what it is based on. The server builds a catalog from things the user provided, the model may only cite catalog ids (or, for ATS, verbatim resume quotes), and the server drops anything it cannot verify. Spending: a generation can use up to 2 AI attempts (one retry, D28).
+
+### 6.1 Snapshot (stored with the record, never recomputed)
+
+```ts
+Snapshot = {
+  id: string,        // catalog id, e.g. "exp:e_1a2b3c4d5e6f", "profile:skills", "jd:3", "input:current"
+  kind: "experience" | "education" | "project" | "profile" | "resume" | "jd" | "input",
+  label: string,     // chip text, e.g. "Experience: Engineer at Acme", "Profile: skills", "Job description, line 3"
+  excerpt: string    // max 200 chars, whitespace collapsed; show as tooltip
+}
+```
+
+Catalog ids: `exp:<id>`, `edu:<id>`, `proj:<id>`, `profile:industry|skills|bio|experience`, `resume:summary|skills`, `jd:<lineNo>` (1-based line of the job description), `input:<name>` (text the user typed into this request). Resume entries saved before Phase 3 that were never re-saved have no id; they are cited as `exp:i<index>` (position-based). The snapshot still shows the right label and excerpt.
+
+### 6.2 Legacy rule (D29)
+
+A record is **legacy** (show "Created before sources were added") when its sources field is missing:
+- `ATSScore.evidence === null`
+- `CoverLetter.sources === null`, `ColdEmail.sources === null`
+- Roadmap: a step without a `sources` key is legacy. A roadmap is legacy when no step has `sources`.
+Never regenerate or backfill. `improveWithAI` results are not stored, so it has no legacy case.
+
+### 6.3 New error codes and messages
+All expected failures are RETURNED as `{ error: string, code }` (never thrown; only signed-out throws `Error("Unauthorized")`).
+
+| code | where | friendly `error` (already user-safe) |
+|---|---|---|
+| `INVALID_FILE` | `createATSAnalysis` | "Please upload a valid PDF resume (up to 5 MB) that contains selectable text." / "That file is larger than 5 MB. Please upload a smaller PDF." / "We couldn't read any text in that PDF. Please upload a text-based (not scanned) resume." |
+| `NO_SOURCES` | letter, email, roadmap, ATS | "We couldn't ground this in your details. Add more to your profile or resume, or paste a fuller job description, then try again." (roadmap/ATS wording differs slightly; show `error` as is) |
+| `AI_LIMIT` | all generators | "Daily AI limit reached. Please try again tomorrow." |
+| `INVALID` | all generators | input failed validation |
+| `NOT_FOUND` | letter, email, roadmap, improve | "We couldn't find your profile. Please finish onboarding first." |
+| `FAILED` | all generators | generic retry message |
+
+### 6.4 `createATSAnalysis(formData)`
+Input: `{ companyName?: string, jobTitle?: string, jobDescription: string (1-20000), resumeBase64: string, resumeType?: string }`. `resumeBase64` is raw base64 of the PDF (a `data:` prefix is tolerated). **New optional `resumeType`: pass `file.type`**; anything other than `application/pdf` is rejected. The server also checks size (<= 5 MB decoded), `%PDF-` magic bytes and that text can be extracted, all before any AI call. The AI now reads the extracted text, not the raw PDF.
+
+Returns `{ success: true, data: ATSScore }` or `{ success: false, message, error, code }` (`message` equals `error`, so existing `!response.success` code keeps working; use `code` to special-case).
+
+`data` (the saved row) keeps every old column. `strengths`/`weaknesses` stay `string[]`, `recommendations` stays `{category, priority, action, impact}[]`. New field `data.evidence`:
+
+```ts
+Evidence = null | {          // null => legacy
+  version: 1,
+  strengths:       EvItem[],  // same order/length as data.strengths
+  weaknesses:      EvItem[],  // same as data.weaknesses
+  recommendations: (EvItem & { category, priority, action, impact })[]  // text === action; same order as data.recommendations
+}
+EvItem = { text: string, sources: EvSource[] }   // sources.length >= 1, always
+EvSource =
+  | { type: "resume_quote", quote: string }                         // verbatim text from the uploaded resume PDF (verified)
+  | { type: "jd", id: "jd:<n>", label: string, excerpt: string }    // a job description line
+```
+
+Show quotes as "From your resume: \"...\"" and jd as the line excerpt. `improvements` are not sourced. `getATSScoreById` / `updateATSScore` return the row with `evidence`; `getUserATSScores` select does not include it.
+
+### 6.5 `generateCoverLetter(data)` and `generateColdEmail(data)`
+Input: `{ jobTitle?: string, companyName?: string, jobDescription?: string }` (<= 200/200/20000 chars). Returns the created row, or `{ error, code }`. The row's `content` is markdown/plain text: paragraphs joined by exactly one blank line (`"\n\n"`), so the editor works as before. New field:
+
+```ts
+sources: null | {            // null => legacy
+  version: 1,
+  paragraphs: { kind: "greeting" | "body" | "closing", sources: Snapshot[] }[]
+}
+```
+
+`sources.paragraphs[i]` describes `content.split(/\n{2,}/)[i]` (no paragraph contains a blank line). Every `body` has `sources.length >= 1`; greeting and closing may be `[]`. Alignment rule (D27): after the user edits, if `content.split(/\n{2,}/).filter(Boolean).length !== sources.paragraphs.length`, show one "Based on" list of the union of all snapshots (dedupe by `id`) instead of per-paragraph chips. The email no longer receives the user's email address; the letter no longer has a markdown header/signature block (the closing paragraph carries the sign-off).
+
+### 6.6 `generateCareerRoadmap(data)`
+Input: `{ currentRole: string, targetRole: string, industry?: string }` (all trimmed, max 200; roles required). Returns the created `CareerPath`, or `{ error, code }` (callers must check `result.error`). Each item in `steps` gains:
+
+```ts
+step.sourceIds: string[]      // >= 1, all valid
+step.sources:   Snapshot[]    // same ids; legacy step => key absent
+```
+
+Unsourced steps are dropped; step ids are renumbered 1..n. Cited ids can include `input:currentRole`, `input:targetRole`, `input:industry`, `profile:*` and the user's resume entries. `completeRoadmapStep` keeps `sources` (it spreads the step).
+
+### 6.7 `improveWithAI({ current, type })`
+Contract change: used to return a string and throw. Now returns
+
+```ts
+{ text: string, sources: Snapshot[] } | { error: string, code: "INVALID" | "NOT_FOUND" | "AI_LIMIT" | "FAILED" }
+```
+
+`current` 1-5000 chars, `type` 1-40 chars. `sources` is deterministic: `input:current` ("Your text") plus `profile:industry` when the profile has one. Not persisted by the server; the UI keeps it next to the text while shown.
+
+### 6.8 `saveResume` stable ids
+`saveResume` adds a stable `id` (`"e_" + 12 hex`) to every `experience`, `education` and `projects` entry that lacks one, and keeps existing ids (duplicates within one array are regenerated). Only saving does this; nothing is batch-rewritten. The saved resume returned by `saveResume` / `getResume` includes the ids. **The client must send entries back with their `id`** (react-hook-form + `entrySchema` in `src/app/lib/schema.js` will strip an `id` unless the schema has `id: z.string().optional()`; use it as the React key).
+
+### 6.9 Schema changes (migration `20261118000000_phase3_sources`, NOT applied by the agent)
+`CoverLetter.sources Json?`, `ColdEmail.sources Json?`, `ATSScore.evidence Json?`, `User.email` becomes optional (the code no longer writes `""` or `...@placeholder.com`; email is the Clerk primary email or null). Until the migration is applied, generators that write `sources`/`evidence` will fail with `FAILED`.
