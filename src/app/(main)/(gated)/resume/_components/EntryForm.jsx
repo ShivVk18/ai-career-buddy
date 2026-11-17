@@ -61,8 +61,13 @@ export function EntryForm({ type, entries, onChange }) {
   };
 
   const handleAdd = handleValidation((data) => {
+    const newId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `e_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
     const formattedEntry = {
       ...data,
+      id: newId,
       startDate: formatDisplayDate(data.startDate),
       endDate: data.current ? "" : formatDisplayDate(data.endDate),
     };
