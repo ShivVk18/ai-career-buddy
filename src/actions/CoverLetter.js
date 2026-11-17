@@ -40,6 +40,13 @@ const idSchema = z.string().trim().min(1).max(100);
 const MAX_CONTENT = 10000;
 const fail = (code, error) => ({ error, code });
 
+/** Read shape: the tone used for the last generation lives in sources.tone (null on older letters). */
+const withTone = (row) => {
+  if (!row) return row;
+  const t = row.sources?.tone;
+  return { ...row, tone: COVER_LETTER_TONES.includes(t) ? t : null };
+};
+
 function letterPrompt({ jobTitle, companyName, catalog, tone, formality }) {
   const t = TONE_PROMPTS[tone || DEFAULT_TONE];
   const formal =
@@ -68,6 +75,7 @@ WRITING STYLE RULES:
 6. NEVER invent employers, titles, dates, degrees, metrics, projects or credentials that are not in the SOURCES
 7. Keep length between ${COVER_LETTER_WORDS.min}-${COVER_LETTER_WORDS.max} words
 8. Do NOT use bullet points, markdown or placeholders like [Company Name]
+9. The greeting and the closing must contain no numbers
 
 OUTPUT: valid JSON only, no markdown fences, no explanation:
 {
@@ -116,13 +124,14 @@ export async function generateCoverLetter(data) {
       prompt,
       catalog,
       userId,
+      userName: user.name,
       allowedText: allowedNumberText(catalog, jobTitle, companyName),
     });
 
     const coverLetter = await db.coverLetter.create({
       data: {
         content,
-        sources,
+        sources: { ...sources, tone: tone || DEFAULT_TONE },
         jobDescription: jobDescription ?? null,
         companyName,
         jobTitle,
@@ -131,7 +140,7 @@ export async function generateCoverLetter(data) {
       },
     });
 
-    return coverLetter;
+    return withTone(coverLetter);
   } catch (error) {
     console.error("generateCoverLetter failed:", safeErr(error));
     return genError(error, "generate cover letter");
@@ -148,7 +157,7 @@ export async function getCoverLetters() {
 
   if (!user) throw new Error("User not found");
 
-  return await db.coverLetter.findMany({
+  const rows = await db.coverLetter.findMany({
     where: {
       userId: user.id,
     },
@@ -156,6 +165,7 @@ export async function getCoverLetters() {
       createdAt: "desc",
     },
   });
+  return rows.map(withTone);
 }
 
 export async function getCoverLetter(id) {
@@ -168,12 +178,14 @@ export async function getCoverLetter(id) {
 
   if (!user) throw new Error("User not found");
 
-  return await db.coverLetter.findUnique({
-    where: {
-      id,
-      userId: user.id,
-    },
-  });
+  return withTone(
+    await db.coverLetter.findUnique({
+      where: {
+        id,
+        userId: user.id,
+      },
+    })
+  );
 }
 
 export async function deleteCoverLetter(id) {
@@ -222,7 +234,7 @@ export async function updateCoverLetter(id, content) {
     });
     if (result.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
 
-    return await db.coverLetter.findFirst({ where: { id: parsed.data.id, userId: user.id } });
+    return withTone(await db.coverLetter.findFirst({ where: { id: parsed.data.id, userId: user.id } }));
   } catch (error) {
     console.error("updateCoverLetter failed:", safeErr(error));
     return fail("FAILED", "We couldn't save your changes. Please try again.");
@@ -253,20 +265,23 @@ export async function regenerateCoverLetter(id, opts) {
     const catalog = buildSources({ profile: user, resume, jobDescription: row.jobDescription });
     if (catalog.length === 0) return fail("NO_SOURCES", NO_SOURCES_MSG);
 
-    const prompt = letterPrompt({ jobTitle: row.jobTitle, companyName: row.companyName, catalog, tone, formality });
+    const storedTone = COVER_LETTER_TONES.includes(row.sources?.tone) ? row.sources.tone : null;
+    const useTone = tone || storedTone || DEFAULT_TONE;
+    const prompt = letterPrompt({ jobTitle: row.jobTitle, companyName: row.companyName, catalog, tone: useTone, formality });
     const { content, sources } = await generateSourcedParagraphs({
       prompt,
       catalog,
       userId,
+      userName: user.name,
       allowedText: allowedNumberText(catalog, row.jobTitle, row.companyName),
     });
 
     const res = await db.coverLetter.updateMany({
       where: { id: row.id, userId: user.id },
-      data: { content, sources },
+      data: { content, sources: { ...sources, tone: useTone } },
     });
     if (res.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
-    return await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } });
+    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } }));
   } catch (error) {
     console.error("regenerateCoverLetter failed:", safeErr(error));
     return genError(error, "regenerate the cover letter");
@@ -367,7 +382,7 @@ OUTPUT: valid JSON only, no markdown fences:
       data: { content: res.next.join("\n\n") }, // sources stay exactly as stored
     });
     if (updated.count === 0) return fail("FAILED", "The letter changed while shortening. Please try again.");
-    return await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } });
+    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } }));
   } catch (error) {
     console.error("shortenCoverLetter failed:", safeErr(error));
     return genError(error, "shorten the cover letter");

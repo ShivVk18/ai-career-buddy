@@ -51,6 +51,26 @@ const fieldsSchema = z
 const MAX_CONTENT = 10000;
 const fail = (code, error) => ({ error, code });
 
+const MIGRATION_MSG = "Cold email is being updated. Please try again in a few minutes.";
+/** Prisma P2022 = a column in the schema is missing in the database (migration not applied yet). */
+const isMissingColumn = (e) => e?.code === "P2022" || /column .* does not exist/i.test(String(e?.message ?? ""));
+const failedOrPending = (error, msg) =>
+  isMissingColumn(error) ? fail("MIGRATION_PENDING", MIGRATION_MSG) : fail("FAILED", msg);
+
+// Pre-Phase-5 columns only, so the list keeps working if the Phase 5 migration lags.
+const LIST_SELECT = {
+  id: true,
+  userId: true,
+  content: true,
+  jobDescription: true,
+  companyName: true,
+  jobTitle: true,
+  status: true,
+  sources: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
 export async function generateColdEmail(data) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
@@ -99,6 +119,7 @@ EMAIL STYLE REQUIREMENTS:
 8. NEVER invent employers, titles, dates, degrees, metrics or credentials that are not in the SOURCES
 9. No markdown, no placeholders, no email address inside the body
 10. If a recipient name is given, greet them by first name ("Hi Priya,"); otherwise use a generic greeting
+11. The greeting and the closing must contain no numbers
 
 SUBJECT LINE: also write a short, plain subject (max 8 words, no clickbait, no percentages, no claims about open rates or results, no numbers that are not in the SOURCES) based only on the company, the role or the job description lines. List the ids it is based on in subject.sourceIds (use input:companyName, input:jobTitle or jd ids from SOURCES).
 
@@ -123,13 +144,14 @@ RULES FOR THE JSON:
       catalog,
       userId,
       withSubject: true,
+      userName: user.name,
       allowedText: allowedNumberText(catalog, jobTitle, companyName, user.name, recipientName, recipientRole),
     });
     let { subject } = gen;
     // Plain fallback built only from what the user typed.
     if (!subject && companyName && jobTitle) {
       subject = {
-        text: `Interested in the ${jobTitle} role at ${companyName}`.slice(0, 120),
+        text: `Interested in the ${jobTitle} role at ${companyName}`.replace(/\s+/g, " ").trim().slice(0, 80).trim(),
         sources: snapshot(["input:jobTitle", "input:companyName"], catalog),
       };
     }
@@ -157,7 +179,7 @@ RULES FOR THE JSON:
     if (error?.code === "NO_SOURCES") return fail("NO_SOURCES", NO_SOURCES_MSG);
     if (error?.code === "AI_LIMIT") return fail("AI_LIMIT", "Daily AI limit reached. Please try again tomorrow.");
     if (error?.code === "AI_UNAVAILABLE") return fail("AI_UNAVAILABLE", "AI is temporarily unavailable. Please try again later.");
-    return fail("FAILED", "Failed to generate cold email. Please try again.");
+    return failedOrPending(error, "Failed to generate cold email. Please try again.");
   }
 }
 
@@ -178,6 +200,7 @@ export async function getColdEmails() {
     orderBy: {
       createdAt: "desc",
     },
+    select: LIST_SELECT,
   });
 }
 
@@ -191,12 +214,17 @@ export async function getColdEmail(id) {
 
   if (!user) throw new Error("User not found");
 
-  return await db.coldEmail.findUnique({
-    where: {
-      id,
-      userId: user.id,
-    },
-  });
+  try {
+    return await db.coldEmail.findUnique({
+      where: {
+        id,
+        userId: user.id,
+      },
+    });
+  } catch (error) {
+    if (isMissingColumn(error)) return fail("MIGRATION_PENDING", MIGRATION_MSG);
+    throw error;
+  }
 }
 
 export async function deleteColdEmail(id) {
@@ -257,7 +285,7 @@ export async function updateColdEmail(id, content, fields) {
     return await db.coldEmail.findFirst({ where: { id: parsed.data.id, userId: user.id } });
   } catch (error) {
     console.error("updateColdEmail failed:", safeErr(error));
-    return fail("FAILED", "We couldn't save your changes. Please try again.");
+    return failedOrPending(error, "We couldn't save your changes. Please try again.");
   }
 }
 
@@ -301,6 +329,6 @@ export async function setColdEmailFollowUp(id, date) {
     return await db.coldEmail.findFirst({ where: { id: parsed.data.id, userId: user.id } });
   } catch (error) {
     console.error("setColdEmailFollowUp failed:", safeErr(error));
-    return fail("FAILED", "We couldn't save the reminder. Please try again.");
+    return failedOrPending(error, "We couldn't save the reminder. Please try again.");
   }
 }

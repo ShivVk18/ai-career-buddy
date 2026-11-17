@@ -258,14 +258,15 @@ OUTPUT JSON STRUCTURE:
 function publicScore(row, candidateYears = null) {
   if (!row) return row;
   const ev = row.evidence;
+  const pastLimit = isPastResumeTextLimit(row.createdAt); // text is unusable even if the purge has not run yet
   if (!ev || typeof ev !== "object")
     return { ...row, hasResumeText: false, resumePurged: false, candidateLevel: null, candidateYears, previousScoreId: null };
   const { resumeText, ...evidence } = ev;
   return {
     ...row,
     evidence: { ...evidence, requirements: Array.isArray(ev.requirements) ? ev.requirements : [] },
-    hasResumeText: typeof resumeText === "string" && resumeText.length > 0,
-    resumePurged: typeof ev.resumePurgedAt === "string",
+    hasResumeText: !pastLimit && typeof resumeText === "string" && resumeText.length > 0,
+    resumePurged: pastLimit || typeof ev.resumePurgedAt === "string",
     candidateLevel: ev.candidateLevel ?? null,
     candidateYears,
     previousScoreId: ev.previousScoreId ?? null,

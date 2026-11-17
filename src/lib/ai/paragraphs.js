@@ -17,13 +17,18 @@ const RETRY_NOTE =
   "\n\nIMPORTANT: your previous answer had body paragraphs without valid sourceIds. Every body paragraph MUST list at least one id copied exactly from the SOURCES list, and must only state facts found in those sources.";
 
 // `allowedText`: every number in the output must appear in it (inventedNumbers). A body paragraph that
-// fails is treated as unsourced (retry, then dropped); a greeting/closing that fails is dropped.
-function clean(parsed, catalog, allowedText) {
+// fails is treated as unsourced (retry, then dropped). A greeting/closing is never dropped for an unbacked
+// number: it is replaced with a safe default ("Hello," / "Best regards," + name).
+function clean(parsed, catalog, allowedText, userName) {
   return parsed.paragraphs
     .map((p) => {
       const text = p.text.replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim();
       const bad = allowedText != null && inventedNumbers(text, allowedText).length > 0;
-      if (bad && p.kind !== "body") return null;
+      if (bad && p.kind === "greeting") return { kind: p.kind, text: "Hello,", ids: [] };
+      if (bad && p.kind === "closing") {
+        const name = String(userName ?? "").replace(/\s+/g, " ").trim();
+        return { kind: p.kind, text: name ? `Best regards,\n${name}` : "Best regards,", ids: [] };
+      }
       return { kind: p.kind, text, ids: bad ? [] : validateSourceIds(p.sourceIds, catalog) };
     })
     .filter((p) => p && p.text);
@@ -60,17 +65,18 @@ const unsourced = (ps) => ps.filter((p) => p.kind === "body" && p.ids.length ===
  * @param {Array} o.catalog
  * @param {string} o.userId
  * @param {string} [o.allowedText] when set, numbers in the output must appear in it (inventedNumbers)
+ * @param {string} [o.userName] used in the default closing when a closing has an unbacked number
  * @param {boolean} [o.withSubject] cold email: also read and verify a `subject`
  * @returns {{ content: string, sources: object, subject: {text: string, sources: object[]} | null }}
  * content = paragraphs joined by a blank line; sources = { version: 1, paragraphs: [{ kind, sources }] }.
  * @throws NoSourcesError when no body paragraph can be sourced.
  */
-export async function generateSourcedParagraphs({ prompt, catalog, userId, allowedText, withSubject = false }) {
+export async function generateSourcedParagraphs({ prompt, catalog, userId, allowedText, withSubject = false, userName = null }) {
   const schema = withSubject ? emailParagraphsSchema : paragraphsSchema;
   const run = async (note) => {
     const parsed = await runAIStructured("write", schema, () => [["user", prompt + note]], { userId });
     return {
-      ps: normalizeShape(clean(parsed, catalog, allowedText)),
+      ps: normalizeShape(clean(parsed, catalog, allowedText, userName)),
       subject: withSubject ? cleanSubject(parsed.subject, catalog, allowedText) : null,
     };
   };
