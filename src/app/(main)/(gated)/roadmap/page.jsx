@@ -1,4 +1,4 @@
-import { getCareerRoadmaps } from "@/actions/CareerRoadmap";
+import { getCareerRoadmaps, getGapFrequency } from "@/actions/CareerRoadmap";
 import { getUserOnboardingStatus } from "@/actions/User";
 import { redirect } from "next/navigation";
 import RoadmapDashboard from "./_components/RoadmapDashboard";
@@ -11,6 +11,7 @@ export default async function RoadmapPage() {
   }
 
   const roadmaps = await getCareerRoadmaps();
+  const gapData = await getGapFrequency().catch(() => ({ error: "Failed", code: "FAILED" }));
 
-  return <RoadmapDashboard roadmaps={roadmaps} />;
+  return <RoadmapDashboard roadmaps={roadmaps} gapData={gapData} />;
 }

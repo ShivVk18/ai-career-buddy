@@ -9,7 +9,7 @@ export default function ResumePaperDoc({
     title: "Frontend Engineer (React / Next.js / TypeScript)",
     contact: "Bengaluru, India • aarav.sharma.dev@gmail.com • +91 98765 43210",
   },
-  company = "Razorpay",
+  company = "Northwind Pay",
   interactive = true,
   className = "",
   initialEdits = null,
@@ -18,7 +18,7 @@ export default function ResumePaperDoc({
     {
       id: 1,
       role: "Frontend Engineer",
-      company: "KredX Technologies",
+      company: "Fictional Labs",
       period: "2023 - Present",
       weakText: "Worked on merchant dashboard and payment settlement pages using React and Redux.",
       improvedText: "Architected real-time merchant invoice dashboard in Next.js 15, reducing LCP from 3.2s to 1.1s and boosting daily invoice uploads by 28%.",
@@ -29,7 +29,7 @@ export default function ResumePaperDoc({
     {
       id: 2,
       role: "Frontend Engineer",
-      company: "KredX Technologies",
+      company: "Fictional Labs",
       period: "2023 - Present",
       weakText: "Helped team integrate third-party payment gateways and fixed checkout bugs.",
       improvedText: "Engineered headless payment checkout SDK with resilient fallback retries, processing ₹14Cr+ in monthly disbursements with 99.4% success rate.",
@@ -40,7 +40,7 @@ export default function ResumePaperDoc({
     {
       id: 3,
       role: "Associate Software Engineer",
-      company: "UrbanPiper",
+      company: "Example Kitchens",
       period: "2022 - 2023",
       weakText: "Built food aggregator menu management features for restaurant partners.",
       improvedText: "Implemented optimistic UI updates and WebSocket sync for restaurant live menu editors across 2,400+ active kitchens.",
@@ -75,7 +75,7 @@ export default function ResumePaperDoc({
             Sample
           </span>
           <span className="font-pixel text-[11px] text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full inline-block">
-            pip's live edit • tailored for {company.toLowerCase()}
+            pip's sample edit • tailored for {company.toLowerCase()}
           </span>
         </div>
         {interactive && (

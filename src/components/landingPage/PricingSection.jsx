@@ -72,7 +72,7 @@ export default function PricingSection() {
                 <span className="text-5xl font-clash font-bold text-foreground">TBA</span>
               </div>
               <ul className="space-y-4 mb-10">
-                {["Unlimited AI Credits", "Advanced Industry-specific Mock Interviews", "Priority Resume Review", "1-on-1 AI Career Coaching", "Custom Portfolio Generation"].map((feature, idx) => (
+                {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Pip, your AI career assistant", "Cover letters and cold emails grounded in your details"].map((feature, idx) => (
                   <li key={idx} className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-accent" />
                     <span className="text-sm font-medium text-foreground">{feature}</span>

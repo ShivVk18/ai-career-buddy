@@ -46,11 +46,6 @@ export default function AppSidebar() {
     { label: "career roadmap", href: "/roadmap", icon: BrainCircuit },
   ];
 
-  const previews = [
-    { label: "interview prep", href: "/tools/interview", icon: Sparkles },
-    { label: "career roadmap", href: "/tools/roadmap", icon: BrainCircuit },
-  ];
-
   return (
     <>
       {/* Desktop Left Sidebar (hidden on mobile < 768px) */}
@@ -147,33 +142,6 @@ export default function AppSidebar() {
               );
             })}
           </div>
-
-          {/* Previews (sample data) */}
-          <div className="space-y-1">
-            <span className="font-pixel text-[10px] uppercase text-muted tracking-wider px-2.5 block mb-1">
-              previews (sample data)
-            </span>
-            {previews.map((t) => {
-              const active = pathname === t.href || pathname.startsWith(t.href + "/");
-              const Icon = t.icon;
-              return (
-                <Link
-                  key={t.label}
-                  href={t.href}
-                  className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-medium transition group ${
-                    active
-                      ? "bg-pip-soft text-pip-ink font-semibold"
-                      : "text-[#8C8A93] hover:text-[#23222B] hover:bg-[#F4F2EC]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-3.5 h-3.5 text-[#A8A6AE]" />
-                    <span>{t.label}</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
         </div>
 
         {/* Footer / User card */}
@@ -248,21 +216,6 @@ export default function AppSidebar() {
                 <span>{t.label}</span>
               </Link>
             ))}
-          </div>
-          <div className="pt-2 border-t border-[#ECEAE4]">
-            <span className="font-pixel text-[10px] uppercase text-muted block mb-1.5">previews (sample data)</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {previews.map((t) => (
-                <Link
-                  key={t.href}
-                  href={t.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-2.5 py-1.5 rounded-lg border border-[#ECEAE4] text-[11px] text-muted hover:border-pip"
-                >
-                  {t.label}
-                </Link>
-              ))}
-            </div>
           </div>
           <div className="pt-2 border-t border-[#ECEAE4] flex justify-between items-center text-xs text-muted">
             <span>logged in as {user?.firstName || "candidate"}</span>

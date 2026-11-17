@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import StatsCards from "./_components/StatsCard";
 import PerformanceChart from "./_components/PerformanceChart";
 import QuizList from "./_components/QuizList";
+import PracticeHistory from "./_components/PracticeHistory";
+import WeakAreas from "./_components/WeakAreas";
+import { getPracticeHistory, getWeakAreas } from "@/actions/Practice";
 import { Sparkles, Brain, TrendingUp, Target, Award, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button"
@@ -16,6 +19,10 @@ export default async function InterviewPrepPage() {
   }
 
   const assessments = await getAssessments();
+  const [practiceHistory, weakAreas] = await Promise.all([
+    getPracticeHistory().catch(() => ({ error: "Failed", code: "FAILED" })),
+    getWeakAreas().catch(() => ({ error: "Failed", code: "FAILED" })),
+  ]);
   
   // Calculate stats
   const totalQuizzes = assessments?.length || 0;
@@ -99,6 +106,24 @@ export default async function InterviewPrepPage() {
           </div>
         )}
 
+        {/* Open practice entry */}
+        <div className="mb-12 border border-border bg-background p-8 rounded-sm shadow-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div>
+              <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight">Open Practice</h3>
+              <p className="text-muted-foreground text-sm font-light mt-1">
+                Answer real questions in your own words, typed or spoken, and get an AI-estimated rubric score.
+              </p>
+            </div>
+            <Link href="/interview/practice">
+              <Button className="h-12 px-8">
+                <Brain className="w-4 h-4 mr-3" />
+                Start Open Practice
+              </Button>
+            </Link>
+          </div>
+        </div>
+
         {/* Main Content Grid */}
         <div className="space-y-12">
           {/* Stats Cards */}
@@ -127,6 +152,23 @@ export default async function InterviewPrepPage() {
                 Interview History
               </h3>
               <QuizList assessments={assessments} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+                <span className="w-4 h-[1px] bg-divider"></span>
+                Open Practice History
+              </h3>
+              <PracticeHistory history={practiceHistory} />
+            </div>
+            <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+                <span className="w-4 h-[1px] bg-divider"></span>
+                Weak Areas
+              </h3>
+              <WeakAreas weak={weakAreas} />
             </div>
           </div>
         </div>

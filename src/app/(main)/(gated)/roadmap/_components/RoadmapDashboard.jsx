@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import CreateRoadmapModal from "./CreateRoadmapModal";
 import RoadmapCard from "./RoadmapCard";
+import GapFrequency from "./GapFrequency";
 
-const RoadmapDashboard = ({ roadmaps }) => {
+const RoadmapDashboard = ({ roadmaps, gapData }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const activeRoadmaps = roadmaps.filter((r) => r.status === "active");
@@ -108,6 +109,8 @@ const RoadmapDashboard = ({ roadmaps }) => {
             </div>
           </div>
         </div>
+
+        <GapFrequency gapData={gapData} />
 
         {/* Active Roadmaps */}
         {activeRoadmaps.length > 0 && (

@@ -21,7 +21,9 @@ export function generationErrorMessage(result, fallback = "Something went wrong.
     case "NOT_SHORTENABLE":
       return `${result.error || "This letter can't be shortened automatically."} Use Regenerate instead.`;
     case "MIGRATION_PENDING":
-      return "Cold email details are being set up. Please try again in a little while.";
+      return "This feature is being set up. Please try again in a little while.";
+    case "ALREADY_SCORED":
+      return "This question has already been scored. Showing your saved result.";
     default:
       return result.error || fallback;
   }

@@ -20,28 +20,28 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
-  const [activeJob, setActiveJob] = useState("razorpay");
+  const [activeJob, setActiveJob] = useState("northwind");
   const [openFaq, setOpenFaq] = useState(null);
 
   const jobsData = {
-    razorpay: {
-      company: "Razorpay",
+    northwind: {
+      company: "Northwind Pay",
       role: "Frontend Engineer II",
       have: ["React 19 & Next.js 15", "Web Vitals & Performance", "TypeScript"],
       partial: ["Payment SDK Integration"],
       gap: ["Playwright E2E testing"],
       matchRate: 92,
     },
-    swiggy: {
-      company: "Swiggy",
+    brightfork: {
+      company: "Brightfork",
       role: "Senior UI Engineer",
       have: ["Design Systems", "Web Vitals", "Component Architecture"],
       partial: ["Micro-frontends"],
       gap: ["Apollo GraphQL Federation"],
       matchRate: 86,
     },
-    cred: {
-      company: "CRED",
+    lumenly: {
+      company: "Lumenly",
       role: "Frontend Developer",
       have: ["Next.js App Router", "TypeScript", "Fluid UI Animation"],
       partial: ["Canvas / WebGL"],
@@ -67,14 +67,14 @@ export default function LandingPage() {
       scene: "peaks",
       oldText: "scary mock interviews with robotic generic multiple-choice quizzes",
       newText: "one question at a time with rubric scoring, evidence quotes, and timers",
-      href: "/tools/interview",
+      href: "/interview",
     },
     {
       name: "cover letter",
       outfit: "wizard",
       scene: "pink",
       oldText: "fluffy corporate letters that start with 'i am thrilled to apply'",
-      newText: "stiff-to-eager tone slider, flagged clichés, and 250-word targeted clarity",
+      newText: "pick a tone (stiff, confident or eager), clichés flagged as you edit, and a 250-350 word target",
       href: "/cover-letter",
     },
     {
@@ -90,8 +90,8 @@ export default function LandingPage() {
       outfit: "detective",
       scene: "meadow",
       oldText: "overwhelming 2-year roadmaps with random youtube playlist links",
-      newText: "weekly tasks mapped directly to the job gaps holding back your applications",
-      href: "/tools/roadmap",
+      newText: "phase-by-phase steps with progress you can undo, tied to the gaps in your own ats results",
+      href: "/roadmap",
     },
     {
       name: "ats scanner",
@@ -114,7 +114,7 @@ export default function LandingPage() {
     },
     {
       q: "are the 6 tools really connected to one pip?",
-      a: "yes. when pip reviews your resume for a razorpay role, it remembers the missing web vitals metric. when you jump into interview prep, pip asks you about that exact gap. when you open roadmap, it assigns a task to close it.",
+      a: "yes. when pip reviews your resume for a sample role, it remembers the missing web vitals metric. when you jump into interview prep, pip asks you about that exact gap. when you open roadmap, it assigns a task to close it.",
     },
     {
       q: "can i download my resume as a real pdf?",
@@ -203,7 +203,7 @@ export default function LandingPage() {
                 href="#demo"
                 className="btn-pill-primary text-sm py-2.5 px-6 shadow-sm flex items-center gap-2"
               >
-                <span>try the live demo</span>
+                <span>see a sample</span>
                 <ArrowRight className="w-4 h-4" />
               </a>
               <Link
@@ -221,10 +221,10 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <span className="font-pixel text-[11px] text-pip-ink uppercase tracking-wider block mb-1">
-                    live interactive demo
+                    sample demo (not your data)
                   </span>
                   <span className="text-sm font-semibold text-text">
-                    select a target job or see how pip edits:
+                    pick a sample job to see how pip edits (all names and numbers are made up):
                   </span>
                 </div>
 
@@ -613,10 +613,10 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap items-center gap-6">
             <Link href="/resume" className="hover:text-text transition">resume builder</Link>
-            <Link href="/tools/interview" className="hover:text-text transition">interview prep</Link>
+            <Link href="/interview" className="hover:text-text transition">interview prep</Link>
             <Link href="/cover-letter" className="hover:text-text transition">cover letter</Link>
             <Link href="/cold-email" className="hover:text-text transition">cold email</Link>
-            <Link href="/tools/roadmap" className="hover:text-text transition">career roadmap</Link>
+            <Link href="/roadmap" className="hover:text-text transition">career roadmap</Link>
             <Link href="/resume-parser" className="hover:text-text transition">ats scanner</Link>
           </div>
 

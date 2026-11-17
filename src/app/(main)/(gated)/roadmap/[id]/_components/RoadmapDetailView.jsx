@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -18,7 +18,8 @@ import {
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { completeRoadmapStep } from "@/actions/CareerRoadmap";
+import { setRoadmapStepDone, getStepTargets } from "@/actions/CareerRoadmap";
+import { generationErrorMessage } from "@/components/shared/generationError";
 import SourceChips from "@/components/shared/SourceChips";
 
 const RoadmapDetailView = ({ roadmap }) => {
@@ -26,21 +27,76 @@ const RoadmapDetailView = ({ roadmap }) => {
   const [activeTab, setActiveTab] = useState("steps");
   const router = useRouter();
 
-  const completedSteps = roadmap.steps.filter((step) => step.completed).length;
-  const totalSteps = roadmap.steps.length;
+  const [steps, setSteps] = useState(roadmap.steps);
+  const [progress, setProgress] = useState(roadmap.progress);
+  const [targets, setTargets] = useState(null); // { [stepId]: [...] }
+  const [targetsState, setTargetsState] = useState("loading"); // loading | ready | error
 
-  const handleCompleteStep = async (stepId) => {
+  const completedSteps = steps.filter((step) => step.completed).length;
+  const totalSteps = steps.length;
+
+  useEffect(() => {
+    let cancelled = false;
+    getStepTargets(roadmap.id)
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.targets) {
+          setTargets(res.targets);
+          setTargetsState("ready");
+        } else {
+          setTargetsState("error");
+        }
+      })
+      .catch(() => !cancelled && setTargetsState("error"));
+    return () => {
+      cancelled = true;
+    };
+  }, [roadmap.id]);
+
+  // Optimistic toggle; reverts if the save fails. The toast's Undo is the same call with the old value.
+  const toggleStep = async (stepId, done, isUndo = false) => {
+    if (completingStep !== null) return;
+    const prevSteps = steps;
+    const prevProgress = progress;
+    const nextSteps = steps.map((st) => (st.id === stepId ? { ...st, completed: done } : st));
+    setSteps(nextSteps);
+    setProgress((nextSteps.filter((st) => st.completed).length / (nextSteps.length || 1)) * 100);
     setCompletingStep(stepId);
     try {
-      await completeRoadmapStep(roadmap.id, stepId);
-      toast.success("Step completed! Great progress!");
-      router.refresh();
+      const res = await setRoadmapStepDone(roadmap.id, stepId, done);
+      if (res?.error || !res?.success) throw new Error(generationErrorMessage(res, "Failed to save"));
+      if (typeof res.progress === "number") setProgress(res.progress);
+      if (Array.isArray(res.steps)) setSteps(res.steps);
+      if (isUndo) {
+        toast.success("Undone");
+      } else {
+        toast.success(done ? "Step completed" : "Step marked not done", {
+          action: { label: "Undo", onClick: () => toggleStepRef.current?.(stepId, !done, true) },
+        });
+      }
     } catch (error) {
-      toast.error("Failed to complete step");
+      setSteps(prevSteps);
+      setProgress(prevProgress);
+      toast.error(error?.message || "Failed to update step");
     } finally {
       setCompletingStep(null);
+      router.refresh();
     }
   };
+  const toggleStepRef = React.useRef(null);
+  toggleStepRef.current = toggleStep;
+
+  // Phase-grouped checklist (D47): the roadmap stores no step-to-phase link, so steps are split in order
+  // across the phases. This is an AI estimate, not a stored plan.
+  const phases = roadmap.timeline?.phaseBreakdown || [];
+  const groups = (() => {
+    if (!phases.length) return [{ title: null, description: null, duration: null, items: steps }];
+    const out = phases.map((ph) => ({ ...ph, items: [] }));
+    steps.forEach((st, i) => {
+      out[Math.min(out.length - 1, Math.floor((i * out.length) / steps.length))].items.push(st);
+    });
+    return out.filter((g) => g.items.length > 0);
+  })();
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
@@ -135,16 +191,16 @@ const RoadmapDetailView = ({ roadmap }) => {
                 {completedSteps} of {totalSteps} steps completed
               </span>
               <span className="text-2xl font-bold text-[#fbbf24]">
-                {Math.round(roadmap.progress)}%
+                {Math.round(progress)}%
               </span>
             </div>
             <div className="relative h-4 bg-[#1a1815]/50 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${roadmap.progress}%` }}
+                animate={{ width: `${progress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
                 className={`h-full bg-gradient-to-r ${getProgressColor(
-                  roadmap.progress
+                  progress
                 )}`}
               />
             </div>
@@ -208,8 +264,22 @@ const RoadmapDetailView = ({ roadmap }) => {
 
           {/* --- Steps Tab --- */}
           <TabsContent value="steps" className="space-y-4">
+            <p className="text-xs text-[#b0b0b0]">
+              AI estimate: steps are grouped by phase in order, and the roadmap itself is AI generated.
+            </p>
+            {groups.map((group, gi) => (
+            <div key={gi} className="space-y-4">
+              {group.title && (
+                <div className="pt-2">
+                  <h3 className="text-lg font-semibold text-[#f59e0b]">
+                    {group.title}
+                    {group.duration ? <span className="text-sm font-normal text-[#b0b0b0]"> ({group.duration})</span> : null}
+                  </h3>
+                  {group.description && <p className="text-sm text-[#b0b0b0]">{group.description}</p>}
+                </div>
+              )}
             <AnimatePresence>
-              {roadmap.steps.map((step, index) => {
+              {group.items.map((step, index) => {
                 const IconComponent = getCategoryIcon(step.category);
                 return (
                   <motion.div
@@ -257,6 +327,23 @@ const RoadmapDetailView = ({ roadmap }) => {
                             {step.description}
                           </p>
 
+                          {targetsState === "ready" && targets?.[step.id]?.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-bold tracking-widest uppercase text-[#b0b0b0]">
+                                Closes gaps for
+                              </span>
+                              {targets[step.id].map((t, ti) => (
+                                <span
+                                  key={ti}
+                                  title={t.jdExcerpt}
+                                  className="px-2 py-1 rounded-full text-xs border border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#fbbf24] cursor-help"
+                                >
+                                  {[t.company, t.role].filter(Boolean).join(" - ")}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
                           <SourceChips
                             sources={step.sources}
                             legacy={!Array.isArray(step.sources)}
@@ -285,23 +372,35 @@ const RoadmapDetailView = ({ roadmap }) => {
                       </div>
 
                       <div>
-                        {!step.completed && (
-                          <button
-                            onClick={() => handleCompleteStep(step.id)}
-                            disabled={completingStep === step.id}
-                            className="px-4 py-2 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50 shadow-lg shadow-[#f59e0b]/30 hover:shadow-xl hover:shadow-[#f59e0b]/40"
-                          >
-                            {completingStep === step.id
-                              ? "Completing..."
-                              : "Complete"}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => toggleStep(step.id, !step.completed)}
+                          disabled={completingStep !== null}
+                          className={
+                            step.completed
+                              ? "px-4 py-2 border border-[#f59e0b]/40 rounded-xl text-[#fbbf24] font-semibold transition-all duration-300 disabled:opacity-50 hover:bg-[#f59e0b]/10"
+                              : "px-4 py-2 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50 shadow-lg shadow-[#f59e0b]/30 hover:shadow-xl hover:shadow-[#f59e0b]/40"
+                          }
+                        >
+                          {completingStep === step.id
+                            ? "Saving..."
+                            : step.completed
+                            ? "Mark not done"
+                            : "Complete"}
+                        </button>
                       </div>
                     </div>
                   </motion.div>
                 );
               })}
             </AnimatePresence>
+            </div>
+            ))}
+            {targetsState === "error" && (
+              <p className="text-xs text-[#b0b0b0]">Couldn&apos;t load which of your targets each step closes gaps for.</p>
+            )}
+            {steps.length === 0 && (
+              <p className="text-[#b0b0b0]">This roadmap has no steps yet.</p>
+            )}
           </TabsContent>
 
           {/* --- Milestones Tab --- */}
