@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, Eye, RotateCcw, Loader } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { LegacySourcesLabel } from "@/components/shared/SourceChips";
+import DeleteAtsButton from "./DeleteAtsButton";
 import { getUserATSScores } from "@/actions/ResumeParser";
 
 export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
@@ -53,6 +54,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
                 <p className="text-[10px] tracking-widest uppercase text-muted-foreground">
                   {new Date(r.createdAt).toLocaleString()}
                   {r.candidateLevel && ` / ${r.candidateLevel}`}
+                  {r.candidateLevel && r.candidateYears != null && ` (${r.candidateYears} ${r.candidateYears === 1 ? 'year' : 'years'} exp)`}
                   {r.requirementsTotal > 0 && ` / ${r.requirementsMatched}/${r.requirementsTotal} requirements`}
                 </p>
                 {r.previousScoreId && (
@@ -66,6 +68,9 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
                   </p>
                 )}
                 {r.isLegacy && <LegacySourcesLabel />}
+                {r.resumePurged && (
+                  <p className="text-[10px] text-muted-foreground">Resume text removed after 90 days; re-upload to use fixes.</p>
+                )}
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right text-sm">
@@ -78,6 +83,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
                 <Button type="button" size="sm" variant="ghost" onClick={() => onRerun(r)}>
                   <RotateCcw className="w-3 h-3 mr-2" /> Re-run with this job
                 </Button>
+                <DeleteAtsButton scoreId={r.id} onDeleted={(id) => setRows((cur) => (cur || []).filter((x) => x.id !== id))} />
               </div>
             </li>
           );

@@ -5,6 +5,7 @@ import { CheckCircle, AlertCircle, Loader, Wand2, RotateCcw, XCircle, ArrowRight
 import { Button } from "@/components/ui/button";
 import SourceChips, { LegacySourcesLabel } from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
+import DeleteAtsButton from "./DeleteAtsButton";
 import { proposeAtsFix, applyAtsFix } from "@/actions/ResumeParser";
 import { WEIGHT_GROUPS, weightsForLevel } from "@/lib/ats/weights";
 
@@ -94,6 +95,11 @@ function LevelAndWeights({ result }) {
         ) : (
           <span className="text-xs text-muted-foreground">Not recorded for this result</span>
         )}
+        {result.candidateYears != null && (
+          <span className="text-xs text-muted-foreground">
+            {result.candidateYears} {result.candidateYears === 1 ? "year" : "years"} exp
+          </span>
+        )}
       </div>
       {level && !active && (
         <p className="text-xs text-muted-foreground mb-6">
@@ -130,13 +136,20 @@ function LevelAndWeights({ result }) {
 }
 
 // One weakness: Propose fix -> show proposal -> Accept (real re-score) -> before/after.
-function WeaknessFix({ scoreId, index, hasResumeText, onOpenScore, onRerun }) {
+function WeaknessFix({ scoreId, index, hasResumeText, resumePurged, onOpenScore, onRerun }) {
   const [state, setState] = useState({ phase: "idle" }); // idle | proposing | proposed | applying | applied | error
 
   if (!hasResumeText) {
     return (
       <div className="mt-3 text-xs text-muted-foreground space-y-2">
-        <p>{generationErrorMessage({ code: "NEEDS_REUPLOAD" })}</p>
+        <Button type="button" variant="outline" size="sm" disabled>
+          <Wand2 className="w-3 h-3 mr-2" /> Propose fix
+        </Button>
+        <p>
+          {resumePurged
+            ? "Resume text is removed after 90 days; re-upload to use fixes."
+            : generationErrorMessage({ code: "NEEDS_REUPLOAD" })}
+        </p>
         {onRerun && (
           <Button type="button" variant="outline" size="sm" onClick={onRerun}>
             <RotateCcw className="w-3 h-3 mr-2" /> Re-run with this job
@@ -233,7 +246,7 @@ function WeaknessFix({ scoreId, index, hasResumeText, onOpenScore, onRerun }) {
   );
 }
 
-export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore }) {
+export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore, onDeleted }) {
   const legacy = !result.evidence;
   const fix = result.evidence?.appliedFix;
   return (
@@ -243,6 +256,12 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore 
           <span className="w-4 h-[1px] bg-divider"></span>
           Scan Results
         </h2>
+
+        {result.id && onDeleted && (
+          <div className="-mt-6 mb-6 flex justify-end">
+            <DeleteAtsButton scoreId={result.id} onDeleted={onDeleted} variant="outline" />
+          </div>
+        )}
 
         {(result.companyName || result.jobTitle) && (
           <p className="text-sm text-muted-foreground mb-6">
@@ -328,6 +347,7 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore 
                       scoreId={result.id}
                       index={i}
                       hasResumeText={!!result.hasResumeText}
+                      resumePurged={!!result.resumePurged}
                       onOpenScore={onOpenScore}
                       onRerun={onRerun}
                     />

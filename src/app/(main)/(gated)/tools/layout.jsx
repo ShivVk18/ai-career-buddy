@@ -5,11 +5,7 @@ import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
 const REAL_ROUTES = {
-  resume: "/resume",
-  ats: "/resume-parser",
   interview: "/interview",
-  "cover-letter": "/cover-letter",
-  "cold-email": "/cold-email",
   roadmap: "/roadmap",
 };
 

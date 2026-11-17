@@ -20,9 +20,31 @@ import { toast } from "sonner";
 
 import { ParagraphSources } from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
-import { updateCoverLetter } from "@/actions/CoverLetter";
+import { updateCoverLetter, regenerateCoverLetter, shortenCoverLetter } from "@/actions/CoverLetter";
+import { WordCount, ClicheCheck } from "@/components/shared/WritingHints";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { COVER_LETTER_WORDS, COVER_LETTER_TONES, DEFAULT_TONE, TONE_LABELS } from "@/lib/writing";
 
-const CoverLetterPreview = ({ id, content, sources }) => {
+const ACTION_COPY = {
+  regenerate: { title: "Regenerate this letter?", cta: "Regenerate" },
+  formal: { title: "Make this letter more formal?", cta: "Make more formal" },
+  shorten: { title: "Shorten this letter?", cta: "Shorten" },
+};
+
+const CoverLetterPreview = ({ id, content, sources: initialSources }) => {
+  const [sources, setSources] = useState(initialSources);
+  const [tone, setTone] = useState(DEFAULT_TONE);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [working, setWorking] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [previewMode, setPreviewMode] = useState("preview");
   const [savedContent, setSavedContent] = useState(content);
@@ -43,6 +65,31 @@ const CoverLetterPreview = ({ id, content, sources }) => {
       toast.error(error?.message || "Failed to save your changes")
     } finally {
       setSaving(false)
+    }
+  };
+
+  const runAction = async () => {
+    const kind = pendingAction;
+    setPendingAction(null);
+    if (!kind) return;
+    setWorking(true);
+    try {
+      const res =
+        kind === "shorten"
+          ? await shortenCoverLetter(id)
+          : await regenerateCoverLetter(id, kind === "formal" ? { formality: "formal", tone } : { tone });
+      if (!res || res.error || res.code) {
+        toast.error(generationErrorMessage(res));
+        return;
+      }
+      setEditedContent(res.content);
+      setSavedContent(res.content);
+      setSources(res.sources ?? null);
+      toast.success("Letter updated");
+    } catch (error) {
+      toast.error(error?.message || "Something went wrong. Please try again.");
+    } finally {
+      setWorking(false);
     }
   };
 
@@ -144,6 +191,59 @@ const CoverLetterPreview = ({ id, content, sources }) => {
         </div>
       </div>
 
+      {/* Rewrite actions */}
+      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-6">
+        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase flex items-center gap-4">
+          <Sparkles className="h-4 w-4 text-accent" />
+          Rewrite
+        </h3>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            aria-label="Tone"
+            value={tone}
+            onChange={(e) => setTone(e.target.value)}
+            disabled={working}
+            className="h-12 px-4 border border-divider bg-background text-[10px] font-bold tracking-widest uppercase rounded-sm"
+          >
+            {COVER_LETTER_TONES.map((t) => (
+              <option key={t} value={t}>{TONE_LABELS[t]}</option>
+            ))}
+          </select>
+          {[["regenerate", "Regenerate"], ["formal", "More formal"], ["shorten", "Shorter"]].map(([k, label]) => (
+            <Button
+              key={k}
+              variant="outline"
+              disabled={working || !id}
+              onClick={() => setPendingAction(k)}
+              className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase"
+            >
+              {working && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {label}
+            </Button>
+          ))}
+        </div>
+        {working && <p className="text-xs text-muted-foreground">Rewriting your letter...</p>}
+      </div>
+
+      <AlertDialog open={!!pendingAction} onOpenChange={(o) => !o && setPendingAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingAction ? ACTION_COPY[pendingAction].title : ""}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction === "shorten"
+                ? "This rewrites your current saved text, including your edits, and replaces it. Unsaved edits will be lost."
+                : "This replaces the current letter and its sources with a new one. Any edits you made, saved or not, will be lost."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={runAction}>
+              {pendingAction ? ACTION_COPY[pendingAction].cta : ""}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Editor Container */}
       <div className="border border-border bg-background rounded-sm overflow-hidden shadow-2xl relative">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
@@ -187,6 +287,11 @@ const CoverLetterPreview = ({ id, content, sources }) => {
             }}
           />
         </div>
+      </div>
+
+      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-6">
+        <WordCount text={editedContent} range={COVER_LETTER_WORDS} />
+        <ClicheCheck text={editedContent || ""} />
       </div>
 
       <ParagraphSources content={editedContent} sources={sources} />

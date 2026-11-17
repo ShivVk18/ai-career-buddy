@@ -15,9 +15,11 @@ import { coverLetterSchema } from "@/app/lib/schema";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { generationErrorMessage } from "@/components/shared/generationError";
+import { COVER_LETTER_TONES, DEFAULT_TONE, TONE_LABELS } from "@/lib/writing";
 
 export default function CoverLetterGenerator() {
   const router = useRouter();
+  const [tone, setTone] = useState(DEFAULT_TONE);
 
   const {
     register,
@@ -49,7 +51,7 @@ export default function CoverLetterGenerator() {
 
   const onSubmit = async (data) => {
     try {
-      await generateLetterFn(data);
+      await generateLetterFn({ ...data, tone });
     } catch (error) {
       toast.error(error.message || "Failed to generate cover letter");
     }
@@ -135,6 +137,31 @@ export default function CoverLetterGenerator() {
               {errors.jobDescription && (
                 <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
               )}
+            </div>
+
+            {/* Tone */}
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Tone
+              </Label>
+              <div role="radiogroup" aria-label="Tone" className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {COVER_LETTER_TONES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={tone === t}
+                    onClick={() => setTone(t)}
+                    className={`h-12 px-4 border rounded-sm text-[10px] font-bold tracking-widest uppercase transition-editorial ${
+                      tone === t
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-divider text-muted-foreground hover:border-accent"
+                    }`}
+                  >
+                    {TONE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Execution Trigger */}

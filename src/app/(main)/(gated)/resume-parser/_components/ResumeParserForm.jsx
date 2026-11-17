@@ -288,6 +288,10 @@ const ResumeParserComponent = () => {
           onScanAnother={resetAll}
           onRerun={handleRerun}
           onOpenScore={openScore}
+          onDeleted={() => {
+            resetAll();
+            setHistoryKey((k) => k + 1);
+          }}
         />
         </>
       )}

@@ -121,6 +121,45 @@ export default function ColdEmailGenerator() {
               </div>
             </div>
 
+            {/* Recipient (optional, typed by you) */}
+            <div className="space-y-6">
+              <h4 className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Recipient (optional)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-3">
+                  <Label htmlFor="recipientName" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Name
+                  </Label>
+                  <Input id="recipientName" placeholder="e.g., Priya Sharma" {...register("recipientName")} className="h-14" />
+                  {errors.recipientName && (
+                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.recipientName.message}</p>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="recipientRole" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Role
+                  </Label>
+                  <Input id="recipientRole" placeholder="e.g., Engineering Manager" {...register("recipientRole")} className="h-14" />
+                  {errors.recipientRole && (
+                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.recipientRole.message}</p>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="recipientEmail" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                    Email
+                  </Label>
+                  <Input id="recipientEmail" type="email" placeholder="name@company.com" {...register("recipientEmail")} className="h-14" />
+                  {errors.recipientEmail && (
+                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.recipientEmail.message}</p>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The email address is only saved for the &quot;Open in mail client&quot; button. It is never sent to the AI and nothing is sent automatically.
+              </p>
+            </div>
+
             {/* Content Logic */}
             <div className="space-y-3">
               <Label htmlFor="jobDescription" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">

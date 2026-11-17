@@ -47,12 +47,8 @@ export default function AppSidebar() {
   ];
 
   const previews = [
-    { label: "resume builder", href: "/tools/resume", icon: ScrollText },
     { label: "interview prep", href: "/tools/interview", icon: Sparkles },
-    { label: "cover letter", href: "/tools/cover-letter", icon: FileText },
-    { label: "cold email", href: "/tools/cold-email", icon: Mail },
     { label: "career roadmap", href: "/tools/roadmap", icon: BrainCircuit },
-    { label: "ats scanner", href: "/tools/ats", icon: ClipboardCheck },
   ];
 
   return (

@@ -3,14 +3,41 @@
 import { useState } from "react"
 import MDEditor from "@uiw/react-md-editor"
 import { Button } from "@/components/ui/button"
-import { Download, Copy, Edit3, FileText, CheckCircle2, Eye, Sparkles, Zap, Save, FileDown, Loader2 } from "lucide-react"
+import { Mail, Briefcase, CalendarClock, Download, Copy, Edit3, FileText, CheckCircle2, Eye, Sparkles, Zap, Save, FileDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { ParagraphSources } from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
-import { updateColdEmail } from "@/actions/ColdEmail";
+import SourceChips from "@/components/shared/SourceChips";
+import { WordCount } from "@/components/shared/WritingHints";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { COLD_EMAIL_WORDS } from "@/lib/writing";
+import { updateColdEmail, setColdEmailFollowUp } from "@/actions/ColdEmail";
 
-const ColdEmailPreview = ({ id, content, sources }) => {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAILTO_MAX = 1800;
+
+const ColdEmailPreview = ({
+  id,
+  content,
+  sources,
+  recipientName = "",
+  recipientRole = "",
+  recipientEmail = "",
+  subject = "",
+  followUpAt = "",
+}) => {
+  const initialFields = { recipientName, recipientRole, recipientEmail, subject };
+  const [fields, setFields] = useState(initialFields)
+  const [savedFields, setSavedFields] = useState(initialFields)
+  const [savingFields, setSavingFields] = useState(false)
+  const [followUp, setFollowUp] = useState(followUpAt)
+  const [savingFollowUp, setSavingFollowUp] = useState(false)
+  const fieldsDirty = Object.keys(fields).some((k) => fields[k] !== savedFields[k])
+  const emailTrim = fields.recipientEmail.trim()
+  const emailValid = emailTrim === "" || EMAIL_RE.test(emailTrim)
+  const setField = (k) => (e) => setFields((f) => ({ ...f, [k]: e.target.value }))
   const [editedContent, setEditedContent] = useState(content)
   const [previewMode, setPreviewMode] = useState("preview")
   const [savedContent, setSavedContent] = useState(content)
@@ -33,6 +60,70 @@ const ColdEmailPreview = ({ id, content, sources }) => {
       setSaving(false)
     }
   }
+
+  const handleSaveFields = async () => {
+    if (!emailValid) {
+      toast.error("Enter a valid email address")
+      return
+    }
+    setSavingFields(true)
+    try {
+      const payload = { ...fields, recipientEmail: emailTrim }
+      const res = await updateColdEmail(id, null, payload)
+      if (!res || res.error) {
+        toast.error(generationErrorMessage(res, "Failed to save details"))
+        return
+      }
+      setFields(payload)
+      setSavedFields(payload)
+      toast.success("Details saved")
+    } catch (error) {
+      toast.error(error?.message || "Failed to save details")
+    } finally {
+      setSavingFields(false)
+    }
+  }
+
+  const handleFollowUp = async (value) => {
+    const prev = followUp
+    setFollowUp(value)
+    setSavingFollowUp(true)
+    try {
+      const res = await setColdEmailFollowUp(id, value || null)
+      if (!res || res.error) {
+        setFollowUp(prev)
+        toast.error(generationErrorMessage(res, "Failed to set reminder"))
+        return
+      }
+      toast.success(value ? "Follow-up reminder set" : "Follow-up reminder cleared")
+    } catch (error) {
+      setFollowUp(prev)
+      toast.error(error?.message || "Failed to set reminder")
+    } finally {
+      setSavingFollowUp(false)
+    }
+  }
+
+  // D35: built only on an explicit click, from the address the user typed. Never sends anything.
+  const mailtoUrl = emailTrim && emailValid
+    ? `mailto:${encodeURIComponent(emailTrim).replace(/%40/g, "@")}?subject=${encodeURIComponent(fields.subject)}&body=${encodeURIComponent(editedContent || "")}`
+    : null
+  const mailtoTooLong = !!mailtoUrl && mailtoUrl.length > MAILTO_MAX
+
+  const handleMailto = () => {
+    if (!mailtoUrl) return
+    if (mailtoTooLong) {
+      toast.warning("This email is too long for a mail link and may be cut off. Copy the text instead.")
+      return
+    }
+    window.location.href = mailtoUrl
+  }
+
+  const paragraphMeta = Array.isArray(sources?.paragraphs) ? sources.paragraphs : null
+  const paragraphs = (editedContent || "").split(/\n{2,}/).filter(Boolean)
+  const canMatch = paragraphMeta && paragraphs.length === paragraphMeta.length
+  const hasProject = (i) =>
+    !!canMatch && (paragraphMeta[i]?.sources || []).some((s) => typeof s?.id === "string" && s.id.startsWith("proj:"))
 
   const handleCopy = async () => {
     try {
@@ -132,6 +223,97 @@ const ColdEmailPreview = ({ id, content, sources }) => {
         </div>
       </div>
 
+      {/* Recipient, subject, follow-up, mail client */}
+      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-8">
+        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase flex items-center gap-4">
+          <Mail className="h-4 w-4 text-accent" />
+          Recipient & Subject
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="ce-name" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Name</Label>
+            <Input id="ce-name" value={fields.recipientName} onChange={setField("recipientName")} maxLength={100} className="h-12" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ce-role" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Role</Label>
+            <Input id="ce-role" value={fields.recipientRole} onChange={setField("recipientRole")} maxLength={150} className="h-12" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ce-email" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Email</Label>
+            <Input id="ce-email" type="email" value={fields.recipientEmail} onChange={setField("recipientEmail")} maxLength={254} className="h-12" />
+            {!emailValid && (
+              <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">Enter a valid email address</p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ce-subject" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Subject</Label>
+          <Input
+            id="ce-subject"
+            value={fields.subject}
+            onChange={setField("subject")}
+            maxLength={200}
+            placeholder={fields.subject ? "" : "No subject yet. Type one."}
+            className="h-12"
+          />
+          <SourceChips sources={sources?.subject?.sources} heading="Subject based on" />
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleSaveFields}
+          disabled={savingFields || !fieldsDirty || !emailValid || !id}
+          className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase"
+        >
+          {savingFields ? <Loader2 className="h-4 w-4 mr-3 animate-spin" /> : <Save className="h-4 w-4 mr-3" />}
+          {savingFields ? "Saving..." : fieldsDirty ? "Save details" : "Details saved"}
+        </Button>
+
+        <div className="border-t border-divider pt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-2">
+            <Label htmlFor="ce-followup" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground flex items-center gap-2">
+              <CalendarClock className="h-3 w-3 text-accent" /> Follow-up reminder
+            </Label>
+            <div className="flex items-center gap-3">
+              <Input
+                id="ce-followup"
+                type="date"
+                value={followUp}
+                disabled={savingFollowUp || !id}
+                onChange={(e) => handleFollowUp(e.target.value)}
+                className="h-12 max-w-[220px]"
+              />
+              {followUp && (
+                <Button variant="ghost" size="sm" disabled={savingFollowUp} onClick={() => handleFollowUp("")} className="text-[10px] font-bold tracking-widest uppercase">
+                  Clear
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">A reminder on your dashboard. Nothing is sent.</p>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Send</span>
+            <div>
+              <Button
+                onClick={handleMailto}
+                disabled={!mailtoUrl}
+                className="h-12 px-6 text-[10px] font-bold tracking-widest uppercase"
+              >
+                <Mail className="h-4 w-4 mr-3" />
+                Open in mail client
+              </Button>
+            </div>
+            {!mailtoUrl ? (
+              <p className="text-xs text-muted-foreground">Add a valid recipient email to enable this.</p>
+            ) : mailtoTooLong ? (
+              <p className="text-xs text-destructive">Too long for a mail link; it may be cut off. Use Copy Text instead.</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Opens your mail app with this draft. You send it yourself.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Editor Container */}
       <div className="border border-border bg-background rounded-sm overflow-hidden shadow-2xl relative">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
@@ -175,6 +357,29 @@ const ColdEmailPreview = ({ id, content, sources }) => {
             }}
           />
         </div>
+      </div>
+
+      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-6">
+        <WordCount text={editedContent} range={COLD_EMAIL_WORDS} />
+        {paragraphs.length > 0 && (
+          <ol className="space-y-3">
+            {paragraphs.map((text, i) => (
+              <li
+                key={i}
+                className={`text-xs leading-relaxed font-general p-3 rounded-sm border ${
+                  hasProject(i) ? "border-accent bg-accent/10" : "border-divider bg-divider/5"
+                }`}
+              >
+                {hasProject(i) && (
+                  <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-accent">
+                    <Briefcase className="h-3 w-3" /> Matched project
+                  </span>
+                )}
+                <p className="whitespace-pre-wrap">{text}</p>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       <ParagraphSources content={editedContent} sources={sources} />

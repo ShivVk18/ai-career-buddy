@@ -18,6 +18,8 @@ export function generationErrorMessage(result, fallback = "Something went wrong.
       return result.error || "This has expired or your resume changed. Please start again.";
     case "NOT_RESTORABLE":
       return "This older copy only kept plain text, so it can't be restored. Your resume was not changed.";
+    case "NOT_SHORTENABLE":
+      return `${result.error || "This letter can't be shortened automatically."} Use Regenerate instead.`;
     default:
       return result.error || fallback;
   }

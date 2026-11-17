@@ -42,7 +42,16 @@ export default async function EditColdEmailPage({ params }) {
           </div>
         </div>
 
-        <ColdEmailPreview id={coldEmail?.id} content={coldEmail?.content} sources={coldEmail?.sources ?? null} />
+        <ColdEmailPreview
+          id={coldEmail?.id}
+          content={coldEmail?.content}
+          sources={coldEmail?.sources ?? null}
+          recipientName={coldEmail?.recipientName ?? ""}
+          recipientRole={coldEmail?.recipientRole ?? ""}
+          recipientEmail={coldEmail?.recipientEmail ?? ""}
+          subject={coldEmail?.subject ?? ""}
+          followUpAt={coldEmail?.followUpAt ? new Date(coldEmail.followUpAt).toISOString().slice(0, 10) : ""}
+        />
       </div>
     </div>
   )

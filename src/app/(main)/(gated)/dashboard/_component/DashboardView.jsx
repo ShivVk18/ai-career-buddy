@@ -33,6 +33,7 @@ const EMPTY_DATA = {
   targets: [],
   totalTargets: 0,
   nextTasks: [],
+  dueFollowUps: [],
 };
 
 export default function DashboardView({ data }) {
@@ -40,6 +41,7 @@ export default function DashboardView({ data }) {
   const counts = d.counts || EMPTY_DATA.counts;
   const targets = d.targets || [];
   const nextTasks = d.nextTasks || [];
+  const dueFollowUps = d.dueFollowUps || [];
   const [selectedToolId, setSelectedToolId] = useState("resume");
   const [quickInput, setQuickInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
@@ -313,6 +315,49 @@ export default function DashboardView({ data }) {
                     showing {targets.length} of {d.totalTargets} targets
                   </p>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Follow-ups due */}
+          <div className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
+            <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
+              <div>
+                <h2 className="font-bold text-base text-text lowercase">follow-ups due</h2>
+                <span className="text-xs text-muted">reminders you set on your cold emails</span>
+              </div>
+              <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full">
+                {dueFollowUps.length} due
+              </span>
+            </div>
+            {dueFollowUps.length === 0 ? (
+              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+                <p className="text-sm text-text mb-1">No follow-ups due.</p>
+                <p className="text-xs text-muted">
+                  Set a follow-up date on a cold email and it will show up here when it is due.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {dueFollowUps.map((f) => (
+                  <Link
+                    key={f.id}
+                    href={f.href}
+                    className="p-3.5 rounded-xl border border-[#ECEAE4] hover:border-pip/50 transition bg-[#FBFAF7]/40 flex items-center justify-between gap-3 min-w-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm text-text">{f.company || "company not set"}</span>
+                        <span className="text-xs text-muted truncate">• {f.role || "role not set"}</span>
+                      </div>
+                      <span className="text-[11px] text-muted block truncate">
+                        {f.recipientName ? `to ${f.recipientName} • ` : ""}
+                        {f.subject || "no subject"} • due {new Date(f.followUpAt).toLocaleDateString(undefined, { timeZone: "UTC" })}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+                  </Link>
+                ))}
               </div>
             )}
           </div>

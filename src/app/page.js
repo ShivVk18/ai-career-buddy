@@ -59,7 +59,7 @@ export default function LandingPage() {
       scene: "morning",
       oldText: "generic resume stuffed with buzzwords and unverified claims",
       newText: "paper doc with match highlights, struck lines, and source telemetry footnotes",
-      href: "/tools/resume",
+      href: "/resume",
     },
     {
       name: "interview prep",
@@ -75,7 +75,7 @@ export default function LandingPage() {
       scene: "pink",
       oldText: "fluffy corporate letters that start with 'i am thrilled to apply'",
       newText: "stiff-to-eager tone slider, flagged clichés, and 250-word targeted clarity",
-      href: "/tools/cover-letter",
+      href: "/cover-letter",
     },
     {
       name: "cold email",
@@ -83,7 +83,7 @@ export default function LandingPage() {
       scene: "sea",
       oldText: "templated spam messages sent to 50 recruiters that get ignored",
       newText: "concise <120 word outreach with matched projects highlighted and mailto links",
-      href: "/tools/cold-email",
+      href: "/cold-email",
     },
     {
       name: "career roadmap",
@@ -99,7 +99,7 @@ export default function LandingPage() {
       scene: "lemon",
       oldText: "cryptic percentage scores that leave you guessing what failed",
       newText: "big pixel font score per role with 1-click fixes that count up live",
-      href: "/tools/ats",
+      href: "/resume-parser",
     },
   ];
 
@@ -612,12 +612,12 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
-            <Link href="/tools/resume" className="hover:text-text transition">resume builder</Link>
+            <Link href="/resume" className="hover:text-text transition">resume builder</Link>
             <Link href="/tools/interview" className="hover:text-text transition">interview prep</Link>
-            <Link href="/tools/cover-letter" className="hover:text-text transition">cover letter</Link>
-            <Link href="/tools/cold-email" className="hover:text-text transition">cold email</Link>
+            <Link href="/cover-letter" className="hover:text-text transition">cover letter</Link>
+            <Link href="/cold-email" className="hover:text-text transition">cold email</Link>
             <Link href="/tools/roadmap" className="hover:text-text transition">career roadmap</Link>
-            <Link href="/tools/ats" className="hover:text-text transition">ats scanner</Link>
+            <Link href="/resume-parser" className="hover:text-text transition">ats scanner</Link>
           </div>
 
           <div>
