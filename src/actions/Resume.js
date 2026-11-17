@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { runAIText } from "@/lib/ai";
 import { safeErr } from "@/lib/utils";
 import { z } from "zod";
+import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { assignEntryIds, buildSources, snapshot } from "@/lib/ai/sources";
 
 // Helper function to validate and sanitize resume data
@@ -149,17 +150,6 @@ const improveSchema = z.object({
   current: z.string().trim().min(1).max(5000),
   type: z.string().trim().min(1).max(40),
 });
-
-const numTokens = (t) =>
-  [...String(t).replace(/^\s*\d+[.)]\s+/gm, "").matchAll(/\d[\d,]*(?:\.\d+)?/g)].map((m) =>
-    m[0].replace(/,/g, "").replace(/\.$/, "")
-  );
-
-/** Numbers (digits, %, $ amounts) in `output` that do not appear in `input`. */
-function inventedNumbers(output, input) {
-  const known = new Set(numTokens(input));
-  return numTokens(output).filter((n) => !known.has(n));
-}
 
 /**
  * Returns { text, sources } where sources is only input:current ("Rewritten from your text").

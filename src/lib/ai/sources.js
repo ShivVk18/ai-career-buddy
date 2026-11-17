@@ -14,8 +14,9 @@ const clip = (s, n) => {
 
 /**
  * Normalize for matching resume quotes against extracted PDF text: NFKC (ligatures etc.), smart
- * quotes and dashes to ASCII, soft hyphens removed, "-\n" hyphenation joined, whitespace
- * collapsed, lowercase. Apply to both sides.
+ * quotes and dashes to ASCII, soft hyphens removed, hyphens between letters removed (with or
+ * without following whitespace/newline, so "full-stack", "full-\nstack" and "fullstack" match),
+ * whitespace collapsed, lowercase. For MATCHING only; apply to both sides, display the original.
  */
 export function normalizeText(s) {
   return String(s ?? "")
@@ -24,7 +25,7 @@ export function normalizeText(s) {
     .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'")
     .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
     .replace(/[\u2010-\u2015\u2212]/g, "-")
-    .replace(/(\w)-\s*\r?\n\s*(\w)/g, "$1$2")
+    .replace(/(\p{L})-\s*(?=\p{L})/gu, "$1")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
