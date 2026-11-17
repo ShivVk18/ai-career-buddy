@@ -65,6 +65,37 @@ describe("scrubEvent", () => {
   });
 });
 
+describe("message redaction", () => {
+  const prisma = {
+    message: "Invalid `prisma.resume.update()` invocation: data: { content: \"Led a team of 9 engineers at Acme Corp\" }",
+    exception: {
+      values: [
+        { type: "PrismaClientValidationError", value: "Invalid `prisma.resume.update()` invocation: data: { content: \"Led a team of 9 engineers at Acme Corp\" }", stacktrace: { frames: [{ filename: "app/api/x.js", lineno: 12, colno: 4, function: "POST", vars: { a: "Acme" }, context_line: "const t = 'Acme Corp'", pre_context: ["x = 'Acme'"], post_context: ["y = 'Acme'"] }] } },
+        { type: "SafeErr", value: "AI_LIMIT" },
+      ],
+    },
+    logentry: { message: "resume says Acme Corp", params: ["Acme"] },
+    extra: { note: "Acme Corp resume text here", code: "AI_LIMIT" },
+    contexts: { custom: { info: "Acme Corp resume text", n: 1 } },
+  };
+  const out = scrubEvent(prisma);
+  const json = JSON.stringify(out);
+  it("removes content echoed in messages everywhere", () => {
+    expect(json).not.toContain("Acme");
+    expect(json).not.toContain("engineers");
+    expect(out.exception.values[0].value).toBe("PrismaClientValidationError: [redacted]");
+    expect(out.message).toBe("[redacted]");
+    expect(out.logentry).toEqual({ message: "[redacted]" });
+  });
+  it("keeps a SafeErr code", () => {
+    expect(out.exception.values[1].value).toBe("AI_LIMIT");
+    expect(out.extra.code).toBe("AI_LIMIT");
+  });
+  it("keeps frame file and line but no source context", () => {
+    expect(out.exception.values[0].stacktrace.frames[0]).toEqual({ filename: "app/api/x.js", lineno: 12, colno: 4, function: "POST" });
+  });
+});
+
 describe("helpers", () => {
   it("filters sensitive keys case-insensitively and nested", () => {
     const v = scrubValue({ Resume: "x", JD: "x", job_description: "x", ClerkId: "x", Email: "x", safe: "yes", arr: [{ answer: "x", n: 1 }] });

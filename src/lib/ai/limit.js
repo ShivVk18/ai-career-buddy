@@ -1,5 +1,7 @@
 // Per-user daily AI cap (D21, D50). Counts today's user ACTIONS (UTC day): distinct AiUsage.actionId,
 // plus legacy rows with a null actionId counted individually. Every call is still logged.
+// SOFT cap: the check and the usage log are not atomic, so concurrent actions started at limit-1 can each
+// pass and overshoot slightly. Accepted (a hard cap would need a lock or counter row).
 // If usage can't be read: fails CLOSED in production (D33), fails open with one warning in dev.
 import { db } from "../prisma.js";
 

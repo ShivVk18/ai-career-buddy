@@ -5,6 +5,15 @@
 
 const REDACTED = "[Filtered]";
 const MAX_STRING = 300;
+const REDACTED_MESSAGE = "[redacted]";
+
+// Only errors we throw ourselves with a controlled message may keep it: type "SafeErr" or "AIError".
+const SAFE_TYPES = new Set(["SafeErr", "AIError"]);
+function safeExceptionValue(x) {
+  if (typeof x.value !== "string") return x.value;
+  if (SAFE_TYPES.has(x.type)) return scrubString(x.value);
+  return typeof x.type === "string" && x.type ? `${x.type}: ${REDACTED_MESSAGE}` : REDACTED_MESSAGE;
+}
 
 // Keys whose value is dropped wherever they appear in extra/contexts/tags/breadcrumb data.
 export const SENSITIVE_KEY =
@@ -33,6 +42,17 @@ export function scrubValue(v, depth = 0) {
   return out;
 }
 
+/** scrubValue, then every remaining string value is replaced too (only codes in short tokens survive). */
+function scrubStrings(v, depth = 0) {
+  if (typeof v === "string") return /^[A-Za-z0-9_.:/-]{1,60}$/.test(v) ? v : REDACTED_MESSAGE;
+  if (v === null || typeof v !== "object") return v;
+  if (depth > 6) return REDACTED;
+  if (Array.isArray(v)) return v.slice(0, 50).map((x) => scrubStrings(x, depth + 1));
+  const out = {};
+  for (const [k, val] of Object.entries(v)) out[k] = SENSITIVE_KEY.test(k) ? REDACTED : scrubStrings(val, depth + 1);
+  return out;
+}
+
 /** Path only: no query string, hash or credentials. */
 export function scrubUrl(url) {
   if (typeof url !== "string") return url;
@@ -56,24 +76,25 @@ export function scrubEvent(event) {
     // Method and path only. No body (data), cookies, headers, query string or env.
     e.request = { method: e.request.method, url: scrubUrl(e.request.url) };
   }
-  if (e.extra) e.extra = scrubValue(e.extra);
+  if (e.extra) e.extra = scrubStrings(e.extra);
   if (e.tags) e.tags = scrubValue(e.tags);
   if (e.contexts) {
     const c = {};
     for (const [name, val] of Object.entries(e.contexts)) {
       // Device/runtime/app contexts carry no personal text; everything else is scrubbed.
-      c[name] = ["os", "runtime", "browser", "device", "app", "culture"].includes(name) ? val : scrubValue(val);
+      c[name] = ["os", "runtime", "browser", "device", "app", "culture"].includes(name) ? val : scrubStrings(val);
     }
     e.contexts = c;
   }
-  if (typeof e.message === "string") e.message = scrubString(e.message);
-  if (e.logentry) delete e.logentry;
+  // Messages can echo content (e.g. Prisma validation errors print query args), so they never leave as-is.
+  if (typeof e.message === "string") e.message = REDACTED_MESSAGE;
+  if (e.logentry) e.logentry = { message: REDACTED_MESSAGE };
   if (e.exception?.values) {
     e.exception = {
       ...e.exception,
       values: e.exception.values.map((x) => ({
         ...x,
-        value: typeof x.value === "string" ? scrubString(x.value) : x.value,
+        value: safeExceptionValue(x),
         // Stack frames stay, but local variable values never do.
         stacktrace: x.stacktrace
           ? { ...x.stacktrace, frames: (x.stacktrace.frames || []).map((f) => { const { vars: _v, pre_context: _p, context_line: _c, post_context: _o, ...rest } = f; return rest; }) }

@@ -51,7 +51,7 @@ Every name in `.env.example` must be set in production, except the optional ones
 - Clerk: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL`.
 - AI: `GEMINI_API_KEYS` (comma separated) or `GEMINI_API_KEY`, `AI_ROUTE_FAST`, `AI_ROUTE_WRITE`.
 - `AI_DEBUG` must be UNSET (prompt logging is off in production anyway; keep it empty).
-- `AI_DAILY_LIMIT`: decide it. Unset = 50 actions per user per day (one action = one tailor, one ATS fix, one letter, and so on); `0` disables the cap.
+- `AI_DAILY_LIMIT`: decide it. Unset = 50 actions per user per day (one action = one tailor, one ATS fix, one letter, and so on); `0` disables the cap. The cap is soft: concurrent actions started at limit-1 can overshoot slightly (check and log are not atomic).
 - `ATS_FIX_SIGNING_SECRET`: at least 32 characters (`openssl rand -base64 48`). Without it, 1-click fixes return FIX_UNAVAILABLE in production.
 - Sentry (all optional; with no DSN nothing loads and nothing is sent):
   - `SENTRY_DSN` (server) and `NEXT_PUBLIC_SENTRY_DSN` (browser; it is inlined at BUILD time, so set it before building).
@@ -72,7 +72,7 @@ Removed (zero imports, grepped): `openai`, `resend`, `@upstash/qstash`, `html2pd
 (the app uses `html2canvas-pro`). Kept on purpose: `framer-motion` and `motion` (both imported by UI files; merging them is a
 frontend change), `@langchain/core` and `@tsparticles/engine` (required peers of other packages).
 
-Before: 23 vulnerabilities (1 moderate, 18 high, 4 critical): `next`, `@clerk/*`, `jspdf`, `dompurify`, `sharp`, `postcss`,
+Before (as reported at the time of the fix, not re-verifiable): 23 vulnerabilities (1 moderate, 18 high, 4 critical): `next`, `@clerk/*`, `jspdf`, `dompurify`, `sharp`, `postcss`,
 `defu`, `js-cookie`, `fflate`, `deepmerge-ts`, `effect`, `picomatch`.
 
 Action: `npm audit fix` (no `--force`). It first failed because `@clerk/nextjs` needs `react ~19.1.4`, so React was moved

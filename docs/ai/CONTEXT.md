@@ -5,7 +5,7 @@ Scout map, 2026-11-17, branch `phase-7` (Phase 6 done: `7bc0fdc..6417e3e`). Read
 ## 1. Stack
 - Next.js ^15.5.9 App Router, JavaScript, standalone output, server action body 10mb. React 19.1, Tailwind 4, Radix/shadcn (`src/components/ui`), sonner, `@uiw/react-md-editor`, jspdf (`ResumeBuilder.jsx:54`).
 - Forms: react-hook-form + zod ^4 (`src/app/lib/schema.js`). Server zod for AI output (`src/lib/ai/schemas.js`). Clerk ^6.31.10 (`src/middleware.js:4-15`); server code calls `auth()`.
-- DB: PostgreSQL, Prisma ^6.16.2, 11 migration folders. FIVE not confirmed applied (D22), in apply order: `20261117000000_ai_usage`, `20261117010000_quiz_session`, `20261118000000_phase3_sources`, `20261119000000_cold_email_fields`, `20261120000000_interview_answer`.
+- DB: PostgreSQL, Prisma ^6.16.2, 11 migration folders. FIVE not confirmed applied (D22), in apply order: `20261117000000_ai_usage`, `20261117010000_quiz_session`, `20261117020000_phase3_sources`, `20261117030000_cold_email_fields`, `20261117040000_interview_answer`.
 - AI: `@langchain/core` + `@langchain/google-genai` behind `src/lib/ai/`. PDF text: `unpdf`. Unused deps: `openai`, `resend`, `@upstash/qstash`. Background jobs: none; all AI runs inline. Docker: multi-stage, node:20, `prisma migrate deploy` then `server.js` (`Dockerfile:57`). No `vercel.json`.
 
 ## 2. Folder map
@@ -110,7 +110,7 @@ Each: size (S/M/L), files, trust conflicts. Pick any subset.
 
 **(b) Production readiness.**
 - Migrations (S to apply, M if drift). Run `prisma migrate status` against production first (read-only). If only the five above are pending, `prisma migrate deploy` applies them in folder order: ai_usage, quiz_session, phase3_sources, cold_email_fields, interview_answer. That order is forced: InterviewAnswer needs QuizSession. All five SQL files are additive (CREATE TABLE, ADD COLUMN, DROP NOT NULL on `User.email`), with no DROP. Back up first. Baseline or resolve is needed only if status reports drift or a table or column already exists (the D22 dev drift); then use `prisma migrate resolve --applied <name>` per migration already present. Never `migrate reset` or `migrate dev` on production. Files: `prisma/migrations/*`, `Dockerfile:57`.
-- Folder `20261120000000_interview_answer` is dated after today (REVIEW nice #7). Rename before any later migration lands (S).
+- Folder `20261117040000_interview_answer` is dated after today (REVIEW nice #7). Rename before any later migration lands (S).
 - Tests (M): none. No test runner in `package.json`; `TESTING.md:66` mentions a `__tests__` directory that does not exist. Unit targets: `rubric.js` computeOverall, `verify.js`, `prune.js`, `numberCheck.js`, `derive.js` matchStepToJd. Start by moving `scripts/selfcheck-matching.mjs` into the runner. Trust conflicts: none.
 - Error monitoring (S to add a provider, M with scrubbing): none today; errors go to `console.error` via `safeErr`. Trust conflict: the provider must never receive resume text, JD text, or Clerk ids.
 - Docker and Vercel (D11, M): Docker done (`Dockerfile:57` migrate, `.dockerignore` excludes `.env` and `*.md`). Vercel not set up: no `vercel.json`, no migrate step, so the five migrations need a manual or build step. Owner decides the Vercel build and migrate command. Trust conflict: secrets must live in the platform, not an image.

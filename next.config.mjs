@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // Always define the browser DSN (empty when unset) so the bundler inlines it and removes the Sentry
+  // branch in src/instrumentation-client.js; otherwise the SDK chunk ships even with no DSN (D51).
+  env: { NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "" },
   images: {
     remotePatterns: [
       {

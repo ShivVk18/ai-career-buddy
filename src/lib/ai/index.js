@@ -8,8 +8,9 @@ import { currentAiAction } from "./action.js";
 
 const TIMEOUT_MS = 90_000;
 
-/** Thrown when AI cannot be used. Message never contains keys or user content. */
 export { withAiAction } from "./action.js";
+
+/** Thrown when AI cannot be used. Message never contains keys or user content. */
 
 export class AIError extends Error {
   constructor(message, { code = "AI_UNAVAILABLE", attempts = [] } = {}) {
