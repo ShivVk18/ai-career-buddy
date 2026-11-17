@@ -51,3 +51,15 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D22 | Migrations | Agents write migration SQL only. The owner applies `AiUsage` and the Phase 2 migration after resolving the dev DB drift. |
 | D23 | Quiz "Explain" | Accepted: explanations show on the results screen after submit, not mid-quiz, because they would reveal answers (D20). |
 | D24 | Small leftovers | The landing footer links go to the real routes, and the dashboard "ask pip" box sends the typed text to chat. Both are fixed in the Phase 2 fix round. |
+
+## Phase 3 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D25 | Phase 3 scope | No BUILD-PLAN.md exists, so Phase 3 is **trust + hardening**: sources on every AI output, PDF upload checks, the email collision fix, a default AI cap, and dead-code cleanup. Tools parity moves to Phase 4, industry insights to Phase 5. **Done when:** every new ATS item, improved resume text, cover letter and cold email body paragraph, and roadmap step carries at least one valid source; the server drops unsourced items (retrying once); records from before Phase 3 show a "created before sources" label; invalid PDFs are rejected; no placeholder or empty emails are written; `npm run build` passes; all 6 tools still work. |
+| D26 | Citation granularity | **Per item, with linked evidence.** Sources come from a server-built catalog (resume entries, profile fields, job-description lines, or resume-PDF quotes checked against the extracted text). The server rejects any source id or quote it can't verify. Resume entries get a stable `id` inside the existing JSON (no migration). |
+| D27 | Letters and emails | **Per paragraph.** Each body paragraph carries source ids, shown as chips under the paragraph. Greeting and closing paragraphs don't need sources. If the user edits the text so paragraphs no longer line up, show a "Based on" list instead. |
+| D28 | Unsourced output | The server drops items with no valid source and retries once if too few remain. Nothing unsourced reaches the user. |
+| D29 | Pre-Phase-3 records | Show a subtle "Created before sources were added" label. Nothing is regenerated or changed. |
+| D30 | AI cap default (amends D21) | Unset `AI_DAILY_LIMIT` now means **50 calls per user per day**; `0` disables the cap. |
+| D31 | FAQ copy | Reword the landing FAQ now to describe what exists. Restore the weekly-insights promise when insights ship. |

@@ -1,110 +1,114 @@
-# PLAN: Phase 2 (real data)
+# PLAN: Phase 3 (trust + hardening)
 
-Branch `phase-2`. Decisions: D16–D22 in DECISIONS.md. Inputs: CONTEXT.md §11 "Phase 2 inputs".
+Branch `phase-3`. Decisions: D25–D31 in DECISIONS.md. Inputs: CONTEXT.md §11 "Phase 3 inputs".
 
-**Done when:** `src/lib/mock.ts` is imported only by `/tools/*` pages; the dashboard and Pip chat show only the signed-in user's real records (empty states otherwise); the quiz score is computed on the server; the daily AI cap blocks requests over the limit; `npm run build` passes; all 6 tools still work.
+**Done when:**
+- Every newly generated ATS item, improved resume text, cover letter and cold email body paragraph, and roadmap step carries at least one valid source.
+- The server drops unsourced items, retrying once.
+- Records from before Phase 3 show a "created before sources" label.
+- Invalid PDFs are rejected.
+- No placeholder or empty emails are written.
+- `npm run build` passes, and all 6 tools still work.
 
-Rules: never edit `.env`; migrations are SQL files only and are never applied (D22); every query is scoped by userId; zod on every input; no feature removed; chat is read-only; nothing invented. When there's no data, show an empty state, not a sample.
+Rules: never edit `.env`; migrations are SQL files only and are never applied; every query is scoped by userId; zod on every input; no feature removed; existing records are never rewritten.
 
-**Out of scope:** moving `/tools/*` features into the real routes, citations in generated text (D8), industry insights (D9), BYOK, providers other than Gemini.
-
----
-
-### 1. BACKEND: Write the API contract first
-- **Files:** `docs/ai/API-CONTRACT.md`
-- **What:** Define these shapes before any code, so the frontend agent builds against them:
-  - `getDashboardData()` return shape.
-  - `generateQuiz()` and `submitQuiz(quizId, answers)` input and return shapes.
-  - `/api/chat` request, SSE events (keep `step`, `text`, `tool_result`, `done`, add `error {code, message}`) and every tool card's data shape, built only from real records.
-  - The `AI_LIMIT` error the UI must handle.
-- **Why:** The frontend tasks depend on these shapes, and the contract stops the two agents drifting apart.
-- **Test:** The reviewer checks that the code in tasks 2–5 matches the contract.
-
-### 2. BACKEND: Dashboard data action
-- **Files:** new `src/actions/Dashboard.js`
-- **What:** `getDashboardData()` returns:
-  - `firstName` from Clerk.
-  - `targets[]`, derived from the user's ATSScore, CoverLetter and ColdEmail rows: company and role, deduplicated, with the latest activity date and which documents exist (with ids for links).
-  - `nextTasks[]`: incomplete CareerPath steps, max 5.
-  - `avgAtsScore` (null if there are no scores).
-  - Counts per tool.
-
-  Everything is scoped by userId with no AI calls.
-- **Why:** D18. The dashboard is entirely mock today.
-- **Test:** A brand-new user gets empty arrays and `avgAtsScore: null`. After one ATS run and one cover letter, `targets` lists those companies.
-
-### 3. BACKEND: Server-side quiz scoring
-- **Files:** `prisma/schema.prisma`, new migration SQL (`quiz_session`), `src/actions/Interview.js`
-- **What:**
-  - Add a `QuizSession` model (`id`, `userId`, `questions` Json with answers, `createdAt`, `submittedAt?`).
-  - `generateQuiz` stores the session and returns `{ quizId, questions }` without `correctAnswer` or `explanation`.
-  - `submitQuiz(quizId, answers[])` validates with zod and checks ownership. It rejects a session that's already submitted. It computes the score on the server and saves the `Assessment` (same shape as before, with the tip via runAI). It returns per-question results including the correct answers and explanations.
-  - Keep `saveQuizResult` only if something else still calls it; otherwise the reviewer confirms nothing calls it before removal.
-  - Keep `getAssessments` and `getLatestQuiz` unchanged.
-- **Why:** D20. The score can currently be forged.
-- **Test:** The quiz payload in the browser network tab contains no correct answers. Submitting returns the score. A second submit of the same `quizId` is rejected. Editing the request to claim 10/10 has no effect.
-
-### 4. BACKEND: Per-user daily AI cap
-- **Files:** new `src/lib/ai/limit.js`, `src/lib/ai/index.js`, `.env.example`
-- **What:** Before the first attempt, `runAI` (when it has a userId) counts today's `AiUsage` rows for that user. If the count is at or over `AI_DAILY_LIMIT`, it throws `AIError` with code `AI_LIMIT`. If the env var is unset, there's no cap. If the table is missing, it skips the cap with one warning (D21). Add `AI_DAILY_LIMIT` to `.env.example`.
-- **Why:** D21. A real chat lets users spend your key.
-- **Test:** With `AI_DAILY_LIMIT=1` and the migration applied, the second AI request of the day fails with `AI_LIMIT`. Without the table, requests still work and one warning is logged.
-
-### 5. BACKEND: Real, read-only Pip chat
-- **Files:** `src/app/api/chat/route.js`, new `src/lib/ai/chatContext.js`
-- **What:**
-  - Remove the `mock.ts` import and the canned replies.
-  - Build context from the user's real records: profile (industry, skills, experience), the latest 3 ATS scores, active roadmaps and next steps.
-  - Call `runAIStructured("write", …)`. The output schema is `{ reply, cards: [{ type, recordId }] }`. The server fills each card's data from the record with that id, and drops any id that isn't the user's.
-  - Stream with the same SSE event shapes, plus an `error` event (including `AI_LIMIT`).
-  - The system prompt says: answer only from the given context; say when you don't know; never invent companies, scores or facts.
-  - Nothing is written to the database except `AiUsage`.
-- **Why:** D19 and the "nothing invented" promise. This is the top HIGH problem.
-- **Test:** A new user asking "what's my ATS score?" is told there are no scores yet and gets no card. After an ATS run, the answer cites the real score and shows one card for that record.
-
-### 6. FRONTEND: Real dashboard
-- **Files:** `src/app/(main)/(gated)/dashboard/page.jsx`, `_component/DashboardView.jsx`
-- **What:**
-  - The page calls `getDashboardData()` on the server and passes the result to the view.
-  - Remove the `mock.ts` imports, the hard-coded "88/100" and the "Aarav" fallback.
-  - The pipeline shows derived targets that link to their real documents. Tasks come from the roadmap. The score is `avgAtsScore` or "No score yet".
-  - Each empty section points to the relevant tool.
-  - Keep the Pip scene and layout per `design/ascendai-pixel.html`.
-- **Why:** D18 and the fabricated-data problem.
-- **Test:** A new user sees empty states with no fake companies. With real data, the dashboard shows real records and the links open them.
-
-### 7. FRONTEND: Sidebar goes to the real routes
-- **Files:** `src/components/shared/AppSidebar.jsx`, `src/app/(main)/(gated)/resume/page.jsx` (the `/tools/resume` link)
-- **What:**
-  - The main nav links to `/resume`, `/resume-parser`, `/interview`, `/cover-letter`, `/cold-email` and `/roadmap`.
-  - A small secondary "Previews" group keeps `/tools/*` reachable.
-  - Label the resume page's link to `/tools/resume` as "Preview".
-- **Why:** D3 and D17.
-- **Test:** Every main sidebar link opens a real page, and the previews are still reachable.
-
-### 8. FRONTEND: Preview banner on `/tools/*`
-- **Files:** new `src/app/(main)/(gated)/tools/layout.jsx` (and a shared banner component if needed)
-- **What:** One layout puts a clear, non-dismissable banner above every tool page: "Preview: sample data, not yours." It links to the real version of that tool. The tool pages themselves don't change.
-- **Why:** D17. Mock data must never pass for real data.
-- **Test:** All 6 `/tools/*` pages show the banner, and its link goes to the matching real route.
-
-### 9. FRONTEND: Quiz UI on server scoring
-- **Files:** `src/app/(main)/(gated)/interview/**` (the Quiz component and anything that calls `saveQuizResult`)
-- **What:** Use `{ quizId, questions }` from `generateQuiz`, send only `answers[]` to `submitQuiz`, and render the score and per-question results (correct answer and explanation) from the server's response. The browser no longer computes a score.
-- **Why:** D20.
-- **Test:** Take a quiz end to end. The result screen and assessment history match the server's score.
-
-### 10. FRONTEND: Chat UI for real replies
-- **Files:** `src/components/chat/ChatSlideOver.jsx`, `ChatMessage.jsx`, `ToolResultCard.jsx`, `src/app/chat/page.jsx`
-- **What:**
-  - Replace `MOCK_CHAT_PROMPTS` with neutral suggested prompts defined in the component, such as "What's my latest ATS score?". They must contain no fake data.
-  - Handle the new `error` event with a friendly message, plus a specific "daily limit reached" message for `AI_LIMIT`.
-  - Render the card shapes from API-CONTRACT.md, and have cards link to the real routes instead of `/tools/*`.
-  - No `mock.ts` import remains in the chat components.
-- **Why:** D19.
-- **Test:** A new user gets a grounded "no data yet" reply. Errors show a message, not a crash. Cards open the real record.
+**Out of scope:** moving `/tools/*` features into the real routes (Phase 4); industry insights (Phase 5); dropping unused Prisma models or tables (that touches data, so it needs a separate decision); regenerating old records.
 
 ---
 
-**New env var names:** `AI_DAILY_LIMIT` (optional; unset means no cap).
-**New migration (you apply it, with `AiUsage`):** `quiz_session`.
+### 1. BACKEND: Source catalog, stable resume ids and the contract
+- **Files:** new `src/lib/ai/sources.js`, `src/actions/Resume.js`, `docs/ai/API-CONTRACT.md`
+- **What:**
+  - `buildSources({ profile, resume, jobDescription })` returns `[{ id, kind, label, text }]` with ids like `exp:<entryId>`, `edu:<entryId>`, `proj:<entryId>`, `profile:skills`, `profile:bio`, `profile:experience` and `jd:<lineNo>`.
+  - Helpers `validateSourceIds(ids, catalog)` and `snapshot(ids, catalog)`. A snapshot stores `{id, label, excerpt}` with the record, so displaying sources never needs a recompute.
+  - `saveResume` assigns a stable `id` (a cuid or nanoid) to every experience, education and project entry that lacks one, inside the existing JSON. There's no migration and existing ids are kept.
+  - Add a "Sources" section to the contract: the snapshot shape, each generator's new return shape, and the `legacy` flag meaning a record from before sources existed.
+- **Why:** D26. Every other task depends on this.
+- **Test:** Saving a resume twice keeps the same entry ids. `validateSourceIds` rejects unknown ids.
+
+### 2. BACKEND: Migration for sources and nullable email, plus the email fix
+- **Files:** `prisma/schema.prisma`, new migration `phase3_sources`, `src/actions/User.js`, `src/actions/ResumeParser.js`
+- **What:**
+  - Add `sources Json?` to `CoverLetter` and `ColdEmail`, and `evidence Json?` to `ATSScore`.
+  - Make `User.email` optional (`String? @unique`; Postgres allows many NULLs).
+  - Stop writing `""` (`User.js:86`) and `${userId}@placeholder.com` (`ResumeParser.js:24,31`). Use the Clerk primary email, or `null` if there isn't one.
+  - The migration is SQL only and never applied.
+- **Why:** D26, and the scout's problem #3 (email collisions).
+- **Test:** `prisma validate` passes. A grep finds no `placeholder.com` and no `email: ""`.
+
+### 3. BACKEND: ATS evidence and PDF validation
+- **Files:** `src/actions/ResumeParser.js`, `src/lib/ai/schemas.js`, `package.json` (add a small PDF text extractor such as `pdf-parse`, server-only)
+- **What:**
+  - Validate the upload: `application/pdf` type, `%PDF` magic bytes and size ≤ 5 MB. Otherwise return `{error, code:"INVALID_FILE"}`.
+  - Extract the PDF text on the server. Strengths, weaknesses and recommendations become `{ text, sources:[{type:"resume_quote", quote} | {type:"jd", id}] }`.
+  - A quote counts only if it appears, after whitespace and case normalization, in the extracted text. JD ids must exist.
+  - Drop items with no valid source, and retry once if fewer than 2 remain in any list (D28).
+  - Save the item text to the existing columns (so old readers keep working) and the full items to `evidence`.
+- **Why:** D26, D28, and the scout's problem #2 (unvalidated PDF upload).
+- **Test:** A `.txt` renamed to `.pdf`, or a 6 MB file, is rejected with a friendly message. A real PDF returns items whose quotes appear in the resume.
+
+### 4. BACKEND: Paragraph sources for cover letters and cold emails
+- **Files:** `src/actions/CoverLetter.js`, `src/actions/ColdEmail.js`, `src/lib/ai/schemas.js`
+- **What:**
+  - Generate with `runAIStructured` into `{ paragraphs:[{ kind:"greeting"|"body"|"closing", text, sourceIds[] }] }`, using a catalog from the profile, resume entries and job description.
+  - Body paragraphs need at least one valid id. Retry once, then drop any unsourced body paragraph (D28). If no body paragraph is left, return `{error, code:"NO_SOURCES"}`.
+  - Join the paragraphs into the existing markdown `content`, so the editor keeps working, and store the snapshot per paragraph in `sources`.
+  - Stop sending the user's email address to the model (CONTEXT note on `ColdEmail.js:33`).
+- **Why:** D27 and D28.
+- **Test:** The new letter's `sources` lists one entry per paragraph, and every body paragraph's ids resolve. The editor still shows the full text.
+
+### 5. BACKEND: Sources for roadmap steps and "improve with AI"
+- **Files:** `src/actions/CareerRoadmap.js`, `src/actions/Resume.js`, `src/lib/ai/schemas.js`
+- **What:**
+  - Each roadmap step gets `sourceIds[]` from the catalog (target role, current skills, experience), validated and snapshotted inside the existing `steps` JSON. Unsourced steps are dropped, with one retry.
+  - `improveWithAI(input)` returns `{ text, sources }`, citing the user's input text and profile fields. This is a contract change, and the frontend updates the callers in task 7.
+- **Why:** D26 and D28.
+- **Test:** A new roadmap's steps all have resolved sources. "Improve" returns text plus sources.
+
+### 6. BACKEND: Cap default and dead-code cleanup
+- **Files:** `src/lib/ai/limit.js`, `.env.example`, `src/actions/Interview.js`
+- **What:**
+  - When `AI_DAILY_LIMIT` is unset, the cap is 50; `0` disables it (D30). Update the `.env.example` comment.
+  - `generateQuiz` deletes the user's own unsubmitted `QuizSession` rows older than 7 days.
+  - Remove `getLatestQuiz` and the `saveQuizResult` stub, but only after a grep confirms zero callers.
+- **Why:** D30, the scout's problem #1 (no spending cap by default), and the REVIEW leftovers.
+- **Test:** With the variable unset, the 51st call is blocked. Old unsubmitted sessions are pruned on the next quiz.
+
+### 7. FRONTEND: Shared source chips and the resume builder
+- **Files:** new `src/components/shared/SourceChips.jsx`; resume builder `EntryForm.jsx` and `AITextarea.jsx` (under `(gated)/resume/`)
+- **What:**
+  - `SourceChips` renders snapshot chips (label, with the excerpt as a tooltip) plus a "Created before sources were added" variant for legacy records (D29). It's styled after `design/ascendai-pixel.html`.
+  - The builder keys entries by their stable `id`, not the array index.
+  - "Improve with AI" uses the new `{text, sources}` return and shows chips under the improved text.
+- **Why:** D26 and D29.
+- **Test:** Improving a bullet shows its chips. Reordering or deleting entries keeps the right content in each row.
+
+### 8. FRONTEND: ATS evidence display and upload checks
+- **Files:** `(gated)/resume-parser/**` (`ResumeParserForm.jsx` and the results view)
+- **What:**
+  - Each strength, weakness and recommendation shows its evidence: quoted resume text or the job-description line.
+  - Old scores (`evidence` null) show the legacy label.
+  - Check the file type and the 5 MB limit in the browser before upload, and handle `INVALID_FILE` with a friendly message.
+- **Why:** D26, D29 and the PDF-check hardening.
+- **Test:** A new analysis shows evidence for every item, an old one shows the label, and a bad file is rejected before upload.
+
+### 9. FRONTEND: Sources on letters, emails and roadmaps
+- **Files:** `CoverLetterPreview.jsx`, `ColdEmailPreview.jsx`, the generate forms (to handle `NO_SOURCES`), `RoadmapDetailView` (under `(gated)/roadmap/`)
+- **What:**
+  - The previews show chips under each body paragraph. If the edited content's paragraph count no longer matches the stored sources, show one "Based on" list instead (D27).
+  - Roadmap steps show their chips.
+  - Records without sources show the legacy label.
+  - `NO_SOURCES` gets a message telling the user to add more profile or resume detail.
+- **Why:** D27 and D29.
+- **Test:** A new letter shows a chip row per paragraph. After an edit that adds a paragraph, the "Based on" list appears. An old letter shows the legacy label.
+
+### 10. FRONTEND: FAQ copy and the landing sample label
+- **Files:** `src/data/faqs.js`, `src/app/page.js` (and/or `ResumePaperDoc.jsx` on the landing page)
+- **What:** Reword the weekly-industry-updates FAQ to describe the features that exist (D31). Label the "Aarav Sharma" resume on the landing page as "Sample" (REVIEW NICE-TO-HAVE #7).
+- **Why:** D31 and the "nothing invented" promise.
+- **Test:** The landing page no longer promises weekly insights, and the sample resume is clearly marked.
+
+---
+
+**New env var names:** none. `AI_DAILY_LIMIT` keeps its name, but unset now means 50.
+**New migration (you apply it):** `phase3_sources`, which adds three nullable JSON columns and makes `User.email` nullable.
