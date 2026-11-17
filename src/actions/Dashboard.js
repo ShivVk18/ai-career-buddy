@@ -1,0 +1,127 @@
+"use server";
+
+import { db } from "@/lib/prisma";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { safeErr } from "@/lib/utils";
+
+const MAX_TARGETS = 10;
+const MAX_TASKS = 5;
+
+const norm = (v) => (typeof v === "string" ? v.trim() : "");
+
+export async function getDashboardData() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  try {
+    const clerkUser = await currentUser();
+    const firstName = norm(clerkUser?.firstName) || null;
+
+    const empty = {
+      firstName,
+      avgAtsScore: null,
+      counts: { atsScores: 0, coverLetters: 0, coldEmails: 0, roadmaps: 0, assessments: 0, hasResume: false },
+      targets: [],
+      totalTargets: 0,
+      nextTasks: [],
+    };
+
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return empty;
+    const uid = user.id;
+
+    const [ats, letters, emails, roadmaps, assessmentCount, resumeCount] = await Promise.all([
+      db.aTSScore.findMany({
+        where: { userId: uid },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, atsScore: true, companyName: true, jobTitle: true, createdAt: true },
+      }),
+      db.coverLetter.findMany({
+        where: { userId: uid },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, companyName: true, jobTitle: true, createdAt: true },
+      }),
+      db.coldEmail.findMany({
+        where: { userId: uid },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, companyName: true, jobTitle: true, createdAt: true },
+      }),
+      db.careerPath.findMany({
+        where: { userId: uid, status: "active" },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, targetRole: true, steps: true },
+      }),
+      db.assessment.count({ where: { userId: uid } }),
+      db.resume.count({ where: { userId: uid } }),
+    ]);
+
+    // Targets: dedupe by (company, role); lists are newest first so the first row per kind is the latest.
+    const map = new Map();
+    const touch = (company, role, createdAt) => {
+      const c = norm(company);
+      const r = norm(role);
+      if (!c && !r) return null;
+      const key = `${c.toLowerCase()}|${r.toLowerCase()}`;
+      let t = map.get(key);
+      if (!t) {
+        t = { key, company: c, role: r, lastActivityAt: createdAt, ats: null, coverLetter: null, coldEmail: null };
+        map.set(key, t);
+      }
+      if (createdAt > t.lastActivityAt) t.lastActivityAt = createdAt;
+      return t;
+    };
+    for (const a of ats) {
+      const t = touch(a.companyName, a.jobTitle, a.createdAt);
+      if (t && !t.ats) t.ats = { id: a.id, score: a.atsScore, href: "/resume-parser" };
+    }
+    for (const l of letters) {
+      const t = touch(l.companyName, l.jobTitle, l.createdAt);
+      if (t && !t.coverLetter) t.coverLetter = { id: l.id, href: `/cover-letter/${l.id}` };
+    }
+    for (const e of emails) {
+      const t = touch(e.companyName, e.jobTitle, e.createdAt);
+      if (t && !t.coldEmail) t.coldEmail = { id: e.id, href: `/cold-email/${e.id}` };
+    }
+    const all = [...map.values()].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+    const targets = all.slice(0, MAX_TARGETS).map((t) => ({ ...t, lastActivityAt: t.lastActivityAt.toISOString() }));
+
+    // Next tasks: incomplete steps of active roadmaps, most recently updated roadmap first.
+    const nextTasks = [];
+    for (const rm of roadmaps) {
+      const steps = Array.isArray(rm.steps) ? rm.steps : [];
+      for (const st of steps) {
+        if (nextTasks.length >= MAX_TASKS) break;
+        if (!st || st.completed || typeof st.title !== "string") continue;
+        nextTasks.push({
+          roadmapId: rm.id,
+          roadmapTitle: rm.targetRole,
+          stepId: Number(st.id),
+          title: st.title,
+          category: typeof st.category === "string" ? st.category : "",
+          priority: typeof st.priority === "string" ? st.priority : "",
+          href: `/roadmap/${rm.id}`,
+        });
+      }
+      if (nextTasks.length >= MAX_TASKS) break;
+    }
+
+    return {
+      firstName,
+      avgAtsScore: ats.length ? Math.round(ats.reduce((s, a) => s + a.atsScore, 0) / ats.length) : null,
+      counts: {
+        atsScores: ats.length,
+        coverLetters: letters.length,
+        coldEmails: emails.length,
+        roadmaps: roadmaps.length,
+        assessments: assessmentCount,
+        hasResume: resumeCount > 0,
+      },
+      targets,
+      totalTargets: all.length,
+      nextTasks,
+    };
+  } catch (error) {
+    console.error("getDashboardData failed:", safeErr(error));
+    throw new Error("Failed to load dashboard");
+  }
+}

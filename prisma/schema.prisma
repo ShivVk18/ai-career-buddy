@@ -24,6 +24,7 @@ model User {
 
   skills        String[]  
   assessments   Assessment[]
+  quizSessions  QuizSession[]
   resume        Resume?
   coverLetter   CoverLetter[]
   
@@ -375,4 +376,16 @@ model AiUsage {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model QuizSession {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  // [{ question, options, correctAnswer, explanation }] - never sent to the browser before submit
+  questions   Json
+  createdAt   DateTime  @default(now())
+  submittedAt DateTime?
+
+  @@index([userId])
 }

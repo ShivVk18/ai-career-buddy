@@ -5,16 +5,27 @@ import { auth } from "@clerk/nextjs/server";
 import { runAIStructured, runAIText } from "@/lib/ai";
 import { quizSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
+import { z } from "zod";
+
+const skillsSchema = z.array(z.string().trim().max(100)).max(20);
+const submitSchema = z.object({
+  quizId: z.string().min(1).max(64),
+  answers: z.array(z.string().max(1000).nullable()).min(1).max(20),
+});
 
 export async function generateQuiz(skills) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
+    const skillsParsed = skillsSchema.safeParse(skills);
+    if (!skillsParsed.success) throw new Error("Invalid skills");
+
     // Fetch user industry + skills from DB
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
       select: {
+        id: true,
         industry: true,
         skills: true,
       },
@@ -23,7 +34,7 @@ export async function generateQuiz(skills) {
     if (!user) throw new Error("User not found");
 
     // Clean skills input
-    const sanitizedSkills = skills
+    const sanitizedSkills = skillsParsed.data
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
@@ -68,9 +79,25 @@ Ensure all 10 questions are unique and the correctAnswer exactly matches one of 
       temperature: 0.3,
     });
 
-    return parsed.questions.slice(0, 10);
+    // Keep only well-formed questions (correct answer must be one of the options).
+    const valid = parsed.questions
+      .filter((q) => q.options.includes(q.correctAnswer))
+      .slice(0, 10);
+    if (valid.length < 5) throw new Error("Quiz generation produced too few valid questions");
+
+    const session = await db.quizSession.create({
+      data: { userId: user.id, questions: valid },
+      select: { id: true },
+    });
+
+    // correctAnswer and explanation stay on the server until submitQuiz.
+    return {
+      quizId: session.id,
+      questions: valid.map((q) => ({ question: q.question, options: q.options })),
+    };
   } catch (error) {
     console.error("Quiz generation failed:", safeErr(error));
+    if (error?.code === "AI_LIMIT") throw new Error("AI_LIMIT: Daily AI limit reached");
     throw new Error("Failed to generate quiz. Please try again.");
   }
 }
@@ -98,28 +125,51 @@ async function generateImprovementTip(industry, wrongAnswers, userId) {
   return runAIText("write", () => [["user", prompt]], { userId });
 }
 
-export async function saveQuizResult(questions, answers, score) {
+export async function submitQuiz(quizId, answers) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
+  const parsedInput = submitSchema.safeParse({ quizId, answers });
+  if (!parsedInput.success) throw new Error("Invalid quiz submission");
 
+  const user = await db.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) throw new Error("User not found");
 
-  const questionResults = questions.map((q, index) => ({
+  const session = await db.quizSession.findFirst({
+    where: { id: parsedInput.data.quizId, userId: user.id },
+  });
+  if (!session) throw new Error("Quiz not found");
+  if (session.submittedAt) throw new Error("Quiz already submitted");
+
+  const stored = Array.isArray(session.questions) ? session.questions : [];
+  const given = parsedInput.data.answers;
+  if (stored.length === 0 || given.length !== stored.length) {
+    throw new Error("Invalid quiz submission");
+  }
+
+  const results = stored.map((q, i) => ({
     question: q.question,
-    answer: q.correctAnswer,
-    userAnswer: answers[index],
-    isCorrect: q.correctAnswer === answers[index],
+    options: q.options,
+    userAnswer: given[i],
+    correctAnswer: q.correctAnswer,
+    isCorrect: given[i] !== null && given[i] === q.correctAnswer,
     explanation: q.explanation,
   }));
+  const correctCount = results.filter((r) => r.isCorrect).length;
+  const total = results.length;
+  const score = (correctCount / total) * 100;
 
-  // Get wrong answers
-  const wrongAnswers = questionResults.filter((q) => !q.isCorrect);
+  // Claim the session first so a double submit cannot be scored twice.
+  const claimed = await db.quizSession.updateMany({
+    where: { id: session.id, userId: user.id, submittedAt: null },
+    data: { submittedAt: new Date() },
+  });
+  if (claimed.count !== 1) throw new Error("Quiz already submitted");
 
-  // Generate improvement tip if there are wrong answers
+  const wrongAnswers = results
+    .filter((r) => !r.isCorrect)
+    .map((r) => ({ question: r.question, answer: r.correctAnswer, userAnswer: r.userAnswer ?? "(no answer)" }));
+
   let improvementTip = null;
   if (wrongAnswers.length > 0) {
     try {
@@ -134,17 +184,31 @@ export async function saveQuizResult(questions, answers, score) {
       data: {
         userId: user.id,
         quizScore: score,
-        questions: questionResults,
+        questions: results.map((r) => ({
+          question: r.question,
+          answer: r.correctAnswer,
+          userAnswer: r.userAnswer,
+          isCorrect: r.isCorrect,
+          explanation: r.explanation,
+        })),
         category: "Technical",
         improvementTip,
       },
     });
-
-    return assessment;
+    return { assessmentId: assessment.id, score, correctCount, total, improvementTip, results };
   } catch (error) {
-    console.error("saveQuizResult failed:", safeErr(error));
+    console.error("submitQuiz failed:", safeErr(error));
+    // Release the claim so the user can retry.
+    await db.quizSession
+      .updateMany({ where: { id: session.id, userId: user.id }, data: { submittedAt: null } })
+      .catch(() => {});
     throw new Error("Failed to save quiz result");
   }
+}
+
+/** @deprecated The client can no longer supply a score. Use submitQuiz(quizId, answers). */
+export async function saveQuizResult() {
+  throw new Error("saveQuizResult is removed: use submitQuiz(quizId, answers)");
 }
 
 export async function getAssessments() {
