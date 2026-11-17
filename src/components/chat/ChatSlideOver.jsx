@@ -160,6 +160,9 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
       return;
     }
     if (!(isOpen || embedded) || sentInitialRef.current === initialMessage) return;
+    // A request is in flight: keep it queued (ref not set). This effect runs on
+    // every render, so it re-fires when isWorking flips back to false.
+    if (isWorking) return;
     sentInitialRef.current = initialMessage;
     handleSend(initialMessage);
     onInitialMessageSent?.();
