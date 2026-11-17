@@ -11,6 +11,7 @@ import { entrySchema } from "@/app/lib/schema";
 import { Sparkles, PlusCircle, X, Loader2, Calendar, CheckCircle2, Trash2 } from "lucide-react";
 import { improveWithAI } from "@/actions/Resume";
 import { toast } from "sonner";
+import { generationErrorMessage } from "@/components/shared/generationError";
 import useFetch from "@/hooks/use-fetch";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { Mic } from "lucide-react";
@@ -101,11 +102,7 @@ export function EntryForm({ type, entries, onChange }) {
         type: type.toLowerCase(),
       });
       if (!result || result.error || typeof result.text !== "string") {
-        toast.error(
-          result?.code === "AI_LIMIT"
-            ? "Daily AI limit reached. Please try again tomorrow."
-            : result?.error || "Failed to improve description"
-        );
+        toast.error(generationErrorMessage(result, "Failed to improve description"));
         return;
       }
       setValue("description", result.text);

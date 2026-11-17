@@ -162,14 +162,19 @@ function WeaknessFix({ scoreId, index, hasResumeText, onOpenScore, onRerun }) {
     setState({ phase: "applying", proposal });
     try {
       const res = await applyAtsFix(scoreId, proposal.fixId);
-      if (!res || res.error) setState({ phase: "error", message: generationErrorMessage(res), stage: "proposed", proposal });
+      if (res?.code === "ALREADY_APPLIED" && res.newScoreId) {
+        setState({ phase: "already", message: generationErrorMessage(res), newScoreId: res.newScoreId, proposal });
+        onOpenScore(res.newScoreId);
+      } else if (res?.code === "INVALID") {
+        setState({ phase: "error", message: "This proposed fix is out of date. Please propose the fix again.", stage: "idle" });
+      } else if (!res || res.error) setState({ phase: "error", message: generationErrorMessage(res), stage: "proposed", proposal });
       else setState({ phase: "applied", outcome: res, proposal });
     } catch {
       setState({ phase: "error", message: "Something went wrong. Please try again.", stage: "proposed", proposal });
     }
   };
 
-  const { phase, proposal, outcome, message } = state;
+  const { phase, proposal, outcome, message, newScoreId } = state;
   return (
     <div className="mt-3 space-y-3">
       {(phase === "idle" || phase === "proposing" || (phase === "error" && !proposal)) && (
@@ -212,6 +217,14 @@ function WeaknessFix({ scoreId, index, hasResumeText, onOpenScore, onRerun }) {
           </div>
           <Button type="button" size="sm" variant="outline" onClick={() => onOpenScore(outcome.newScoreId)}>
             Open new result
+          </Button>
+        </div>
+      )}
+      {phase === "already" && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">{message}</p>
+          <Button type="button" size="sm" variant="outline" onClick={() => onOpenScore(newScoreId)}>
+            Open result
           </Button>
         </div>
       )}

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { generateQuiz } from "@/actions/Interview";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { generationErrorMessage } from "@/components/shared/generationError";
 
 import {
   Dialog,
@@ -32,11 +33,7 @@ export default function MockInterviewPage() {
       const arr = skills.split(",").map(s => s.trim()).filter(Boolean);
       const generated = await generateQuiz(arr); // { quizId, questions } or { error, code }
       if (generated?.code) {
-        toast.error(
-          generated.code === "AI_LIMIT"
-            ? "You've reached today's AI limit. Try again tomorrow."
-            : generated.error || "Failed to generate quiz"
-        );
+        toast.error(generationErrorMessage(generated, "Failed to generate quiz"));
         return;
       }
       if (!generated?.quizId || !generated?.questions?.length) {

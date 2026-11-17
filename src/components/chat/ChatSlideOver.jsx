@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X, Send, Sparkles, MessageSquare, ArrowUpRight } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import PipStatus from "../pixel/PipStatus";
+import { generationErrorMessage } from "../shared/generationError";
 
 const SUGGESTED_PROMPTS = [
   "What's my latest ATS score?",
@@ -20,6 +21,7 @@ const GENERIC_ERROR_MESSAGE =
 function friendlyError(code) {
   if (code === "AI_LIMIT") return LIMIT_MESSAGE;
   if (code === "UNAUTHORIZED") return "Your session has expired. Please sign in again.";
+  if (code === "AI_UNAVAILABLE") return generationErrorMessage({ code }, GENERIC_ERROR_MESSAGE);
   return GENERIC_ERROR_MESSAGE;
 }
 

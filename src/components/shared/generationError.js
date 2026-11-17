@@ -8,6 +8,10 @@ export function generationErrorMessage(result, fallback = "Something went wrong.
       return "Daily AI limit reached. Please try again tomorrow.";
     case "AI_UNAVAILABLE":
       return "AI is temporarily unavailable. Please try again later.";
+    case "FIX_UNAVAILABLE":
+      return "Fixes are temporarily unavailable. Please try again later.";
+    case "ALREADY_APPLIED":
+      return "You've already applied this fix. Opening the result you got.";
     case "NEEDS_REUPLOAD":
       return "This result was saved before we kept the analyzed resume text, so we can't test a fix on it. Please upload your PDF again and re-run the analysis.";
     case "STALE":

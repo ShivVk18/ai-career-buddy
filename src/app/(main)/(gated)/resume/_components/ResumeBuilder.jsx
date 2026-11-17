@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -136,6 +136,15 @@ const TEMPLATES = [
   },
 ];
 
+// Stable client ids for entries that were saved without one, so repeated saves keep the same ids.
+function newEntryId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+function withIds(entries) {
+  return (entries || []).map((e) => (e && typeof e === "object" && !e.id ? { ...e, id: newEntryId() } : e));
+}
+
 export default function ResumeBuilder({ initialContent, initialResume }) {
   const [activeTab, setActiveTab] = useState("template");
   const [selectedTemplate, setSelectedTemplate] = useState(initialResume?.templateId || "");
@@ -150,6 +159,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     handleSubmit,
     watch,
     setValue,
+    reset,
+    getValues,
     formState: { errors, isDirty },
   } = useForm({
     resolver: zodResolver(resumeSchema),
@@ -164,9 +175,9 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       },
       summary: initialResume?.summary || "",
       skills: initialResume?.skills || "",
-      experience: initialResume?.experience || [],
-      education: initialResume?.education || [],
-      projects: initialResume?.projects || [],
+      experience: withIds(initialResume?.experience),
+      education: withIds(initialResume?.education),
+      projects: withIds(initialResume?.projects),
       template: initialResume?.templateId || "",
       photo: initialResume?.photoUrl || "",
     },
@@ -191,9 +202,20 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     [selectedTemplate]
   );
 
+  // Values last sent through onSubmit; used to clear isDirty once that save succeeds.
+  const lastSubmitted = useRef(null);
+  const markSaved = (saved) => {
+    // Only reset if the user hasn't edited since the save started.
+    if (JSON.stringify(getValues()) === JSON.stringify(saved)) reset(saved);
+  };
+
   // Success/Error handling
   useEffect(() => {
     if (saveResult && !isSaving) {
+      if (lastSubmitted.current) {
+        markSaved(lastSubmitted.current);
+        lastSubmitted.current = null;
+      }
       toast.success("Resume saved successfully!", {
         description: "Your changes are now safe and sound.",
       });
@@ -288,6 +310,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
             projects: data.projects,
           });
           ok = true;
+          markSaved(data);
         } catch (e) {
           toast.error("Save your resume first", { description: e?.message || "Saving failed." });
         }
@@ -308,6 +331,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
 
   // Form submission
   const onSubmit = async (data) => {
+    lastSubmitted.current = data;
     try {
       await saveResumeFn({
         content: JSON.stringify(data),
