@@ -36,6 +36,78 @@ model User {
   mockInterviews MockInterview[]
   atsScores      ATSScore[]
   coldEmail     ColdEmail[]
+
+  // UX flow pass (D55, D59)
+  targetRole      String?
+  jobSearchStage  JobSearchStage?
+  jobs            Job[]
+  applications    Application[]
+}
+
+enum JobSearchStage {
+  JUST_STARTING
+  APPLYING
+  INTERVIEWING
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFER
+  CLOSED
+}
+
+// A job the user pasted (text or URL). Soft-deleted with deletedAt (D60); hard-deleted lazily after 7 days.
+model Job {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String?   @db.Text
+  jdText    String    @db.Text
+  company   String?
+  title     String?
+  location  String?
+  // { company|title|location: [sourceId...], fieldOrigin: { company: "ai"|"user", ... } } - jd:<line> ids (D26)
+  sources   Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  application   Application?
+  coverLetters  CoverLetter[]
+  coldEmails    ColdEmail[]
+  atsScores     ATSScore[]
+  resumeVersions ResumeVersion[]
+
+  @@index([userId, deletedAt])
+}
+
+// One application per job (jobId unique). `pipeline` holds the resumable run state (D57).
+model Application {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId            String            @unique
+  job              Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status           ApplicationStatus @default(SAVED)
+  appliedAt        DateTime?
+  interviewAt      DateTime?
+  nextActionAt     DateTime?
+  followUpCount    Int               @default(0)
+  closedReason     String?
+  closedAt         DateTime?
+  // Set once when closeApplication turned this job's ATS gaps into roadmap tasks (idempotent).
+  gapTasksAddedAt  DateTime?
+  // QuizSession id of the interview prep created from the job description (no FK; owner-checked on read).
+  prepSessionId    String?
+  pipeline         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  @@index([userId, status, deletedAt])
+  @@index([userId, nextActionAt])
 }
 
 model Assessment {
@@ -137,10 +209,13 @@ model ResumeVersion {
   tailoredContent String  @db.Text
   atsScore       Float?
   matchPercentage Float? 
+  jobId          String?
+  job            Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   
   @@index([resumeId])
+  @@index([jobId])
 }
 
 model CoverLetter {
@@ -153,10 +228,15 @@ model CoverLetter {
   jobTitle        String    
   status          String    @default("draft") 
   sources         Json?
+  jobId           String?
+  job             Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  deletedAt       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, deletedAt])
+  @@index([jobId])
 }
 
 model CareerPath {
@@ -315,10 +395,16 @@ model ATSScore {
   companyName    String?
   jobDescription String?  @db.Text
 
+  jobId          String?
+  job            Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  deletedAt      DateTime?
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, deletedAt])
+  @@index([jobId])
 }
 
 model ColdEmail {
@@ -336,11 +422,16 @@ model ColdEmail {
   recipientEmail  String?
   subject         String?
   followUpAt      DateTime?
+  jobId           String?
+  job             Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  deletedAt       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
   @@index([userId, followUpAt])
+  @@index([userId, deletedAt])
+  @@index([jobId])
 }   
 
 model AiUsage {

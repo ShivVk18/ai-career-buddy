@@ -1,4 +1,4 @@
-# API Contract (Phase 2, plus Phase 3 Sources in section 6, Phase 6 in section 9)
+# API Contract (Phase 2, plus Phase 3 Sources in section 6, Phase 6 in section 9, UX flow pass in section 11)
 
 Source of truth for frontend and backend. Branches `phase-2`, `phase-3`. Decisions: D18-D21, D25-D31 in DECISIONS.md.
 
@@ -618,3 +618,143 @@ Input is validated with zod: `industry` string 1-100, `experience` integer 0-60 
 - `derive.js`: generic phrases ("customer facing", "cross functional", "fast paced", "best practices", ...) no longer produce step targets.
 - Sentry (D51) is server/browser inert without `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`; no API change.
 - `npm test` (Vitest) runs the unit tests; `node scripts/selfcheck-matching.mjs` still works.
+
+---
+
+## 11. UX flow pass (D55-D63): jobs, applications, pipeline, needs you, onboarding, undo
+
+Branch `ux-flow-pass`. Conventions as in the top of this file: signed-out THROWS `Error("Unauthorized")`; everything else RETURNS `{ error: string, code }`; dates are ISO strings; every query is scoped by the caller's user id. **Status key:** BUILT = implemented in this branch (tasks 1-3); DESIGN = frozen shape, backend built in tasks 4-6 (frontend may build against it, and must handle `{ error, code }` anyway).
+
+### 11.1 Migration `20261117070000_job_application_flow` (SQL only, NOT applied by the agent)
+Apply after `20261117060000_remove_industry_insight` (runbook: `docs/ai/DEPLOY.md`). One migration for tasks 1-6:
+- enums `ApplicationStatus` (`SAVED | APPLIED | INTERVIEWING | OFFER | CLOSED`) and `JobSearchStage` (`JUST_STARTING | APPLYING | INTERVIEWING`).
+- `Job` (id, userId, url?, jdText, company?, title?, location?, sources Json?, createdAt, updatedAt, deletedAt?) and `Application` (id, userId, jobId UNIQUE, status default SAVED, appliedAt?, interviewAt?, nextActionAt?, followUpCount default 0, closedReason?, closedAt?, gapTasksAddedAt?, prepSessionId?, pipeline Json?, createdAt, updatedAt, deletedAt?). Deleting a Job/User cascades to its Application.
+- optional `jobId` (FK `ON DELETE SET NULL`) on `CoverLetter`, `ColdEmail`, `ATSScore`, `ResumeVersion`; `deletedAt` on `CoverLetter`, `ColdEmail`, `ATSScore` (Job and Application have their own).
+- `User.targetRole` (text?) and `User.jobSearchStage` (enum?).
+- indexes: `Job(userId, deletedAt)`, `Application(userId, status, deletedAt)`, `Application(userId, nextActionAt)`, `(userId, deletedAt)` and `(jobId)` on the three document tables, `ResumeVersion(jobId)`.
+- No column for letter snapshots: the previous content lives in `sources.previous` (11.7). No column for "reviewed": see `needsYou` in 11.4.
+- Until it is applied, reads that filter `deletedAt`/`jobId` fail (the app must not be promoted before `prisma migrate deploy`). `tailorResume` now filters its draft cleanup on `jobId`, so it also needs the migration.
+
+### 11.2 Security fix (BUILT)
+`seedResumeTemplates` is gone from `src/actions/Resume.js` (an exported server action is callable by any visitor and wrote global rows). Seeding is script-only: `seeder/seedTemplates.js` / `seeder/seed.js` (unchanged). No UI used it.
+
+### 11.3 Job intake (BUILT, `src/actions/Jobs.js`)
+
+Shared shapes:
+```ts
+Snapshot = { id: string, kind: string, label: string, excerpt: string }   // as in section 6
+Job = {
+  id: string, url: string | null,                 // url = "Open job page" target
+  company: string | null, title: string | null, location: string | null,   // null = not stated, chip is empty + editable
+  sources:  { company: Snapshot[], title: Snapshot[], location: Snapshot[] },  // jd:<line> evidence; [] when null or user-typed
+  origin:   { company: "page"|"ai"|"user"|null, title: ..., location: ... },
+  jdText?: string,                                 // only from getJob
+  createdAt: string,
+  application: Application | null
+}
+Application = { id, status: ApplicationStatus, appliedAt: string|null, interviewAt: string|null, nextActionAt: string|null, followUpCount: number, closedReason: string|null }
+```
+
+`intakeJob({ input: string (1-60000), url?: https string (<=2000), asJob?: boolean })` returns one of:
+- `{ kind: "question", text }`: the input is a question. NO AI call, nothing stored. Send `text` to chat (D62).
+- `{ kind: "job", job: Job, applicationId: string, notice: null | "AI_LIMIT" | "AI_UNAVAILABLE" | "EXTRACT_FAILED" }`: Job + Application(SAVED) created atomically. With a `notice` the job exists but company/title/location may be null; show the chips as empty and editable (optionally a small hint). Chips read from a JSON-LD/labelled header need no AI.
+- `{ error, code, url? }`.
+
+Classification (`src/lib/jobs/classify.js`, pure, importable in the UI too): `classifyInput(input)` gives `{kind:"url",url}` (a link, alone or with up to 80 other chars; bare `www.` links count), `{kind:"text",text}` (job-description phrases plus length: 3+ phrases from 150 chars, 1 phrase from 400, or 1200+ chars), `{kind:"question",text}` (anything else, especially a trailing `?` or a leading question word) or `{kind:"empty"}`. `asJob: true` forces pasted text to be treated as a job (a "this is a job" escape hatch). `url` is the link the pasted text came from (after `PASTE_NEEDED`); it is only stored, never fetched.
+
+Error codes of `intakeJob`:
+| code | when | friendly `error` / notes |
+|---|---|---|
+| `INVALID` | empty/oversized input, text under 40 chars, bad `url` | "Paste a job link, the job text, or a question." |
+| `NOT_FOUND` | no DB user | "We couldn't find your profile. Please finish onboarding first." |
+| `URL_BLOCKED` | not https, credentials in the link, port other than 443, localhost/internal name, or the host resolves (any address, also after a redirect) to a private, loopback, link-local, CGNAT, metadata, multicast, reserved, IPv6 ULA/link-local, or IPv4-mapped/NAT64/6to4 private address | "That link points to a private or internal address..." / "Only https links can be read..." Returns `url`. Offer the paste box. |
+| `PASTE_NEEDED` | site answered 401/403/429/451, is not `text/html`, is over 2 MB, or the readable text is under 200 chars (login wall, script-rendered page) | "We couldn't read that page ... Paste the job text here". Returns `url`; show the paste box and send `intakeJob({input: pastedText, url})`. |
+| `FETCH_FAILED` | DNS failure, timeout (5 s), network error, more than 3 redirects, 404/5xx | "We couldn't reach that page right now. Try again, or paste the job text instead." Returns `url`. |
+| `NOT_A_JOB` | page text has no JSON-LD `JobPosting` and does not read like a job posting | "That page doesn't look like a job posting..." Returns `url`. |
+| `FAILED` | anything else | generic retry |
+`AI_LIMIT`/`AI_UNAVAILABLE` do not fail intake (see `notice`). The call is one cap-counted action (D50).
+
+URL guard (D56, `src/lib/jobs/fetch.js`): https only; DNS resolved server-side and ALL addresses vetted; the connection is pinned to the vetted IP and the socket's remote address is re-checked; every redirect (max 3) repeats all checks; 5 s total timeout; 2 MB streamed cap; `text/html` only; no cookies/credentials; generic User-Agent; no compression. Text is extracted with script/style removed; a JSON-LD `JobPosting` wins and is written as `Job title:` / `Company:` / `Location:` header lines followed by the description. Every chip is checked against the `jd:` lines it cites (ids exist, every word and number is in those lines); anything unverified is `null`.
+
+Other actions (all BUILT, owner-scoped, not-deleted only):
+- `getJob(id)` returns `Job` (with `jdText`, `application`) or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
+- `updateJobField(id, field: "company"|"title"|"location", value: string | null)` (value trimmed, single line, 0-200 chars; `""`/`null` clears). Saves on Enter/blur. The edited chip's `sources` become `[]` and `origin[field]` becomes `"user"` (or `null` if cleared). Returns the updated `Job` (no `jdText`) or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
+- `deleteJob(id)` soft-deletes the job AND its application; returns `{ success: true, id }`. `restoreJob(id)` is the 5 s Undo (works up to 7 days; later `NOT_FOUND`). Errors: `INVALID | NOT_FOUND | FAILED`.
+
+### 11.4 Pipeline (BUILT, `src/actions/Pipeline.js`; D57, D50, D34)
+
+Steps, always in this order: `CHECKER` (computed match % from keywords + an ATS score of the saved resume text against the job description, stored as an `ATSScore` with `jobId`), `TAILOR` (a `tailorResume` draft with `jobId`), `WRITER` (a cover letter with `jobId`), `CONNECTOR` (a cold email draft with `jobId`; NEVER with recipient name, role or email, the user types those; nothing is ever sent).
+
+```ts
+Pipeline = {
+  applicationId: string, jobId: string,
+  steps: {
+    step: "CHECKER"|"TAILOR"|"WRITER"|"CONNECTOR",
+    status: "pending"|"running"|"done"|"skipped"|"failed",
+    reason: string | null,                      // skipped: "NO_RESUME"
+    error: { code: string, error: string } | null,   // failed only
+    output: object | null,                      // CHECKER {matchPercent, matched[], missing[], termCount, atsScore, atsScoreId}
+                                                // TAILOR {draftId, proposalCount, matchPercent}; WRITER {coverLetterId}; CONNECTOR {coldEmailId}
+    ids: { atsScoreId? | draftId? | coverLetterId? | coldEmailId? },
+    needsYou: boolean,                          // true when the output awaits approval (TAILOR, WRITER, CONNECTOR when done)
+    startedAt: string | null, finishedAt: string | null
+  }[],                                          // always 4 entries, in order
+  next: step | null,                            // the step the next runNextStep call will run
+  busy: boolean,                                // another tab holds a fresh claim on `next`
+  complete: boolean,                            // every step done or skipped
+  completedCount: number                        // 0-4, for the progress bar
+}
+```
+- `getPipeline(applicationId)` returns `Pipeline` (read only; a never-started application shows 4 `pending`) or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
+- `runNextStep(applicationId)` runs ONE step and returns `Pipeline & { ran: step | null }`. The page loops: call it until `complete`, on `busy` wait ~2 s and call again, and call it again on return to resume. When a step fails the result also has `{ error, code, step }` (top level) alongside the pipeline; the step stays `failed` and the next call retries that step only. Codes: `INVALID | NOT_FOUND | FAILED` for the call itself; per step `AI_LIMIT | AI_UNAVAILABLE | NO_SOURCES | INVENTED_DETAIL | FAILED | NOT_FOUND`. Map them with the existing generation-error helper.
+- A missing resume skips CHECKER and TAILOR (`status: "skipped"`, `reason: "NO_RESUME"`): say "add your resume to see your match" and carry on; WRITER and CONNECTOR still run from the profile and job description.
+- Idempotent: a done or skipped step never runs again, so repeated calls never duplicate rows; the step is claimed with a compare-and-swap on the application row, so two tabs cannot both run it; a claim older than 3 min (tab closed mid-step) is taken over, and an output already linked to the job (same `jobId`, not deleted) is adopted instead of regenerated.
+- ONE `actionId` per run (D50), stored in `Application.pipeline.run`. The daily cap is checked once, before the run's first AI call; later steps and retries are never blocked part-way. `AI_LIMIT` on the first step leaves the run unstarted; try again tomorrow.
+- Generators accept an optional `jobId` (`generateCoverLetter`, `generateColdEmail`, `tailorResume`, and the manual tools via the job picker in task 12). A `jobId` that is not the caller's, or is deleted, returns `NOT_FOUND` "We couldn't find that job." before any AI call. The letter/email/score/version rows then carry `jobId`.
+- `ATSScore` rows made by the pipeline are real scores (evidence, resume text) and show in the ATS tool; `ResumeVersion` drafts follow the 24 h expiry of 7.5.
+- "Needs you" source (task 4): an item exists while the pipeline step has `needsYou: true`; approving it (task 4 action) sets it to false. Nothing is applied to the main resume by the pipeline.
+
+### 11.5 Needs you, application status, result taps (DESIGN, task 4; `src/actions/Applications.js`, `Dashboard.js`)
+```ts
+NeedsYouItem = {
+  id: string,                                   // stable: "<type>:<refId>"
+  type: "TAILOR_DRAFT" | "COVER_LETTER" | "COLD_EMAIL" | "ATS_FIX" | "FOLLOW_UP" | "PREP_INTERVIEW",
+  applicationId: string | null, jobId: string | null,
+  title: string,                                // e.g. "Review resume edits for Acme"
+  company: string | null, jobTitle: string | null,
+  refId: string,                                // draftId | coverLetterId | coldEmailId | atsScoreId | applicationId
+  href: string,                                 // where to review it
+  dueAt: string | null,                         // FOLLOW_UP / PREP_INTERVIEW
+  createdAt: string
+}
+```
+- `getNeedsYou()` returns `{ count: number, items: NeedsYouItem[] }` (derived, newest first, max 50) or `{ error, code }`. Sources: pipeline steps with `needsYou`, ATS scores with fixable weaknesses, follow-ups due (5 quiet days after `appliedAt` while status is APPLIED; at most 2 per application, tracked in `followUpCount`/`nextActionAt`, created lazily on load; the draft is only written when the user clicks it and is never sent), and INTERVIEWING applications with `interviewAt` in the future and no `prepSessionId`.
+- `approveNeedsYou(applicationId, step: "TAILOR"|"WRITER"|"CONNECTOR")` sets that step's `needsYou` to false. Returns `{ success: true }`.
+- `setApplicationStatus(id, status)` returns `{ application: Application, previousStatus: ApplicationStatus }` (use `previousStatus` for Undo by calling it again). `markApplied(id)` sets APPLIED and `appliedAt` (returns the same shape). `setInterviewDate(id, date: ISO string | "YYYY-MM-DD")` sets INTERVIEWING + `interviewAt` and creates the prep session from the job description (`prepSessionId`; one AI action), returning `{ application, previousStatus, prepSessionId: string | null }`; if prep could not be created, `prepSessionId` is null and `prepError` holds the code (the date is still saved). `closeApplication(id, reason: string 0-300)` sets CLOSED + `closedReason`, turns the ATS gaps linked to that job into roadmap tasks with NO AI (once, `gapTasksAddedAt`), returns `{ application, previousStatus, tasksAdded: number }`. Errors: `INVALID | NOT_FOUND | FAILED` (`NO_ROADMAP` is not an error: `tasksAdded` is 0 and tasks go to a new "Gaps" roadmap only if the user has an active one).
+- `getApplications()` returns `{ applications: { id, status, job: {id, company, title, location, url}, appliedAt, interviewAt, nextActionAt, nextAction: { label: string, href: string } | null, updatedAt }[] }` (not deleted, newest activity first) for the board and home.
+- `getDashboardData()` adds `applications` (max 10, same shape as above), `needsYouCount: number`, `hasOffer: boolean` (any non-deleted application in OFFER), `profileStrength: number | null`. Existing fields and `targets` are unchanged (old derived targets stay as a fallback).
+
+### 11.6 Onboarding and profile (DESIGN, task 5; `src/actions/Onboarding.js`, `User.js`)
+```ts
+Chip = { id: string, kind: "role"|"project"|"skill"|"years", label: string, detail?: string,
+         source: { quote: string } }            // quote verified against the extracted PDF text; unverified items are dropped
+```
+- `parseResumeToProfile({ resumeBase64, resumeType? })` (same PDF rules and `INVALID_FILE` as 6.3; text extracted in memory, one `write` call) returns `{ chips: Chip[], suggestedTargetRole: string | null, suggestedIndustry: string | null, years: number | null }`. NOTHING is stored. Errors: `INVALID_FILE | NO_SOURCES | AI_LIMIT | AI_UNAVAILABLE | FAILED`.
+- `saveProfileChips({ chips: { kind, label, detail? }[] (<=80), industry?: string, years?: number })` writes builder entries (with stable ids) into the resume, skills and years into the user, returns `{ success: true, strength: ProfileStrength }`. Errors: `INVALID | NOT_FOUND | FAILED`.
+- `saveOnboardingAnswers({ targetRole: string (1-100), stage: "JUST_STARTING"|"APPLYING"|"INTERVIEWING" })` returns `{ success: true }`.
+- `getProfileStrength()` returns `{ percent: number (0-100), nextAction: { label: string, href: string } | null, parts: { name: string, done: boolean }[] }`.
+- Onboarded (D59) = the user has a resume OR both `targetRole` and `jobSearchStage` set; existing users stay onboarded. `updateUser` (10.3) keeps working.
+
+### 11.7 Undo and deleting data (DESIGN, task 6)
+- Soft deletes set `deletedAt`: `deleteCoverLetter`, `deleteColdEmail`, `deleteATSScore` now return `{ success: true, id }`; `restoreCoverLetter(id)`, `restoreColdEmail(id)`, `restoreATSScore(id)` return `{ success: true, id }` (7 days, then `NOT_FOUND`). Every reader (lists, get-by-id, dashboard counts, targets, analytics) hides deleted rows; rows are hard-deleted lazily 7 days after `deletedAt`.
+- `restoreResumeVersion(id)` additionally returns `undoVersionId` (= `backupVersionId`); Undo is `restoreResumeVersion(undoVersionId)`.
+- Letter edits that replace content: `regenerateCoverLetter`, `shortenCoverLetter` and the new tone `"warmer"` (`COVER_LETTER_TONES` gains `warmer`; `TONE_PROMPTS` too) store `{ content, sources, at }` in `sources.previous` first. `undoLetterChange(id)` swaps it back (and clears it) and returns the letter row, or `{ error, code: "NOTHING_TO_UNDO" | "NOT_FOUND" | "FAILED" }`. Only one level of undo is kept.
+- `deleteAllMyData({ confirmation: string })` and `deleteAccount({ confirmation: string })` (src/actions/Account.js). `confirmation` must equal exactly `DELETE MY DATA` / `DELETE MY ACCOUNT` (trimmed, case-sensitive) else `{ error, code: "CONFIRMATION_REQUIRED" }`. `deleteAllMyData` deletes all the caller's rows in dependency order (InterviewAnswer first, applications, jobs, documents, resume and versions, roadmaps, goals, sessions, assessments) and resets the profile fields; the account stays. `deleteAccount` does the same, deletes the user row and then the Clerk user. Both return `{ success: true }` or `{ error, code: "CONFIRMATION_REQUIRED" | "FAILED" }` and never touch another user's rows. The UI signs the user out after `deleteAccount`.
+
+### 11.8 Frontend checklist
+- Home input: `intakeJob({ input })` -> `kind:"question"` opens chat with `text` pre-sent; `kind:"job"` goes to `/jobs/<job.id>` and starts the `runNextStep` loop.
+- On `PASTE_NEEDED`, `URL_BLOCKED`, `FETCH_FAILED`, `NOT_A_JOB`: show `error`, keep `url`, offer a paste box, then call `intakeJob({ input: pasted, url, asJob: true })`.
+- Chips: `updateJobField` on Enter/blur; show `sources[field]` on hover (`SourceChips`); `origin` tells "from the page" / "AI" / "you".
+- `deleteJob` -> 5 s Undo toast -> `restoreJob`.
+- Nothing in 11 sends an email or edits the main resume; chat stays read-only (D62).
+

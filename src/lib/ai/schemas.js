@@ -161,3 +161,12 @@ export const rubricSchema = z.object({
   summary: z.string().default(""),
   overall: z.number().optional(),
 });
+
+// Job intake (D55, D56): company, title and location, each with the job-description line ids it came from.
+// The server verifies the ids and that the value is really in those lines; unsourced fields become null.
+const jobField = z.object({ value: z.string().nullable(), sourceIds: z.array(z.string()).default([]) }).nullish();
+export const jobMetaSchema = z.object({
+  company: jobField,
+  title: jobField,
+  location: jobField,
+});

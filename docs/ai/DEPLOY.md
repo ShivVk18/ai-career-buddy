@@ -16,6 +16,7 @@ Folders sort by name; `prisma migrate deploy` applies the pending ones in this o
 | 5 | `20261117040000_interview_answer` | `InterviewAnswer` (needs #2) |
 | 6 | `20261117050000_ai_usage_action_id` | nullable `AiUsage.actionId` plus index `(userId, createdAt)` |
 | 7 | `20261117060000_remove_industry_insight` | drops `User_industry_fkey` and the `IndustryInsight` table (placeholder rows only; `User.industry` values are kept) |
+| 8 | `20261117070000_job_application_flow` | adds `Job`, `Application`, enums, optional `jobId` on CoverLetter/ColdEmail/ATSScore/ResumeVersion, `deletedAt` on CoverLetter/ColdEmail/ATSScore, `User.targetRole`/`jobSearchStage` (additive only; no data changes) |
 
 Folders 3 to 5 were renamed from `20261118000000_phase3_sources`, `20261119000000_cold_email_fields`, `20261120000000_interview_answer`
 (same SQL, same order; the old names were dated in the future). If a database already recorded the old names in

@@ -36,6 +36,7 @@ const inputSchema = z.object({
   recipientName: optLine(100),
   recipientRole: optLine(150),
   recipientEmail: optEmail,
+  jobId: z.string().trim().min(1).max(100).optional(),
 });
 
 // null / "" clears; at least one of content / a field is required (checked below).
@@ -83,13 +84,20 @@ async function generateColdEmailImpl(data) {
 
   const input = inputSchema.safeParse(data ?? {});
   if (!input.success) return fail("INVALID", "Please check the job title, company and description and try again.");
-  const { jobTitle, companyName, jobDescription, recipientName, recipientRole, recipientEmail } = input.data;
+  const { jobTitle, companyName, jobDescription, recipientName, recipientRole, recipientEmail, jobId } = input.data;
 
   const user = await db.user.findUnique({
     where: { clerkUserId: userId },
   });
 
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+
+
+  // Optional link to one of the caller's jobs (D55). A foreign or deleted job id is refused before any AI call.
+  if (jobId) {
+    const job = await db.job.findFirst({ where: { id: jobId, userId: user.id, deletedAt: null }, select: { id: true } });
+    if (!job) return fail("NOT_FOUND", "We couldn't find that job.");
+  }
 
   const resume = await db.resume.findUnique({ where: { userId: user.id } });
   // Company and role the user typed can be cited by the subject.
@@ -189,6 +197,7 @@ RULES FOR THE JSON:
         jobTitle,
         status: "completed",
         userId: user.id,
+        ...(jobId ? { jobId } : {}),
       },
     });
 

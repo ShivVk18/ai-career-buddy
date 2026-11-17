@@ -26,6 +26,7 @@ const inputSchema = z.object({
   companyName: z.string().trim().max(200).default(""),
   jobDescription: z.string().max(20000).nullish(),
   tone: z.enum(COVER_LETTER_TONES).optional(),
+  jobId: z.string().trim().min(1).max(100).optional(),
 });
 
 const regenOptsSchema = z
@@ -110,13 +111,19 @@ async function generateCoverLetterImpl(data) {
 
   const input = inputSchema.safeParse(data ?? {});
   if (!input.success) return fail("INVALID", "Please check the job title, company and description and try again.");
-  const { jobTitle, companyName, jobDescription, tone } = input.data;
+  const { jobTitle, companyName, jobDescription, tone, jobId } = input.data;
 
   const user = await db.user.findUnique({
     where: { clerkUserId: userId },
   });
 
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+
+  // Optional link to one of the caller's jobs (D55). A foreign or deleted job id is refused before any AI call.
+  if (jobId) {
+    const job = await db.job.findFirst({ where: { id: jobId, userId: user.id, deletedAt: null }, select: { id: true } });
+    if (!job) return fail("NOT_FOUND", "We couldn't find that job.");
+  }
 
   const resume = await db.resume.findUnique({ where: { userId: user.id } });
   const catalog = buildSources({ profile: user, resume, jobDescription });
@@ -142,6 +149,7 @@ async function generateCoverLetterImpl(data) {
         jobTitle,
         status: "completed",
         userId: user.id,
+        ...(jobId ? { jobId } : {}),
       },
     });
 
