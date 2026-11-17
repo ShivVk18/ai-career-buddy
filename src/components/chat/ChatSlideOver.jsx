@@ -23,7 +23,7 @@ function friendlyError(code) {
   return GENERIC_ERROR_MESSAGE;
 }
 
-export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
+export default function ChatSlideOver({ isOpen, onClose, embedded = false, initialMessage = null, onInitialMessageSent }) {
   const [messages, setMessages] = useState([
     {
       id: "welcome",
@@ -151,6 +151,19 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false }) {
       setCurrentStep(null);
     }
   };
+
+  // Auto-send a pre-supplied message once when the chat is open.
+  const sentInitialRef = useRef(null);
+  useEffect(() => {
+    if (!initialMessage) {
+      sentInitialRef.current = null;
+      return;
+    }
+    if (!(isOpen || embedded) || sentInitialRef.current === initialMessage) return;
+    sentInitialRef.current = initialMessage;
+    handleSend(initialMessage);
+    onInitialMessageSent?.();
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const content = (
     <div className="flex flex-col h-full bg-[#FBFAF7] text-[#23222B]">

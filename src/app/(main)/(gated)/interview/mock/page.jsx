@@ -30,16 +30,23 @@ export default function MockInterviewPage() {
     try {
       setLoading(true);
       const arr = skills.split(",").map(s => s.trim()).filter(Boolean);
-      const generated = await generateQuiz(arr); // { quizId, questions }
+      const generated = await generateQuiz(arr); // { quizId, questions } or { error, code }
+      if (generated?.code) {
+        toast.error(
+          generated.code === "AI_LIMIT"
+            ? "You've reached today's AI limit. Try again tomorrow."
+            : generated.error || "Failed to generate quiz"
+        );
+        return;
+      }
+      if (!generated?.quizId || !generated?.questions?.length) {
+        toast.error("Failed to generate quiz");
+        return;
+      }
       setQuestions(generated);
       setQuizReady(true);
     } catch (e) {
-      const msg = e?.message || "";
-      toast.error(
-        msg.startsWith("AI_LIMIT")
-          ? "You've reached today's AI limit. Try again tomorrow."
-          : msg || "Failed to generate quiz"
-      );
+      toast.error(e?.message || "Failed to generate quiz");
     } finally {
       setLoading(false);
     }

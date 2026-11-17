@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 
 import { submitQuiz } from "@/actions/Interview";
-import useFetch from "@/hooks/use-fetch";
 import QuizResult from "./QuizResult";
 import { Button } from "@/components/ui/button";
 
@@ -26,11 +25,9 @@ export default function Quiz({ onComplete, initialQuestions }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState([]);
 
-  const {
-    loading: savingResult,
-    fn: submitQuizFn,
-    data: submitData,
-  } = useFetch(submitQuiz);
+  const [savingResult, setSavingResult] = useState(false);
+  const [submitData, setSubmitData] = useState(null);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   useEffect(() => {
     if (quizData) {
@@ -81,8 +78,23 @@ export default function Quiz({ onComplete, initialQuestions }) {
   };
 
   const finishQuiz = async () => {
-    // Errors (e.g. "Quiz already submitted") are toasted by useFetch.
-    await submitQuizFn(quizId, answers);
+    if (savingResult || alreadySubmitted) return;
+    setSavingResult(true);
+    try {
+      const res = await submitQuiz(quizId, answers); // result or { error, code }
+      if (res?.code) {
+        if (res.code === "ALREADY_SUBMITTED") setAlreadySubmitted(true);
+        toast.error(res.error || "Failed to submit quiz");
+      } else if (res?.results) {
+        setSubmitData(res);
+      } else {
+        toast.error("Failed to submit quiz");
+      }
+    } catch (e) {
+      toast.error(e?.message || "Failed to submit quiz");
+    } finally {
+      setSavingResult(false);
+    }
   };
 
   const handleBackToHome = () => {
@@ -189,6 +201,12 @@ export default function Quiz({ onComplete, initialQuestions }) {
         ))}
       </div>
 
+      {alreadySubmitted && (
+        <p className="mb-6 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          This quiz has already been submitted. Start a new one from the hub.
+        </p>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-6">
         <div className="flex gap-4">
@@ -207,7 +225,7 @@ export default function Quiz({ onComplete, initialQuestions }) {
 
         <Button
           onClick={handleNext}
-          disabled={!answers[currentQuestion] || savingResult}
+          disabled={!answers[currentQuestion] || savingResult || alreadySubmitted}
           className="flex-1 h-14 text-xs font-bold tracking-widest uppercase items-center justify-center shadow-lg"
         >
           {savingResult ? (

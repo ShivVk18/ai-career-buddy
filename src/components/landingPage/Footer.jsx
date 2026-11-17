@@ -27,12 +27,12 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center gap-6">
-          <Link href="/tools/resume" className="hover:text-text transition">resume</Link>
-          <Link href="/tools/interview" className="hover:text-text transition">interview</Link>
-          <Link href="/tools/cover-letter" className="hover:text-text transition">cover letter</Link>
-          <Link href="/tools/cold-email" className="hover:text-text transition">cold email</Link>
-          <Link href="/tools/roadmap" className="hover:text-text transition">roadmap</Link>
-          <Link href="/tools/ats" className="hover:text-text transition">ats</Link>
+          <Link href="/resume" className="hover:text-text transition">resume</Link>
+          <Link href="/interview" className="hover:text-text transition">interview</Link>
+          <Link href="/cover-letter" className="hover:text-text transition">cover letter</Link>
+          <Link href="/cold-email" className="hover:text-text transition">cold email</Link>
+          <Link href="/roadmap" className="hover:text-text transition">roadmap</Link>
+          <Link href="/resume-parser" className="hover:text-text transition">ats</Link>
         </div>
 
         <div className="text-[11px]">

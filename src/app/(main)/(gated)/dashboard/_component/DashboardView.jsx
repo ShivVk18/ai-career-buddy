@@ -43,6 +43,7 @@ export default function DashboardView({ data }) {
   const [selectedToolId, setSelectedToolId] = useState("resume");
   const [quickInput, setQuickInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState(null);
 
   const candidateName = d.firstName || null;
   const scoreText =
@@ -130,8 +131,11 @@ export default function DashboardView({ data }) {
 
   const handleQuickSubmit = (e) => {
     e.preventDefault();
-    if (!quickInput.trim()) return;
-    toast.success("pip received your request!");
+    const text = quickInput.trim();
+    if (text) {
+      setPendingMessage(text);
+      setQuickInput("");
+    }
     setChatOpen(true);
   };
 
@@ -439,7 +443,12 @@ export default function DashboardView({ data }) {
       </div>
 
       {/* Global Slide-Over Chat */}
-      <ChatSlideOver isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatSlideOver
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        initialMessage={pendingMessage}
+        onInitialMessageSent={() => setPendingMessage(null)}
+      />
     </div>
   );
 }
