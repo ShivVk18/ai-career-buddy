@@ -1,120 +1,104 @@
-# PLAN: Phase 4 (Resume + ATS parity)
+# PLAN: Phase 5 (writing tools parity + retire 4 previews)
 
-Branch `phase-4`. Decisions: D32–D38 in DECISIONS.md. Inputs: CONTEXT.md §11.1–11.2 and §11.7.
+Branch `phase-5`. Decisions: D34, D35, D40–D43 in DECISIONS.md. Inputs: CONTEXT.md §11.1, §11.2, §11.5.
 
 **Done when:**
-- Every Resume and ATS preview feature that has a real-data equivalent works in `/resume` and `/resume-parser`: tailoring with accept/strike, computed match %, versions, the requirement checklist, candidate level, the weights panel, score history, re-run, and the 1-click fix with a real re-score.
-- Every AI output carries verified sources, and nothing is applied without the user's click.
-- Cover letter and cold email edits persist.
-- The daily cap fails closed in production.
+- Every real-data feature of the cover letter and cold email previews works in `/cover-letter` and `/cold-email`, with verified sources on all AI output.
+- `/tools/resume`, `/tools/ats`, `/tools/cover-letter` and `/tools/cold-email` redirect to their real routes.
+- ATS results can be deleted, and stored resume text is purged after 90 days.
 - `npm run build` passes, and all 6 tools still work.
 
-Rules: never edit `.env`; no migration is expected (if one becomes necessary, write SQL only and stop to report); every query is scoped by userId; zod on every input; expected failures return `{error, code}`; sources rules D26–D28 and the number check apply to every new generator; no feature removed.
+Rules: never edit `.env`; migrations are SQL files only and are never applied; every query is scoped by userId; zod on every input; expected failures return `{error, code}`; sources rules D26–D28 and `inventedNumbers` apply to every generator; never auto-send (D35); no feature removed (the previews are removed only after their features are ported, D41).
 
-**Out of scope:** the fake-only preview items (telemetry footnotes, the invented +7 delta); `/tools/*` retirement; parity for cover letter, cold email, interview and roadmap (D34/D35 are recorded for later); industry insights.
+**Out of scope:** interview and roadmap parity and their previews (Phase 6); removing `mock.ts` (still used by those two previews); industry insights.
 
 ---
 
-### 1. BACKEND: Contract, cap fail-closed and saving edits
-- **Files:** `docs/ai/API-CONTRACT.md`, `src/lib/ai/limit.js`, `src/actions/CoverLetter.js`, `src/actions/ColdEmail.js`
+### 1. BACKEND: Contract, shared writing rules and cover letter rewrites
+- **Files:** `docs/ai/API-CONTRACT.md` (§8), new `src/lib/writing.js`, `src/actions/CoverLetter.js`
 - **What:**
-  - Add contract section 7 covering every Phase 4 action below.
-  - The cap fails closed when `NODE_ENV==="production"` and usage can't be read: return `AIError` code `AI_UNAVAILABLE` with the message "AI is temporarily unavailable". In dev it fails open with a warning (D33).
-  - New `updateCoverLetter(id, content)` and `updateColdEmail(id, content)`: owner-scoped, zod-validated, with a content length cap. They keep the stored `sources`; the UI already falls back to "Based on" when paragraphs no longer line up.
-- **Why:** D33, and the scout's MED problem (edits lost on reload).
-- **Test:** With `NODE_ENV=production` and no `AiUsage` table, AI calls return `AI_UNAVAILABLE`. An edited letter survives a reload.
+  - `writing.js` exports the cover letter range (one range used by both the prompt and the UI), the cold email target, a curated cliché phrase list, and `findCliches(text)`, which is deterministic with no AI.
+  - The generator takes an optional `tone` enum (the preview's tones).
+  - New `regenerateCoverLetter(id, {tone?, formality?})` replaces the letter in place with new paragraphs and sources (D43).
+  - New `shortenCoverLetter(id)` rewrites the body paragraphs shorter, keeping each paragraph's existing source ids and passing `inventedNumbers` against the current text. It replaces in place.
+  - Both are owner-scoped, both go through runAI (so the cap applies), and both return `{error, code}`.
+- **Why:** D40 and D43 (CONTEXT §11.1).
+- **Test:** Regenerate with a different tone replaces the same row with new sources. "Shorter" lowers the word count and keeps the sources. `findCliches` flags known phrases.
 
-### 2. BACKEND: Resume versions
-- **Files:** `src/actions/Resume.js`
+### 2. BACKEND: Cold email migration and generator
+- **Files:** `prisma/schema.prisma`, new migration `cold_email_fields` (SQL only), `src/actions/ColdEmail.js`, `src/actions/Dashboard.js`
 - **What:**
-  - `listResumeVersions()` returns `[{id, label, jobTitle, companyName, matchPercentage, createdAt}]`.
-  - `saveResumeVersion({label, jobTitle, companyName, jobDescription?})` snapshots the current resume form JSON into `tailoredContent`.
-  - `restoreResumeVersion(id)` first snapshots the current resume as a version named "Before restore <date>", then writes the version's content through the existing `saveResume` path.
-  - `duplicateResume` writes real labels.
-  - Uses the existing `ResumeVersion` model with no migration.
-- **Why:** D36, and the version switch feature (CONTEXT §11.1, §11.7).
-- **Test:** Save a version, edit the resume, then restore. The content comes back, and a "Before restore" version exists.
+  - Add optional `recipientName`, `recipientRole`, `recipientEmail`, `subject` and `followUpAt` to `ColdEmail` (D34).
+  - The generator accepts the recipient name and role, and the greeting uses the name. **`recipientEmail` is never sent to the model.**
+  - The generator also returns a short `subject`, sourced to company, role or job-description ids and number-checked, with no open-rate claims.
+  - `updateColdEmail` accepts the new fields, with zod validating the email address.
+  - New `setColdEmailFollowUp(id, date|null)`.
+  - `getDashboardData` adds `dueFollowUps[]` (followUpAt ≤ today, owner-scoped).
+  - Nothing ever sends anything.
+- **Why:** D34, D35 and D40 (CONTEXT §11.2).
+- **Test:** `prisma validate` passes. A new email has a sourced subject. The recipient email never appears in the prompt (check AI_DEBUG logs in dev). A due follow-up appears in the dashboard data.
 
-### 3. BACKEND: Deterministic match %
-- **Files:** new `src/lib/match.js`, `src/actions/Resume.js`
-- **What:**
-  - `extractTerms(jd)` uses a curated tech and skills vocabulary plus multi-word phrases and acronyms from the job description, normalized with `normalizeText`.
-  - `computeMatch(jd, resumeJson|versionId?)` returns `{percent, matched[], missing[]}`. It makes no AI call (D37).
-  - Export the vocabulary so the logic is testable, and add self-check cases to `scripts/selfcheck-matching.mjs`.
-- **Why:** D37. A match % must be computed, never typed.
-- **Test:** A known job description and resume pair returns the expected terms. The self-check passes.
-
-### 4. BACKEND: Tailor the resume to a job
-- **Files:** `src/actions/Resume.js`, `src/lib/ai/schemas.js`
-- **What:**
-  - `tailorResume({jobTitle, companyName, jobDescription})` makes one `write` call. It returns proposals `[{proposalId, entryId, bulletIndex, original, proposed, reason, sources}]`. Sources are a resume entry id and job-description line ids, validated against the catalog.
-  - `inventedNumbers(original + jd)` must pass. Otherwise the proposal is dropped, with one retry overall.
-  - `saveTailoredVersion({jobTitle, companyName, jobDescription, acceptedProposalIds, proposals})` re-validates the proposals on the server against the current resume. It's stateless (no trust in the client's text beyond ids): store pending proposals in a short-lived server record, e.g. inside a `ResumeVersion` draft, or re-verify that each `proposed` text passes the checks.
-  - It applies only the accepted proposals into a copy of the resume JSON and saves a `ResumeVersion` with `matchPercentage` from task 3. The main resume is never changed (D36).
-- **Why:** D36. This is the preview's main feature.
-- **Test:** Proposals cite real entries and job-description lines. Accepting 2 of 5 saves a version containing exactly those 2 changes, and the main resume is unchanged.
-
-### 5. BACKEND: ATS requirements, level, weights and stored text
-- **Files:** `src/actions/ResumeParser.js`, `src/lib/ai/schemas.js`, new `src/lib/ats/weights.js`
-- **What:**
-  - Add `requirements[]` to the ATS schema: `{requirement, status:"matched"|"gap", sources}`. A matched requirement needs a verified resume quote, and a gap needs a job-description id.
-  - Store `requirements`, `candidateLevel` and the extracted `resumeText` inside `evidence` Json (no migration).
-  - Move the per-level weights into `weights.js`, imported by both the prompt and the UI, so the displayed weights always match the prompt.
-  - `getUserATSScores` and `getATSScoreById` return the new evidence fields, plus `previousScoreId` when present.
-- **Why:** D32. The requirement checklist, candidate level, weights panel and history (CONTEXT §11.2).
-- **Test:** A new analysis has requirements, each with a valid source. The weights shown match the prompt for that level.
-
-### 6. BACKEND: ATS 1-click fix with real re-score
+### 3. BACKEND: Deleting ATS results, purging resume text and showing years
 - **Files:** `src/actions/ResumeParser.js`
 - **What:**
-  - `proposeAtsFix(scoreId, weaknessIndex)` returns `{fixId, original (quote), proposed, sources}`. The rewrite is grounded in the weakness's resume quote and job-description ids, and passes `inventedNumbers`.
-  - `applyAtsFix(scoreId, fixId)` runs only on the user's click. It replaces the quote in the stored `resumeText` and runs a real `fast` re-score on the new text, using the same validation as a fresh analysis. It saves a new `ATSScore` with `evidence.previousScoreId`, and returns `{newScoreId, before, after}`.
-  - Scores without `resumeText` return `{error, code:"NEEDS_REUPLOAD"}`.
-  - The main resume and `updateATSScore` are untouched (D38).
-- **Why:** D38.
-- **Test:** Applying a fix creates a new score linked to the old one, and the "after" score comes from a real call. Legacy scores return `NEEDS_REUPLOAD`.
+  - `deleteATSScore` is owner-scoped and returns `{error, code}`.
+  - Purge `evidence.resumeText` (setting `hasResumeText` to false) from the user's results older than 90 days. It runs opportunistically in `getUserATSScores` and `createATSAnalysis`, is bounded per call, and a failure never breaks the request (D42).
+  - The ATS getters return `candidateYears` from `User.experience` (profile data, no AI).
+- **Why:** D42, and the scout's MED privacy problem. This also covers ATS parity ("3 years exp").
+- **Test:** Deleting removes only your own result. A result with `createdAt` older than 90 days loses its text on the next history load, and its fix returns `NEEDS_REUPLOAD`.
 
-### 7. FRONTEND: Resume versions, match % and sources panel
-- **Files:** `(gated)/resume/**` (`ResumeBuilder.jsx` and new components)
+### 4. BACKEND: Redirects for retired previews
+- **Files:** `next.config.mjs`, `scripts/capture_screenshots.js`, `scripts/capture_via_cdp.js`
 - **What:**
-  - A versions panel lists versions with labels and match %, has "Save version", and has "Restore" with a confirm dialog explaining that the current resume is saved first.
-  - A match card takes a pasted job description and shows the %, matched and missing terms, and a "computed, not AI" note.
-  - A "Sources" panel lists the catalog items that the accepted edits cited, using `SourceChips`.
-- **Why:** D36 and D37.
-- **Test:** A save, edit and restore round-trip works through the UI, and the match card shows real terms.
+  - Add permanent redirects: `/tools/resume`→`/resume`, `/tools/ats`→`/resume-parser`, `/tools/cover-letter`→`/cover-letter`, `/tools/cold-email`→`/cold-email`.
+  - Point the capture scripts' URL lists at the real routes.
+  - The middleware stays as it is, since the real routes are guarded.
+- **Why:** D41.
+- **Test:** Each old URL redirects to its real route once the frontend has removed the page.
 
-### 8. FRONTEND: Tailor flow with accept/strike
-- **Files:** `(gated)/resume/**` (new `TailorPanel.jsx` or similar)
+### 5. FRONTEND: Cover letter parity UI
+- **Files:** `(gated)/cover-letter/**` (`CoverLetterGen.jsx`, `CoverLetterPreview.jsx`, the `[id]` page)
 - **What:**
-  - A job-description form leads to a list of proposals. Each shows the original and proposed text side by side, the reason, chips, and Accept or Strike.
-  - "Save as version" saves the accepted proposals and then shows the match % before and after.
-  - Handle `AI_LIMIT`, `NO_SOURCES` and `INVENTED_DETAIL` via `generationError.js`.
-  - Nothing changes the main resume until the user restores the version.
-- **Why:** D36.
-- **Test:** Strike all but one, save, and confirm the version has one change. The main resume is unchanged.
+  - Add a tone selector to the generator.
+  - On the letter page, add Regenerate (with tone), More formal and Shorter. Each shows a confirm dialog warning that edits will be lost (D43), then refreshes the content and sources.
+  - Show a live word count against the range from `writing.js`.
+  - Highlight clichés from `findCliches`, with a short hint and no fake examples.
+  - Handle errors via `generationError.js`.
+- **Why:** D40 and D43.
+- **Test:** Each action replaces the letter after the confirm. The word count and clichés update as you type.
 
-### 9. FRONTEND: ATS checklist, level, weights, history and re-run
-- **Files:** `(gated)/resume-parser/**`
+### 6. FRONTEND: Cold email parity UI and dashboard follow-ups
+- **Files:** `(gated)/cold-email/**`, `(gated)/dashboard/_component/DashboardView.jsx`
 - **What:**
-  - A requirement checklist shows matched and gap items with their evidence.
-  - The candidate level badge comes from `evidence`.
-  - A weights panel reads `src/lib/ats/weights.js`.
-  - A score history list comes from `getUserATSScores`, showing before and after pairs linked by `previousScoreId`, with a detail view.
-  - "Re-run with this job" pre-fills the saved company, title and job description so the user only re-uploads the PDF.
-  - Legacy scores show the legacy label.
-- **Why:** D32 (CONTEXT §11.2).
-- **Test:** History lists real scores, a re-run pre-fills the form, and the weights match the level.
+  - Add recipient name, role and email fields (typed by the user) to the generator and the edit view.
+  - Show and edit the subject.
+  - Show a live word counter against the target from `writing.js`.
+  - Highlight paragraphs whose sources include `proj:` ids ("Matched project").
+  - Add a follow-up date picker (`setColdEmailFollowUp`).
+  - Add an **"Open in mail client"** button: explicit click only, using the typed address, subject and body. Note that long bodies may be cut, and suggest copying. It never opens automatically (D35).
+  - The dashboard shows a "Follow-ups due" list linking to each email.
+- **Why:** D34, D35 and D40.
+- **Test:** The mailto opens only on click, with the right fields. A due follow-up shows on the dashboard. The project highlight matches the chips.
 
-### 10. FRONTEND: ATS fix UI, saving letter and email edits, and the unavailable message
-- **Files:** `(gated)/resume-parser/**`, `CoverLetterPreview.jsx`, `ColdEmailPreview.jsx`, `src/components/shared/generationError.js`
+### 7. FRONTEND: ATS deletion, years and the purge note
+- **Files:** `(gated)/resume-parser/**` (`AtsHistory.jsx`, `AtsResult.jsx`)
 - **What:**
-  - Each weakness gets a "Propose fix" button. The proposal shows the original, the proposed text and chips. Accepting it runs the re-score and shows before and after with a link to the new result. `NEEDS_REUPLOAD` gets a clear message.
-  - Letter and email previews get a Save button (or debounced autosave) that calls the update actions, with a saved indicator.
-  - `AI_UNAVAILABLE` gets a friendly "temporarily unavailable" message everywhere.
-- **Why:** D38, D33 and the lost-edits bug.
-- **Test:** A fix produces a linked new score. An edited letter persists after a reload.
+  - Add "Delete result" with a confirm dialog to history and to the detail view.
+  - Show years of experience from `candidateYears` next to the level badge.
+  - Where `hasResumeText` is false because of the purge, explain it ("Resume text is removed after 90 days; re-upload to use fixes").
+- **Why:** D42 and ATS parity.
+- **Test:** Delete removes the row. The years show, and the purge note appears for old results.
+
+### 8. FRONTEND: Retire 4 previews
+- **Files:** delete `src/app/(main)/(gated)/tools/{resume,ats,cover-letter,cold-email}/`; edit `tools/layout.jsx` (the banner map), `src/components/shared/AppSidebar.jsx` (the Previews group keeps only interview and roadmap), `src/app/page.js` (landing tool hrefs and footer), `(gated)/resume/page.jsx:31` (the preview link)
+- **What:**
+  - Remove the 4 preview pages and every link to them.
+  - Keep `ResumePaperDoc.jsx` (used by the landing page) and `mock.ts` (still used by the interview and roadmap previews).
+  - Check with a grep that nothing references the removed routes.
+- **Why:** D41. Their features are now in the real routes.
+- **Test:** The 4 old URLs redirect. The sidebar and landing links go to the real routes. The interview and roadmap previews still work with their banner.
 
 ---
 
 **New env var names:** none.
-**New migrations:** none expected.
+**New migration (you apply it):** `cold_email_fields`.

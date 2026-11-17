@@ -76,3 +76,12 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D37 | Match % | Deterministic keyword overlap between the job description and the resume, with no AI. Show the % plus the matched and missing terms. |
 | D38 | ATS 1-click fix | The AI proposes a sourced rewrite of one flagged bullet. Once the user accepts it, the bullet is applied to the analyzed resume text (stored in `evidence`) and a real `fast` re-score runs. The result is saved as a new ATS result linked to the old one. The main resume is never changed automatically. Scores from before the stored text existed must be re-uploaded to use the fix. |
 | D39 | ATS fix signing key | Use a dedicated `ATS_FIX_SIGNING_SECRET` env var, required in production (fail closed if missing), with a purpose-derived key. It no longer reuses `CLERK_SECRET_KEY`. All 8 Phase 4 nice-to-haves are fixed in a follow-up round. |
+
+## Phase 5 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D40 | Phase 5 scope | No BUILD-PLAN.md exists, so Phase 5 is **the writing tools plus retiring 4 previews**. Cover letter parity: tone, regenerate/more formal, shorter, one word-count range and a cliché check. Cold email parity: the D34 migration (recipient, subject, follow-up), mailto (D35), a word counter and a project highlight. Then retire `/tools/resume`, `/tools/ats`, `/tools/cover-letter` and `/tools/cold-email`. Interview and roadmap parity go to Phase 6. **Done when:** every real-data feature of those 4 previews works in the real routes with sources; the 4 previews redirect to their real routes; ATS results can be deleted and stored resume text is purged after 90 days; `npm run build` passes; all 6 tools still work. |
+| D41 | Retiring previews | Each preview is removed once its real route has every real-data feature, with a redirect from `/tools/<x>` to the real page. `mock.ts` is removed when the last preview goes (Phase 6). |
+| D42 | Stored resume text | Add "Delete result" to ATS history. Strip `evidence.resumeText` from results older than 90 days, opportunistically per user (there's no job runner). Those results then need a re-upload to use the fix. |
+| D43 | Cover letter regenerate | Regenerate, more formal, a tone change and "shorter" replace the same letter in place, with new sources, after a confirm dialog warning that edits will be lost. |
