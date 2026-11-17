@@ -1,49 +1,44 @@
-// Footer.jsx
-'use client'
+"use client";
 
+import React from "react";
 import Link from "next/link";
-import AscendLogo from "@/components/AscendLogo";
+import Image from "next/image";
 
-const Footer = () => {
+export default function Footer() {
   return (
-    <footer className="py-16 md:py-24 bg-background border-t border-divider/30">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-
-          {/* Brand */}
-          <div className="text-center md:text-left space-y-2">
-            <div className="flex items-center gap-2 justify-center md:justify-start">
-              <AscendLogo size={18} className="text-accent" />
-              <span className="text-sm font-clash font-bold tracking-[0.2em] text-foreground uppercase">
-                AscendAI
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground tracking-widest uppercase">
-              Your AI-powered career coach
-            </p>
+    <footer className="border-t border-[#ECEAE4] bg-white py-12 px-4 sm:px-6 text-xs text-muted">
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-full bg-pip-soft flex items-center justify-center p-0.5">
+            <Image
+              src="/pip/pip-coffee.svg"
+              alt="pip"
+              width={18}
+              height={18}
+              style={{ imageRendering: "pixelated" }}
+              unoptimized
+            />
           </div>
+          <span className="font-semibold text-text">ascendai</span>
+          <span>•</span>
+          <span className="font-pixel text-[11px] text-pip-ink">
+            pip by stick it up (mit)
+          </span>
+        </div>
 
-          {/* Links */}
-          <div className="flex items-center gap-8 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-            <Link href="/dashboard" className="hover:text-accent transition-colors">
-              Get Started
-            </Link>
-            <Link href="#features" className="hover:text-accent transition-colors">
-              Features
-            </Link>
-            <Link href="#faq" className="hover:text-accent transition-colors">
-              FAQ
-            </Link>
-          </div>
+        <div className="flex flex-wrap items-center gap-6">
+          <Link href="/tools/resume" className="hover:text-text transition">resume</Link>
+          <Link href="/tools/interview" className="hover:text-text transition">interview</Link>
+          <Link href="/tools/cover-letter" className="hover:text-text transition">cover letter</Link>
+          <Link href="/tools/cold-email" className="hover:text-text transition">cold email</Link>
+          <Link href="/tools/roadmap" className="hover:text-text transition">roadmap</Link>
+          <Link href="/tools/ats" className="hover:text-text transition">ats</Link>
+        </div>
 
-          {/* Copyright */}
-          <div className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase text-center md:text-right">
-            © {new Date().getFullYear()} AscendAI. All rights reserved.
-          </div>
+        <div className="text-[11px]">
+          © {new Date().getFullYear()} ascendai • built for tech job seekers
         </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

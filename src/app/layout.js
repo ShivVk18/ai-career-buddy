@@ -1,33 +1,14 @@
 import "./globals.css";
-
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/Theme-Provider";
 
 export const metadata = {
-  title: "AscendAI — AI Career Coach",
-  description: "Your AI-powered career growth platform. Land your dream job with AI-driven resume analysis, interview coaching, and career roadmaps.",
-
-  openGraph: {
-    title: "AscendAI — AI Career Coach",
-    description: "Your AI-powered career growth platform.",
-    url: "https://ascendai.app",
-    siteName: "AscendAI",
-    images: [
-      {
-        url: "/logo.png",
-        width: 1024,
-        height: 1024,
-        alt: "AscendAI Logo",
-      },
-    ],
-    type: "website",
-  },
-  twitter: {
-    card: "summary",
-    title: "AscendAI — AI Career Coach",
-    description: "Your AI-powered career growth platform.",
-    images: ["/logo.png"],
+  title: "ascendai — ai career coach with pip",
+  description: "your cozy ai career coach. meet pip: it highlights matches, strikes weak lines, and gets you hired as yourself.",
+  icons: {
+    icon: "/pip/pip-coffee.svg",
+    apple: "/pip/pip-coffee.svg",
   },
 };
 
@@ -36,20 +17,34 @@ export default function RootLayout({ children }) {
     <ClerkProvider afterSignOutUrl="/">
       <html lang="en" suppressHydrationWarning>
         <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link
-            href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@200,300,400,500,600,700&f[]=general-sans@200,300,400,500,600,700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Pixelify+Sans:wght@400..700&display=swap"
             rel="stylesheet"
           />
         </head>
-        <body className="font-general antialiased">
+        <body className="bg-bg text-text font-sans antialiased selection:bg-pip-soft selection:text-pip-ink min-h-screen">
           <ThemeProvider
             attribute="class"
             defaultTheme="light"
             enableSystem={false}
             disableTransitionOnChange={false}
           >
-            <main className="min-h-screen">{children}</main>
-            <Toaster richColors />
+            {children}
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                style: {
+                  borderRadius: "14px",
+                  background: "#FFFFFF",
+                  border: "1px solid #ECEAE4",
+                  color: "#23222B",
+                  fontSize: "13px",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+                },
+              }}
+            />
           </ThemeProvider>
         </body>
       </html>
