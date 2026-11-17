@@ -328,7 +328,7 @@ export default function LandingPage() {
       {/* ─── One-line Intro ─── */}
       <section className="py-12 border-y border-[#ECEAE4] bg-[#F4F2EC]/40 text-center px-4">
         <p className="text-base sm:text-lg text-text font-serif italic max-w-2xl mx-auto">
-          "no generic bullet points. no automated hallucinations. just your real work, sharpened for the role you actually want."
+          &quot;no generic bullet points. no automated hallucinations. just your real work, sharpened for the role you actually want.&quot;
         </p>
       </section>
 

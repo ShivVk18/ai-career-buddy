@@ -1,5 +1,4 @@
 import AppSidebar from "@/components/shared/AppSidebar";
-import { getUserOnboardingStatus } from "@/actions/User";
 
 export default async function MainLayout({ children }) {
   return (
