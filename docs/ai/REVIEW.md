@@ -8,21 +8,21 @@ Phase 2's review is in git history: `git show 6e93d33:docs/ai/REVIEW.md`.
 
 | # | Owner | File:line | Problem | Fix |
 |---|---|---|---|---|
-| 1 | BACKEND | src/actions/ResumeParser.js:429-453 (`updateATSScore`) | Exported server action with no callers. It spreads client-supplied `updateData` straight into `aTSScore.update`. Any signed-in user can overwrite `evidence` (forge sources and quotes), `userId` (move a row to another user) or scores. Phase 3 makes `evidence` a trust field, so this breaks the core promise. | Delete `updateATSScore` (grep shows zero callers). If it is kept, allowlist fields (never `evidence`, `userId`, `id`) and validate with zod. Update API-CONTRACT.md §6.4 if the function is removed. |
-| 2 | BACKEND | src/lib/ai/sources.js:7,68,97 (`PROMPT_TEXT_MAX=400`, `JD_MAX_LINES=150`, `formatCatalogForPrompt`) | The job description now reaches the model only through the catalog. Each JD line is clipped to 400 chars and only the first 150 lines are kept. A JD pasted as one paragraph (very common) is cut to about 400 chars, so ATS scoring, letters, emails and roadmaps silently lose most of the JD. `createATSAnalysis`, `generateCoverLetter` and `generateColdEmail` all use this. It is a regression against Phase 2 behaviour (full JD up to 20000 chars). | In `buildSources`, split JD lines longer than about 350 chars into sentence or chunk ids (`jd:<line>` for short lines, `jd:<line>.<n>` for chunks) and raise the line cap so a 20000-char JD fits. Do not clip JD lines in `formatCatalogForPrompt`. Update the contract id note. |
+| 1 (RESOLVED in fix round 1) | BACKEND | src/actions/ResumeParser.js:429-453 (`updateATSScore`) | Exported server action with no callers. It spreads client-supplied `updateData` straight into `aTSScore.update`. Any signed-in user can overwrite `evidence` (forge sources and quotes), `userId` (move a row to another user) or scores. Phase 3 makes `evidence` a trust field, so this breaks the core promise. | Delete `updateATSScore` (grep shows zero callers). If it is kept, allowlist fields (never `evidence`, `userId`, `id`) and validate with zod. Update API-CONTRACT.md §6.4 if the function is removed. |
+| 2 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/sources.js:7,68,97 (`PROMPT_TEXT_MAX=400`, `JD_MAX_LINES=150`, `formatCatalogForPrompt`) | The job description now reaches the model only through the catalog. Each JD line is clipped to 400 chars and only the first 150 lines are kept. A JD pasted as one paragraph (very common) is cut to about 400 chars, so ATS scoring, letters, emails and roadmaps silently lose most of the JD. `createATSAnalysis`, `generateCoverLetter` and `generateColdEmail` all use this. It is a regression against Phase 2 behaviour (full JD up to 20000 chars). | In `buildSources`, split JD lines longer than about 350 chars into sentence or chunk ids (`jd:<line>` for short lines, `jd:<line>.<n>` for chunks) and raise the line cap so a 20000-char JD fits. Do not clip JD lines in `formatCatalogForPrompt`. Update the contract id note. |
 
 ## NICE-TO-HAVE
 
 | # | Owner | File:line | Problem | Fix |
 |---|---|---|---|---|
-| 3 | BACKEND | src/actions/Resume.js:225-231 (`improveWithAI`) | The deterministic `input:current` + `profile:industry` sources are decorative. They are always the same two chips, so they carry no information. `input:current` just says "based on what you typed", and the industry is a prompt flavour, not a fact the text cites. The prompt says "never invent numbers" but nothing checks it. | Recommended: return only `input:current` (labelled "Rewritten from your text"), and drop the industry chip. Add a server check that every number or percentage in the output also appears in `current`. Drop the sentence or retry once if it doesn't. Then the chip is a real guarantee. |
-| 4 | BACKEND | src/actions/ResumeParser.js:233,236 and 29-43 | A strength can be "sourced" only by a JD line. That cites the job, not the candidate, yet it is shown beside "From your resume". The quote minimum of 8 chars (line 34) lets near-trivial quotes such as "software" pass. For recommendations, `text` falls back to impact or category (line 236) while the contract says `text === action`. | Require at least one `resume_quote` for strengths. Raise the quote minimum to about 20 chars or 4 words. Keep `text = action`, and drop recommendations with an empty action. |
-| 5 | BACKEND | src/lib/ai/sources.js:15 (`normalizeText`) | Quote matching only lowercases and collapses whitespace. PDF text often has ligatures (ﬁ), smart quotes, en dashes and hyphenation breaks. Honest quotes get dropped, which can cause false NO_SOURCES. | Apply `normalize("NFKC")` and map curly quotes and dashes to ASCII on both sides. Strip soft hyphens. |
-| 6 | BACKEND | src/lib/ai/paragraphs.js:44; src/actions/ResumeParser.js:247; src/actions/CareerRoadmap.js (retry call) | If the retry call throws (rate limit, AI_LIMIT, timeout), the already-usable first result is discarded and the user gets FAILED or AI_LIMIT. | Wrap the retry in try/catch and fall back to the first result, which is dropped-and-filtered anyway. |
-| 7 | BACKEND | src/lib/ai/paragraphs.js:47-48 | Only unsourced body paragraphs are checked. The model can return no greeting or closing, or several. Cited ids are verified to exist, not to support the claim (inherent limit, undocumented). | Enforce one greeting first and one closing last, or add them deterministically. Add one line to API-CONTRACT §6 saying that sources prove "built from these inputs", not entailment. |
-| 8 | BACKEND | src/lib/checkUser.js:29 | `user.emailAddresses[0].emailAddress` throws for a Clerk user with no email, and it ignores the primary email. This is the same sync gap Phase 3 fixed elsewhere. | Use `primaryEmail(user)` from src/lib/clerkEmail.js. |
-| 9 | FRONTEND | src/app/(main)/(gated)/resume/_components/EntryForm.jsx:122 | New entries have no id until saved, so keys mix `item.id` and the index. Harmless but could remount a row. | Give new entries a client temp id (the server keeps existing ids) or use `item.id ?? \`new-${index}\``. |
-| 10 | FRONTEND | src/data/faqs.js:10-18 | The FAQ still says "Sensai", but the product is AscendAI. Old FAQs already used it (8 occurrences at cf7e709), so the agent did not introduce it, but the rewritten FAQ (line 13-15) repeated it. | Replace "Sensai" with "AscendAI" in all FAQ entries. |
+| 3 (RESOLVED in fix round 1) | BACKEND | src/actions/Resume.js:225-231 (`improveWithAI`) | The deterministic `input:current` + `profile:industry` sources are decorative. They are always the same two chips, so they carry no information. `input:current` just says "based on what you typed", and the industry is a prompt flavour, not a fact the text cites. The prompt says "never invent numbers" but nothing checks it. | Recommended: return only `input:current` (labelled "Rewritten from your text"), and drop the industry chip. Add a server check that every number or percentage in the output also appears in `current`. Drop the sentence or retry once if it doesn't. Then the chip is a real guarantee. |
+| 4 (RESOLVED in fix round 1) | BACKEND | src/actions/ResumeParser.js:233,236 and 29-43 | A strength can be "sourced" only by a JD line. That cites the job, not the candidate, yet it is shown beside "From your resume". The quote minimum of 8 chars (line 34) lets near-trivial quotes such as "software" pass. For recommendations, `text` falls back to impact or category (line 236) while the contract says `text === action`. | Require at least one `resume_quote` for strengths. Raise the quote minimum to about 20 chars or 4 words. Keep `text = action`, and drop recommendations with an empty action. |
+| 5 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/sources.js:15 (`normalizeText`) | Quote matching only lowercases and collapses whitespace. PDF text often has ligatures (ﬁ), smart quotes, en dashes and hyphenation breaks. Honest quotes get dropped, which can cause false NO_SOURCES. | Apply `normalize("NFKC")` and map curly quotes and dashes to ASCII on both sides. Strip soft hyphens. |
+| 6 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/paragraphs.js:44; src/actions/ResumeParser.js:247; src/actions/CareerRoadmap.js (retry call) | If the retry call throws (rate limit, AI_LIMIT, timeout), the already-usable first result is discarded and the user gets FAILED or AI_LIMIT. | Wrap the retry in try/catch and fall back to the first result, which is dropped-and-filtered anyway. |
+| 7 (RESOLVED in fix round 1) | BACKEND | src/lib/ai/paragraphs.js:47-48 | Only unsourced body paragraphs are checked. The model can return no greeting or closing, or several. Cited ids are verified to exist, not to support the claim (inherent limit, undocumented). | Enforce one greeting first and one closing last, or add them deterministically. Add one line to API-CONTRACT §6 saying that sources prove "built from these inputs", not entailment. |
+| 8 (RESOLVED in fix round 1) | BACKEND | src/lib/checkUser.js:29 | `user.emailAddresses[0].emailAddress` throws for a Clerk user with no email, and it ignores the primary email. This is the same sync gap Phase 3 fixed elsewhere. | Use `primaryEmail(user)` from src/lib/clerkEmail.js. |
+| 9 (RESOLVED in fix round 1) | FRONTEND | src/app/(main)/(gated)/resume/_components/EntryForm.jsx:122 | New entries have no id until saved, so keys mix `item.id` and the index. Harmless but could remount a row. | Give new entries a client temp id (the server keeps existing ids) or use `item.id ?? \`new-${index}\``. |
+| 10 (RESOLVED in fix round 1) | FRONTEND | src/data/faqs.js:10-18 | The FAQ still says "Sensai", but the product is AscendAI. Old FAQs already used it (8 occurrences at cf7e709), so the agent did not introduce it, but the rewritten FAQ (line 13-15) repeated it. | Replace "Sensai" with "AscendAI" in all FAQ entries. |
 
 ## Checks that passed
 
@@ -65,3 +65,35 @@ Phase 2's review is in git history: `git show 6e93d33:docs/ai/REVIEW.md`.
 | Invalid PDFs rejected | PASS |
 | No placeholder or empty emails written | PASS |
 | `npm run build` passes, all 6 tools still work | PASS for the build; the tools are wired (not run), but see must-fix 2 for JD handling |
+
+
+## Fix round 1 (320fa9c..HEAD)
+
+**Summary:** `npm run lint` passes (0 errors, same 1 pre-existing font warning). `npm run build` passes. 0 MUST-FIX. All 10 items above are resolved.
+
+Verified:
+- 1 updateATSScore: strict zod allowlist (jobTitle, companyName, jobDescription), ownership-scoped `updateMany` on `userId`, `{success:false, error, code}` shape. evidence, userId and scores can no longer be written.
+- 2 JD chunking: JD capped at 20000 chars, lines over 400 chars become `jd:<n>.<k>` chunks (sentence, then word, then hard split; the loop always advances). `formatCatalogForPrompt` no longer clips JD. A 20k single-paragraph JD becomes about 50 chunks, roughly 21k chars in the prompt, which is the same size as Phase 2.
+- 3 improveWithAI: sources are only `input:current`. Numbers are compared as tokens (commas stripped, list markers removed). One retry, then `INVENTED_DETAIL`, which AITextarea and EntryForm show as `result.error`.
+- 4 ATS: strengths and weaknesses need a verified resume_quote, quotes are at least 20 chars, `normalizeText` is applied to both resume and quote, and recommendation text is always the action.
+- 5 Retry in a try/catch keeps the first result in ResumeParser, paragraphs and CareerRoadmap.
+- 6 `normalizeShape` demotes extra greetings and non-final closings to body, so they need sources. The contract's "built from, not verified" line is present.
+- 7 checkUser uses `primaryEmail` and a null-safe name.
+- 8 No "Sensai" remains in src. The only mentions are in docs (CONTEXT.md, historical). EntryForm gives new entries a stable `crypto.randomUUID` id.
+
+New nits (not blocking):
+| Severity | File:line | Problem | Fix |
+|---|---|---|---|
+| nit | src/lib/ai/sources.js normalizeText | The `word-\nword` join also merges genuine line-end hyphens ("full-\nstack" becomes "fullstack"), so a correct "full-stack" quote may fail to match. | Also try a hyphen-preserving variant when matching. |
+| nit | src/actions/Resume.js numTokens | Spelled-out numbers ("three", "doubled") are not checked, and "24/7" is split into two tokens. | Acceptable; document as a known limit. |
+
+## Done-when (after fix round 1)
+
+| Item | Result |
+|---|---|
+| Sources on ATS items, improved text, letter/email paragraphs, roadmap steps | PASS |
+| Server drops unsourced items, retrying once | PASS |
+| Pre-Phase-3 records show "created before sources" | PASS |
+| Invalid PDFs rejected | PASS |
+| No placeholder or empty emails | PASS |
+| Build passes, all 6 tools wired | PASS |
