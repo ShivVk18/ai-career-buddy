@@ -30,7 +30,7 @@ const FAQSection = () => {
     {
       question: "How up-to-date is the career advice?",
       answer:
-        "Our AI is continuously trained on current job market data, real hiring trends, and industry shifts — so the advice you get is relevant to today's job market, not last year's.",
+        "Our AI tailors its advice to your profile, resume and the job descriptions you provide, so guidance reflects the roles you are actually targeting.",
     },
     {
       question: "Can I use this if I'm just starting my career?",

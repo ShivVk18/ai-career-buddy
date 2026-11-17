@@ -2,17 +2,12 @@ export const faqs = [
   {
     question: "What makes AscendAI unique as a career development tool?",
     answer:
-      "AscendAI combines AI-powered career tools with industry-specific insights to help you advance your career. Our platform offers three main features: an intelligent resume builder, a cover letter generator, and an adaptive interview preparation system. Each tool is tailored to your industry and skills, providing personalized guidance for your professional journey.",
+      "AscendAI combines AI-powered career tools to help you advance your career. Our platform offers three main features: an intelligent resume builder, a cover letter generator, and an adaptive interview preparation system. Each tool is tailored to your industry and skills, providing personalized guidance for your professional journey.",
   },
   {
     question: "How does AscendAI create tailored content?",
     answer:
       "AscendAI learns about your industry, experience, and skills during onboarding. It then uses this information to generate customized resumes, cover letters, and interview questions. The content is specifically aligned with your professional background and industry standards, making it highly relevant and effective.",
-  },
-  {
-    question: "Does AscendAI include industry insights?",
-    answer:
-      "AscendAI uses your industry, skills and experience from onboarding to tailor each tool, such as your ATS scan, cover letters, cold emails, career roadmap and interview practice. We don't publish weekly market or salary reports yet. Everything you see is based on your own profile, resume and the job descriptions you provide.",
   },
   {
     question: "Is my data secure with AscendAI?",
