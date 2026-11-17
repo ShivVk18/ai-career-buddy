@@ -37,3 +37,15 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D13 | Owner WIP | The uncommitted work was committed as one baseline (`725f52d`) before the agents ran. |
 | D14 | Logging | Remove raw content logs. Add a redacted logger that records only metadata (task, provider, model, ms, ok/error). Full content is logged only when `AI_DEBUG` is set, outside production. |
 | D15 | Migration | All 7 Gemini call sites move to `runAI()` in Phase 1. Dead `AiServices` methods may be removed only if nothing references them, since no feature is removed. |
+
+## Phase 2 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D16 | Phase 2 scope | No BUILD-PLAN.md exists, so Phase 2 is **"real data"**: real dashboard, read-only grounded Pip chat, server-side quiz scoring, a per-user AI cap, and labelling `/tools/*` as previews. **Done when:** `mock.ts` is imported only by `/tools/*` pages, the dashboard and chat show only the signed-in user's real records (empty states otherwise), the quiz score is computed on the server, the daily cap blocks requests over the limit, `npm run build` passes, and all 6 tools still work. |
+| D17 | `/tools/*` (amends D2/D3) | Redirecting would remove features, so `/tools/*` **stays reachable as a labelled preview** ("Preview: sample data"). The sidebar links to the real routes. Tool features move into the real routes in a later phase, and `/tools/*` and `mock.ts` are retired only after that. |
+| D18 | Job pipeline | No new model. Derive "targets" from the user's ATS scores, cover letters and cold emails (company and role, deduplicated), plus incomplete roadmap steps and the average ATS score. |
+| D19 | Pip chat (refines D4) | **Read-only and grounded.** It answers via `runAI` using the user's real profile, ATS scores and roadmaps. Tool cards are built on the server from real records only, never from AI-invented data. Chat never creates or changes anything; it links to the tool pages. |
+| D20 | Quiz scoring (D10) | Done in Phase 2. Generated quizzes are stored on the server, correct answers never reach the browser before submit, and the score is computed on the server. One quiz can't be submitted twice. |
+| D21 | AI usage cap | A per-user daily cap counts today's `AiUsage` rows against `AI_DAILY_LIMIT`. Over the limit, `runAI` throws `AIError` with code `AI_LIMIT`. If the table is missing (migration not applied), the cap is skipped with a warning. |
+| D22 | Migrations | Agents write migration SQL only. The owner applies `AiUsage` and the Phase 2 migration after resolving the dev DB drift. |

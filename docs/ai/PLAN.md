@@ -1,94 +1,110 @@
-# PLAN: Phase 1 (security, runAI, Docker)
+# PLAN: Phase 2 (real data)
 
-Branch `phase-1`. Scope and decisions: DECISIONS.md D1, D5–D8, D11–D15. Spec: AI-PROVIDERS.md (Gemini only, no BYOK, no embeddings this phase).
+Branch `phase-2`. Decisions: D16–D22 in DECISIONS.md. Inputs: CONTEXT.md §11 "Phase 2 inputs".
 
-**Done when:** every AI call goes through `runAI()` (no `@google/genai` import outside `src/lib/ai`), the app routes redirect signed-out users, `npm run build` passes, and all 6 tools still work.
+**Done when:** `src/lib/mock.ts` is imported only by `/tools/*` pages; the dashboard and Pip chat show only the signed-in user's real records (empty states otherwise); the quiz score is computed on the server; the daily AI cap blocks requests over the limit; `npm run build` passes; all 6 tools still work.
 
-Rules for every task: never edit `.env`; new Prisma migrations only; keep each feature's inputs and output shape the same; no prompt or output content in logs.
+Rules: never edit `.env`; migrations are SQL files only and are never applied (D22); every query is scoped by userId; zod on every input; no feature removed; chat is read-only; nothing invented. When there's no data, show an empty state, not a sample.
 
-**Out of scope (later phases):** BYOK and `UserApiKey`, providers other than Gemini, embeddings, wiring dashboard/tools/chat to real data, citation fields in outputs (D8 sources), server-side quiz scoring (D10), industry insights (D9).
-
----
-
-### 1. BACKEND: Restore route guards and lock `/api/chat`
-- **Files:** `src/middleware.js`, `src/app/api/chat/route.js`
-- **What:** Protect `/dashboard`, `/resume`, `/resume-parser`, `/interview`, `/cover-letter`, `/cold-email`, `/roadmap`, `/tools`, `/onboarding` and `/chat` (all subpaths). `/api/chat` returns 401 JSON when the user is signed out (no redirect), and validates its request body with zod (400 on bad input). The mock reply logic stays as it is for now (D4 replaces it later).
-- **Why:** This is problem #1 in CONTEXT.md: route shells currently render for signed-out users, and the chat API is open.
-- **Test:** In a signed-out browser, visiting each route redirects to `/sign-in`. `curl -X POST localhost:3000/api/chat` returns 401. Signed in, every page and the chat still work.
-
-### 2. BACKEND: The `runAI()` core in `src/lib/ai`
-- **Files:** `package.json` (add `@langchain/google-genai`, `@langchain/core`), new `src/lib/ai/index.js`, `providers.js`, `keys.js`, `tasks.js`
-- **What:** This follows the AI-PROVIDERS.md spec, but supports only the `google` provider. It has:
-  - Tasks `fast` (temp 0) and `write` (temp 0.4), routed by `AI_ROUTE_FAST` and `AI_ROUTE_WRITE`.
-  - A key pool from `GEMINI_API_KEYS` that falls back to the existing `GEMINI_API_KEY`, with round-robin and a 60s cooldown when a key hits a rate limit.
-  - Fallback on 429, 5xx and timeouts.
-  - A helper `runAIStructured(task, zodSchema, buildMessages, { userId })` that validates the output and retries once on a parse failure.
-  - Support for an inline PDF part (needed by the ATS parser).
-  - Model names come only from env. The final error is clear and never includes keys.
-- **Why:** D5, D7, D15 and the "single `runAI()`" rule.
-- **Test:** The script from task 7 prints `google: ok`.
-
-### 3. BACKEND: `AiUsage` table and redacted logger
-- **Files:** `prisma/schema.prisma`, a new migration, `src/lib/ai/log.js`
-- **What:** Add the `AiUsage` model (`userId`, `task`, `provider`, `model`, `ok`, `latencyMs`, `errorCode?`, `createdAt`), with one row per attempt written by `runAI`. The logger prints only those metadata fields. Prompt or output content is logged only when `AI_DEBUG=1` and `NODE_ENV !== "production"`.
-- **Why:** D14, and problem #3 in CONTEXT.md (privacy).
-- **Test:** `npx prisma migrate dev` applies cleanly. After one tool run, a row appears in `AiUsage` and the server logs contain no resume text.
-
-### 4. BACKEND: Migrate interview and ATS
-- **Files:** `src/actions/Interview.js`, `src/actions/ResumeParser.js`, and a new `src/lib/ai/schemas.js`
-- **What:**
-  - Quiz generation and the improvement tip move to `runAI`.
-  - The quiz gets a zod schema for 10 questions with options, a correct answer and an explanation.
-  - ATS analysis moves to `runAI` with a zod schema matching the current `ATSScore` fields.
-  - Fix the bug where `atsScore` 0 is treated as a failure (`:207`), and change the revalidate path from `/ats-scores` to `/resume-parser` (`:234`).
-  - Remove the raw logs (`Interview.js:115`, `ResumeParser.js:186,190`).
-- **Why:** D8, D15, and problems #3 and #8.
-- **Test:** Generate a quiz on `/interview/mock`, finish it, and check that the result saves with a tip. Upload a PDF on `/resume-parser` and check that the score and lists render and save.
-
-### 5. BACKEND: Migrate the resume, cover letter and cold email writers
-- **Files:** `src/actions/Resume.js`, `src/actions/CoverLetter.js`, `src/actions/ColdEmail.js`
-- **What:** `improveWithAI`, `generateCoverLetter` and `generateColdEmail` move to `runAI("write", …)` and return the same shapes as before. Errors returned to the client become generic messages instead of raw errors (`CoverLetter.js:94-97`).
-- **Why:** D15 (3 of the 6 tools).
-- **Test:** On `/resume`, "improve with AI" works. On `/cover-letter/new` and `/cold-email/new`, a document is generated, saved and opens at its `[id]` page.
-
-### 6. BACKEND: Migrate the roadmap and remove the old clients
-- **Files:** `src/actions/CareerRoadmap.js`, `src/services/AiServices.js`
-- **What:**
-  - Roadmap generation and progress recommendations move to `runAI` with a zod roadmap schema.
-  - Remove the raw log (`CareerRoadmap.js:157`).
-  - In `AiServices.js`, delete `DEBUG_MODE`, the `GoogleGenAI` client and the dead methods, but only methods with zero references (the agent greps before deleting). If nothing still uses the file, delete the file.
-- **Why:** D15 and the done-when grep.
-- **Test:** Create a roadmap on `/roadmap`, open it and complete a step. Grepping for `@google/genai` outside `src/lib/ai` finds no matches.
-
-### 7. BACKEND: `.env.example` and the provider test script
-- **Files:** new `.env.example`, new `scripts/test-ai-providers.js`, and a `test:ai` script in `package.json`
-- **What:** `.env.example` lists every variable name with a placeholder value: existing ones plus `GEMINI_API_KEYS`, `AI_ROUTE_FAST`, `AI_ROUTE_WRITE` and `AI_DEBUG`. The script runs `runAI("fast")` with a tiny zod schema and prints ok or fail per provider. It never prints keys.
-- **Why:** AI-PROVIDERS.md "Test", and the missing `.env.example` noted in CONTEXT.md.
-- **Test:** `npm run test:ai` prints `google: ok`.
-
-### 8. BACKEND: Fix Docker
-- **Files:** `Dockerfile`, `docker-compose.yml`, `.dockerignore`
-- **What:**
-  - The compose port becomes `3000:3000`.
-  - Add `.env*` (except `.env.example`) to `.dockerignore`.
-  - Use one Node version (20) in every stage.
-  - Run `prisma migrate deploy` on start.
-  - Env comes in through compose `env_file` at runtime, not baked into the image.
-- **Why:** D11 and problem #10.
-- **Test:** `docker compose up --build`, and `localhost:3000` loads. `docker run --rm <image> ls -a` shows no `.env` inside the image.
-
-### 9. FRONTEND: Restore the onboarding gate in the app shell
-- **Files:** `src/app/(main)/layout.jsx`
-- **What:** On the server, check `getUserOnboardingStatus()` and redirect users who haven't onboarded to `/onboarding`. Keep the new `AppSidebar` shell and skip the check on `/onboarding` itself, so the redirect can't loop.
-- **Why:** The WIP removed the gate (CONTEXT.md §8), so new users currently land in tools with no profile.
-- **Test:** A newly signed-up user goes to `/dashboard` and is sent to `/onboarding`. After onboarding, `/dashboard` loads.
-
-### 10. FRONTEND: Friendly error boundary for the app routes
-- **Files:** new `src/app/(main)/error.jsx`
-- **What:** A client error boundary in the style of `design/ascendai-pixel.html`, with a Pip illustration, a short message and a "Try again" button that calls `reset()`. It never shows raw error text.
-- **Why:** `runAI` now throws clear errors when every provider fails, and there is no `error.jsx` anywhere (problem #11).
-- **Test:** Set `AI_ROUTE_FAST` to a bad model locally, run a quiz, and check that the friendly screen appears and "Try again" recovers once the env is fixed.
+**Out of scope:** moving `/tools/*` features into the real routes, citations in generated text (D8), industry insights (D9), BYOK, providers other than Gemini.
 
 ---
 
-**New env var names (you add the values):** `GEMINI_API_KEYS` (optional; `GEMINI_API_KEY` still works), `AI_ROUTE_FAST`, `AI_ROUTE_WRITE`, `AI_DEBUG` (optional).
+### 1. BACKEND: Write the API contract first
+- **Files:** `docs/ai/API-CONTRACT.md`
+- **What:** Define these shapes before any code, so the frontend agent builds against them:
+  - `getDashboardData()` return shape.
+  - `generateQuiz()` and `submitQuiz(quizId, answers)` input and return shapes.
+  - `/api/chat` request, SSE events (keep `step`, `text`, `tool_result`, `done`, add `error {code, message}`) and every tool card's data shape, built only from real records.
+  - The `AI_LIMIT` error the UI must handle.
+- **Why:** The frontend tasks depend on these shapes, and the contract stops the two agents drifting apart.
+- **Test:** The reviewer checks that the code in tasks 2–5 matches the contract.
+
+### 2. BACKEND: Dashboard data action
+- **Files:** new `src/actions/Dashboard.js`
+- **What:** `getDashboardData()` returns:
+  - `firstName` from Clerk.
+  - `targets[]`, derived from the user's ATSScore, CoverLetter and ColdEmail rows: company and role, deduplicated, with the latest activity date and which documents exist (with ids for links).
+  - `nextTasks[]`: incomplete CareerPath steps, max 5.
+  - `avgAtsScore` (null if there are no scores).
+  - Counts per tool.
+
+  Everything is scoped by userId with no AI calls.
+- **Why:** D18. The dashboard is entirely mock today.
+- **Test:** A brand-new user gets empty arrays and `avgAtsScore: null`. After one ATS run and one cover letter, `targets` lists those companies.
+
+### 3. BACKEND: Server-side quiz scoring
+- **Files:** `prisma/schema.prisma`, new migration SQL (`quiz_session`), `src/actions/Interview.js`
+- **What:**
+  - Add a `QuizSession` model (`id`, `userId`, `questions` Json with answers, `createdAt`, `submittedAt?`).
+  - `generateQuiz` stores the session and returns `{ quizId, questions }` without `correctAnswer` or `explanation`.
+  - `submitQuiz(quizId, answers[])` validates with zod and checks ownership. It rejects a session that's already submitted. It computes the score on the server and saves the `Assessment` (same shape as before, with the tip via runAI). It returns per-question results including the correct answers and explanations.
+  - Keep `saveQuizResult` only if something else still calls it; otherwise the reviewer confirms nothing calls it before removal.
+  - Keep `getAssessments` and `getLatestQuiz` unchanged.
+- **Why:** D20. The score can currently be forged.
+- **Test:** The quiz payload in the browser network tab contains no correct answers. Submitting returns the score. A second submit of the same `quizId` is rejected. Editing the request to claim 10/10 has no effect.
+
+### 4. BACKEND: Per-user daily AI cap
+- **Files:** new `src/lib/ai/limit.js`, `src/lib/ai/index.js`, `.env.example`
+- **What:** Before the first attempt, `runAI` (when it has a userId) counts today's `AiUsage` rows for that user. If the count is at or over `AI_DAILY_LIMIT`, it throws `AIError` with code `AI_LIMIT`. If the env var is unset, there's no cap. If the table is missing, it skips the cap with one warning (D21). Add `AI_DAILY_LIMIT` to `.env.example`.
+- **Why:** D21. A real chat lets users spend your key.
+- **Test:** With `AI_DAILY_LIMIT=1` and the migration applied, the second AI request of the day fails with `AI_LIMIT`. Without the table, requests still work and one warning is logged.
+
+### 5. BACKEND: Real, read-only Pip chat
+- **Files:** `src/app/api/chat/route.js`, new `src/lib/ai/chatContext.js`
+- **What:**
+  - Remove the `mock.ts` import and the canned replies.
+  - Build context from the user's real records: profile (industry, skills, experience), the latest 3 ATS scores, active roadmaps and next steps.
+  - Call `runAIStructured("write", …)`. The output schema is `{ reply, cards: [{ type, recordId }] }`. The server fills each card's data from the record with that id, and drops any id that isn't the user's.
+  - Stream with the same SSE event shapes, plus an `error` event (including `AI_LIMIT`).
+  - The system prompt says: answer only from the given context; say when you don't know; never invent companies, scores or facts.
+  - Nothing is written to the database except `AiUsage`.
+- **Why:** D19 and the "nothing invented" promise. This is the top HIGH problem.
+- **Test:** A new user asking "what's my ATS score?" is told there are no scores yet and gets no card. After an ATS run, the answer cites the real score and shows one card for that record.
+
+### 6. FRONTEND: Real dashboard
+- **Files:** `src/app/(main)/(gated)/dashboard/page.jsx`, `_component/DashboardView.jsx`
+- **What:**
+  - The page calls `getDashboardData()` on the server and passes the result to the view.
+  - Remove the `mock.ts` imports, the hard-coded "88/100" and the "Aarav" fallback.
+  - The pipeline shows derived targets that link to their real documents. Tasks come from the roadmap. The score is `avgAtsScore` or "No score yet".
+  - Each empty section points to the relevant tool.
+  - Keep the Pip scene and layout per `design/ascendai-pixel.html`.
+- **Why:** D18 and the fabricated-data problem.
+- **Test:** A new user sees empty states with no fake companies. With real data, the dashboard shows real records and the links open them.
+
+### 7. FRONTEND: Sidebar goes to the real routes
+- **Files:** `src/components/shared/AppSidebar.jsx`, `src/app/(main)/(gated)/resume/page.jsx` (the `/tools/resume` link)
+- **What:**
+  - The main nav links to `/resume`, `/resume-parser`, `/interview`, `/cover-letter`, `/cold-email` and `/roadmap`.
+  - A small secondary "Previews" group keeps `/tools/*` reachable.
+  - Label the resume page's link to `/tools/resume` as "Preview".
+- **Why:** D3 and D17.
+- **Test:** Every main sidebar link opens a real page, and the previews are still reachable.
+
+### 8. FRONTEND: Preview banner on `/tools/*`
+- **Files:** new `src/app/(main)/(gated)/tools/layout.jsx` (and a shared banner component if needed)
+- **What:** One layout puts a clear, non-dismissable banner above every tool page: "Preview: sample data, not yours." It links to the real version of that tool. The tool pages themselves don't change.
+- **Why:** D17. Mock data must never pass for real data.
+- **Test:** All 6 `/tools/*` pages show the banner, and its link goes to the matching real route.
+
+### 9. FRONTEND: Quiz UI on server scoring
+- **Files:** `src/app/(main)/(gated)/interview/**` (the Quiz component and anything that calls `saveQuizResult`)
+- **What:** Use `{ quizId, questions }` from `generateQuiz`, send only `answers[]` to `submitQuiz`, and render the score and per-question results (correct answer and explanation) from the server's response. The browser no longer computes a score.
+- **Why:** D20.
+- **Test:** Take a quiz end to end. The result screen and assessment history match the server's score.
+
+### 10. FRONTEND: Chat UI for real replies
+- **Files:** `src/components/chat/ChatSlideOver.jsx`, `ChatMessage.jsx`, `ToolResultCard.jsx`, `src/app/chat/page.jsx`
+- **What:**
+  - Replace `MOCK_CHAT_PROMPTS` with neutral suggested prompts defined in the component, such as "What's my latest ATS score?". They must contain no fake data.
+  - Handle the new `error` event with a friendly message, plus a specific "daily limit reached" message for `AI_LIMIT`.
+  - Render the card shapes from API-CONTRACT.md, and have cards link to the real routes instead of `/tools/*`.
+  - No `mock.ts` import remains in the chat components.
+- **Why:** D19.
+- **Test:** A new user gets a grounded "no data yet" reply. Errors show a message, not a crash. Cards open the real record.
+
+---
+
+**New env var names:** `AI_DAILY_LIMIT` (optional; unset means no cap).
+**New migration (you apply it, with `AiUsage`):** `quiz_session`.
