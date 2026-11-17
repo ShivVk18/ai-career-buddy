@@ -244,14 +244,14 @@ Every newly generated item cites what it is based on. The server builds a catalo
 
 ```ts
 Snapshot = {
-  id: string,        // catalog id, e.g. "exp:e_1a2b3c4d5e6f", "profile:skills", "jd:3", "input:current"
+  id: string,        // catalog id, e.g. "exp:e_1a2b3c4d5e6f", "profile:skills", "jd:3", "jd:4.2", "input:current"
   kind: "experience" | "education" | "project" | "profile" | "resume" | "jd" | "input",
   label: string,     // chip text, e.g. "Experience: Engineer at Acme", "Profile: skills", "Job description, line 3"
   excerpt: string    // max 200 chars, whitespace collapsed; show as tooltip
 }
 ```
 
-Catalog ids: `exp:<id>`, `edu:<id>`, `proj:<id>`, `profile:industry|skills|bio|experience`, `resume:summary|skills`, `jd:<lineNo>` (1-based line of the job description), `input:<name>` (text the user typed into this request). Resume entries saved before Phase 3 that were never re-saved have no id; they are cited as `exp:i<index>` (position-based). The snapshot still shows the right label and excerpt.
+Catalog ids: `exp:<id>`, `edu:<id>`, `proj:<id>`, `profile:industry|skills|bio|experience`, `resume:summary|skills`, `jd:<lineNo>` (1-based line of the job description; a line of at most 400 chars) or `jd:<lineNo>.<n>` (chunk n, from 1, of a longer line, split on sentence or word boundaries, each at most 400 chars, label "Job description, line 3 (part 2)"; a line is never both). The whole JD (up to 20000 chars) is in the catalog and is sent to the model unclipped. `input:<name>` (text the user typed into this request). Resume entries saved before Phase 3 that were never re-saved have no id; they are cited as `exp:i<index>` (position-based). The snapshot still shows the right label and excerpt.
 
 ### 6.2 Legacy rule (D29)
 
@@ -271,6 +271,7 @@ All expected failures are RETURNED as `{ error: string, code }` (never thrown; o
 | `AI_LIMIT` | all generators | "Daily AI limit reached. Please try again tomorrow." |
 | `INVALID` | all generators | input failed validation |
 | `NOT_FOUND` | letter, email, roadmap, improve | "We couldn't find your profile. Please finish onboarding first." |
+| `INVENTED_DETAIL` | `improveWithAI` | "We couldn't improve this without adding details you didn't write. Add the specifics you want to keep (numbers, results) and try again." |
 | `FAILED` | all generators | generic retry message |
 
 ### 6.4 `createATSAnalysis(formData)`
@@ -290,10 +291,10 @@ Evidence = null | {          // null => legacy
 EvItem = { text: string, sources: EvSource[] }   // sources.length >= 1, always
 EvSource =
   | { type: "resume_quote", quote: string }                         // verbatim text from the uploaded resume PDF (verified)
-  | { type: "jd", id: "jd:<n>", label: string, excerpt: string }    // a job description line
+  | { type: "jd", id: "jd:<n>" | "jd:<n>.<k>", label: string, excerpt: string }    // a job description line
 ```
 
-Show quotes as "From your resume: \"...\"" and jd as the line excerpt. `improvements` are not sourced. `getATSScoreById` / `updateATSScore` return the row with `evidence`; `getUserATSScores` select does not include it.
+Show quotes as "From your resume: \"...\"" and jd as the line excerpt. Rules enforced by the server: every strength and weakness has at least one `resume_quote` (a JD line alone is not accepted for a claim about the resume); recommendations may cite only JD lines; quotes are at least 20 chars and are matched after Unicode NFKC, smart-quote/dash/soft-hyphen/hyphenation normalization, whitespace collapse and lowercasing; recommendation `text` is always the `action` (recommendations with an empty action are dropped). If the retry call fails, the first attempt's verified items are kept. `improvements` are not sourced. `getATSScoreById` returns the row with `evidence`; `updateATSScore(scoreId, data)` (no UI callers) accepts only `{ jobTitle?, companyName?, jobDescription? }` (strict zod; any other key such as `evidence`, `userId`, `atsScore` is rejected), checks ownership, and returns `{ success: true, data }` or `{ success: false, error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`; `getUserATSScores` select does not include it.
 
 ### 6.5 `generateCoverLetter(data)` and `generateColdEmail(data)`
 Input: `{ jobTitle?: string, companyName?: string, jobDescription?: string }` (<= 200/200/20000 chars). Returns the created row, or `{ error, code }`. The row's `content` is markdown/plain text: paragraphs joined by exactly one blank line (`"\n\n"`), so the editor works as before. New field:
@@ -304,6 +305,8 @@ sources: null | {            // null => legacy
   paragraphs: { kind: "greeting" | "body" | "closing", sources: Snapshot[] }[]
 }
 ```
+
+Sources show what the text was built from, not that each claim is verified: the server checks that cited ids exist, not that the paragraph is entailed by them. The server enforces at most one greeting (only as the first paragraph) and at most one closing (only as the last); extra ones are treated as body paragraphs and need sources.
 
 `sources.paragraphs[i]` describes `content.split(/\n{2,}/)[i]` (no paragraph contains a blank line). Every `body` has `sources.length >= 1`; greeting and closing may be `[]`. Alignment rule (D27): after the user edits, if `content.split(/\n{2,}/).filter(Boolean).length !== sources.paragraphs.length`, show one "Based on" list of the union of all snapshots (dedupe by `id`) instead of per-paragraph chips. The email no longer receives the user's email address; the letter no longer has a markdown header/signature block (the closing paragraph carries the sign-off).
 
@@ -321,10 +324,10 @@ Unsourced steps are dropped; step ids are renumbered 1..n. Cited ids can include
 Contract change: used to return a string and throw. Now returns
 
 ```ts
-{ text: string, sources: Snapshot[] } | { error: string, code: "INVALID" | "NOT_FOUND" | "AI_LIMIT" | "FAILED" }
+{ text: string, sources: Snapshot[] } | { error: string, code: "INVALID" | "NOT_FOUND" | "AI_LIMIT" | "INVENTED_DETAIL" | "FAILED" }
 ```
 
-`current` 1-5000 chars, `type` 1-40 chars. `sources` is deterministic: `input:current` ("Your text") plus `profile:industry` when the profile has one. Not persisted by the server; the UI keeps it next to the text while shown.
+`current` 1-5000 chars, `type` 1-40 chars. `sources` is always exactly `[input:current]`, labelled "Rewritten from your text" (the industry chip is gone). The server checks that every number (digits, %, $ amounts) in the output also appears in `current`; on a mismatch it retries once, then returns `{ error: "We couldn't improve this without adding details you didn't write. Add the specifics you want to keep (numbers, results) and try again.", code: "INVENTED_DETAIL" }` (show `error` as is). Not persisted by the server; the UI keeps it next to the text while shown.
 
 ### 6.8 `saveResume` stable ids
 `saveResume` adds a stable `id` (`"e_" + 12 hex`) to every `experience`, `education` and `projects` entry that lacks one, and keeps existing ids (duplicates within one array are regenerated). Only saving does this; nothing is batch-rewritten. The saved resume returned by `saveResume` / `getResume` includes the ids. **The client must send entries back with their `id`** (react-hook-form + `entrySchema` in `src/app/lib/schema.js` will strip an `id` unless the schema has `id: z.string().optional()`; use it as the React key).

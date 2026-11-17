@@ -14,6 +14,7 @@ import { atsSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 
 const MIN_ITEMS = 2;
+const MIN_QUOTE = 20;
 const NO_SOURCES_MSG =
   "We couldn't back the analysis with evidence from your resume. Please check that the PDF has readable text and the job description is complete, then try again.";
 
@@ -31,7 +32,7 @@ function verifySources(sources, normResume, catalog) {
   for (const src of sources || []) {
     if (src?.type === "resume_quote") {
       const quote = String(src.quote ?? "").replace(/\s+/g, " ").trim();
-      if (quote.length >= 8 && quote.length <= 400 && normResume.includes(normalizeText(quote))) {
+      if (quote.length >= MIN_QUOTE && quote.length <= 400 && normResume.includes(normalizeText(quote))) {
         out.push({ type: "resume_quote", quote });
       }
     } else if (src?.type === "jd") {
@@ -42,10 +43,16 @@ function verifySources(sources, normResume, catalog) {
   return out;
 }
 
-function verifyItems(items, normResume, catalog) {
+/** requireQuote: a claim about the resume (strength/weakness) needs at least one verified resume_quote. */
+function verifyItems(items, normResume, catalog, requireQuote) {
   return (items || [])
     .map((it) => ({ ...it, text: String(it.text ?? "").trim(), sources: verifySources(it.sources, normResume, catalog) }))
-    .filter((it) => it.text && it.sources.length > 0);
+    .filter(
+      (it) =>
+        it.text &&
+        it.sources.length > 0 &&
+        (!requireQuote || it.sources.some((s) => s.type === "resume_quote"))
+    );
 }
 
 const stripRec = ({ sources, ...rest }) => ({ ...rest });
@@ -199,8 +206,9 @@ STEP 10 — FINAL SCORE:
 
 EVIDENCE RULE (mandatory):
 - Every item in "strengths", "weaknesses" and "recommendations" needs a non-empty "sources" array.
-- A source is either {"type":"resume_quote","quote":"..."} where quote is an EXACT contiguous excerpt (8-200 characters) copied verbatim from the RESUME TEXT, or {"type":"jd","id":"jd:<n>"} using an id from the job description lines above.
-- For a weakness or missing skill, cite the job description line that requires it (type "jd").
+- A source is either {"type":"resume_quote","quote":"..."} where quote is an EXACT contiguous excerpt (20-200 characters) copied verbatim from the RESUME TEXT, or {"type":"jd","id":"jd:<n>"} using an id from the job description lines above.
+- Every strength and every weakness MUST include at least one "resume_quote" (a claim about the resume must be backed by the resume). For a weakness or missing skill, cite the job description line that requires it (type "jd") AND a resume_quote showing what the resume says in that area (for example its skills line).
+- Recommendations may cite only job description lines.
 - Items without a verifiable source will be discarded. Give at least 2 items for each of those three lists when the evidence exists.
 
 OUTPUT JSON STRUCTURE:
@@ -230,12 +238,15 @@ OUTPUT JSON STRUCTURE:
       const raw = await runAIStructured("fast", atsSchema, () => [["user", prompt + note]], { userId });
       return {
         raw,
-        strengths: verifyItems(raw.strengths, normResume, catalog),
-        weaknesses: verifyItems(raw.weaknesses, normResume, catalog),
+        strengths: verifyItems(raw.strengths, normResume, catalog, true),
+        weaknesses: verifyItems(raw.weaknesses, normResume, catalog, true),
         recommendations: verifyItems(
-          raw.recommendations.map((r) => ({ ...r, text: r.action || r.impact || r.category })),
+          raw.recommendations
+            .filter((r) => String(r.action ?? "").trim())
+            .map((r) => ({ ...r, text: r.action })),
           normResume,
-          catalog
+          catalog,
+          false
         ),
       };
     };
@@ -244,10 +255,14 @@ OUTPUT JSON STRUCTURE:
 
     let result = await analyze("");
     if (lacking(result)) {
-      const retry = await analyze(
-        "\n\nIMPORTANT: your previous answer had too few items with verifiable sources. Quotes must be copied verbatim from the RESUME TEXT; jd ids must come from the job description lines."
-      );
-      if (total(retry) >= total(result)) result = retry;
+      try {
+        const retry = await analyze(
+          "\n\nIMPORTANT: your previous answer had too few items with verifiable sources. Quotes (at least 20 characters) must be copied verbatim from the RESUME TEXT; every strength and weakness needs a resume_quote; jd ids must come from the job description lines."
+        );
+        if (total(retry) >= total(result)) result = retry;
+      } catch (e) {
+        console.error("createATSAnalysis retry failed, keeping first attempt:", safeErr(e));
+      }
     }
     if (total(result) === 0) return failure("NO_SOURCES", NO_SOURCES_MSG);
 
@@ -425,39 +440,42 @@ export async function getATSAnalytics() {
   }
 }
 
-// Update ATS score
+// Update ATS score metadata. Only user-editable fields are accepted; scores, evidence, userId and
+// every AI-generated field can never be changed from the client.
+const updateMetaSchema = z
+  .object({
+    jobTitle: z.string().trim().max(200),
+    companyName: z.string().trim().max(200),
+    jobDescription: z.string().trim().max(20000),
+  })
+  .partial()
+  .strict();
+
 export async function updateATSScore(scoreId, updateData) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
+  const id = z.string().min(1).max(100).safeParse(scoreId);
+  const data = updateMetaSchema.safeParse(updateData ?? {});
+  if (!id.success || !data.success || Object.keys(data.data).length === 0) {
+    return { success: false, error: "Only job title, company name and job description can be updated.", code: "INVALID" };
+  }
+
   try {
-    const score = await db.aTSScore.findFirst({
-      where: {
-        id: scoreId,
-        user: {
-          clerkUserId: userId
-        }
-      }
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return { success: false, error: "We couldn't find your profile.", code: "NOT_FOUND" };
+
+    const result = await db.aTSScore.updateMany({
+      where: { id: id.data, userId: user.id },
+      data: data.data,
     });
+    if (result.count === 0) return { success: false, error: "ATS score not found.", code: "NOT_FOUND" };
 
-    if (!score) {
-      throw new Error("ATS score not found or unauthorized");
-    }
-
-    const updated = await db.aTSScore.update({
-      where: { id: scoreId },
-      data: {
-        ...updateData,
-        updatedAt: new Date(),
-      },
-    });
-
+    const updated = await db.aTSScore.findFirst({ where: { id: id.data, userId: user.id } });
     revalidatePath("/resume-parser");
-    
     return { success: true, message: "ATS score updated successfully", data: updated };
-
   } catch (error) {
     console.error("updateATSScore failed:", safeErr(error));
-    throw new Error("Failed to update ATS score");
+    return { success: false, error: "Failed to update ATS score.", code: "FAILED" };
   }
 }

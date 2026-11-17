@@ -155,11 +155,15 @@ Return ONLY JSON.
 
     let { r: roadmapData, kept } = await generate("");
     if (kept.length < roadmapData.steps.length) {
-      const retry = await generate(
-        "\n\nIMPORTANT: your previous answer had steps without valid sourceIds. Every step MUST list at least one id copied exactly from the SOURCES list."
-      );
-      const dropped = (x) => x.r.steps.length - x.kept.length;
-      if (dropped(retry) <= roadmapData.steps.length - kept.length) ({ r: roadmapData, kept } = retry);
+      try {
+        const retry = await generate(
+          "\n\nIMPORTANT: your previous answer had steps without valid sourceIds. Every step MUST list at least one id copied exactly from the SOURCES list."
+        );
+        const dropped = (x) => x.r.steps.length - x.kept.length;
+        if (dropped(retry) <= roadmapData.steps.length - kept.length) ({ r: roadmapData, kept } = retry);
+      } catch (e) {
+        console.error("roadmap retry failed, keeping first attempt:", safeErr(e));
+      }
     }
     if (kept.length === 0) return fail("NO_SOURCES", NO_SOURCES_MSG);
 

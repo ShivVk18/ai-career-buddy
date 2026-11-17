@@ -25,6 +25,15 @@ function clean(parsed, catalog) {
     .filter((p) => p.text);
 }
 
+/** A greeting is only valid as the first paragraph and a closing as the last; extras count as body. */
+function normalizeShape(ps) {
+  return ps.map((p, i) => {
+    if (p.kind === "greeting" && i !== 0) return { ...p, kind: "body" };
+    if (p.kind === "closing" && i !== ps.length - 1) return { ...p, kind: "body" };
+    return p;
+  });
+}
+
 const unsourced = (ps) => ps.filter((p) => p.kind === "body" && p.ids.length === 0).length;
 
 /**
@@ -34,15 +43,21 @@ const unsourced = (ps) => ps.filter((p) => p.kind === "body" && p.ids.length ===
  */
 export async function generateSourcedParagraphs({ prompt, catalog, userId }) {
   const run = async (note) =>
-    clean(
-      await runAIStructured("write", paragraphsSchema, () => [["user", prompt + note]], { userId }),
-      catalog
+    normalizeShape(
+      clean(
+        await runAIStructured("write", paragraphsSchema, () => [["user", prompt + note]], { userId }),
+        catalog
+      )
     );
 
   let ps = await run("");
   if (unsourced(ps) > 0) {
-    const retry = await run(RETRY_NOTE);
-    if (unsourced(retry) <= unsourced(ps)) ps = retry;
+    try {
+      const retry = await run(RETRY_NOTE);
+      if (unsourced(retry) <= unsourced(ps)) ps = retry;
+    } catch {
+      // keep the first attempt's usable paragraphs
+    }
   }
   ps = ps.filter((p) => p.kind !== "body" || p.ids.length > 0);
   if (!ps.some((p) => p.kind === "body")) throw new NoSourcesError();

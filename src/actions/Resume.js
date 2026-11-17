@@ -150,10 +150,21 @@ const improveSchema = z.object({
   type: z.string().trim().min(1).max(40),
 });
 
+const numTokens = (t) =>
+  [...String(t).replace(/^\s*\d+[.)]\s+/gm, "").matchAll(/\d[\d,]*(?:\.\d+)?/g)].map((m) =>
+    m[0].replace(/,/g, "").replace(/\.$/, "")
+  );
+
+/** Numbers (digits, %, $ amounts) in `output` that do not appear in `input`. */
+function inventedNumbers(output, input) {
+  const known = new Set(numTokens(input));
+  return numTokens(output).filter((n) => !known.has(n));
+}
+
 /**
- * Returns { text, sources } where sources is a snapshot of what the improvement is based on:
- * the user's own input text plus the profile industry used in the prompt.
- * Expected failures are RETURNED as { error, code } (INVALID | NOT_FOUND | AI_LIMIT | FAILED).
+ * Returns { text, sources } where sources is only input:current ("Rewritten from your text").
+ * Every number in the output must also appear in the input (one retry, then INVENTED_DETAIL).
+ * Expected failures are RETURNED as { error, code } (INVALID | NOT_FOUND | AI_LIMIT | INVENTED_DETAIL | FAILED).
  */
 export async function improveWithAI(input) {
   const { userId } = await auth();
@@ -216,18 +227,32 @@ Requirements:
 7. Return only the improved content without any explanations or introductory text.`;
     }
 
-    const improvedText = await runAIText("write", () => [["user", prompt]], {
-      userId,
-      temperature: 0.7,
-      maxOutputTokens: 300,
-    });
+    const generate = async (note) => {
+      const out = await runAIText("write", () => [["user", prompt + note]], {
+        userId,
+        temperature: 0.7,
+        maxOutputTokens: 300,
+      });
+      return out.replace(/^\d+:/gm, "").trim();
+    };
 
-    const text = improvedText.replace(/^\d+:/gm, "").trim();
+    let text = await generate("");
+    if (text && inventedNumbers(text, current).length > 0) {
+      text = await generate(
+        "\n\nIMPORTANT: your previous answer contained numbers that are not in the original text. Do not add any number, percentage or amount that is not already in the original text."
+      );
+    }
+    if (!text || inventedNumbers(text, current).length > 0) {
+      return {
+        error: "We couldn't improve this without adding details you didn't write. Add the specifics you want to keep (numbers, results) and try again.",
+        code: "INVENTED_DETAIL",
+      };
+    }
+
     const catalog = buildSources({
-      profile: { industry: user.industry },
-      extra: [{ id: "input:current", kind: "input", label: "Your text", text: current }],
+      extra: [{ id: "input:current", kind: "input", label: "Rewritten from your text", text: current }],
     });
-    return { text, sources: snapshot(["input:current", "profile:industry"], catalog) };
+    return { text, sources: snapshot(["input:current"], catalog) };
   } catch (error) {
     console.error("improveWithAI failed:", safeErr(error));
     if (error?.code === "AI_LIMIT") return { error: "Daily AI limit reached. Please try again tomorrow.", code: "AI_LIMIT" };

@@ -3,7 +3,8 @@
 import { randomUUID } from "node:crypto";
 
 const EXCERPT_MAX = 200;
-const JD_MAX_LINES = 150;
+const JD_MAX_CHARS = 20000; // matches the input limit, so a maximum-size JD fits fully
+const JD_CHUNK_MAX = 400;
 const PROMPT_TEXT_MAX = 400;
 
 const clip = (s, n) => {
@@ -11,9 +12,41 @@ const clip = (s, n) => {
   return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 };
 
-/** Lowercase + collapse whitespace. Used to match resume quotes against extracted PDF text. */
+/**
+ * Normalize for matching resume quotes against extracted PDF text: NFKC (ligatures etc.), smart
+ * quotes and dashes to ASCII, soft hyphens removed, "-\n" hyphenation joined, whitespace
+ * collapsed, lowercase. Apply to both sides.
+ */
 export function normalizeText(s) {
-  return String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  return String(s ?? "")
+    .normalize("NFKC")
+    .replace(/\u00ad/g, "")
+    .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/(\w)-\s*\r?\n\s*(\w)/g, "$1$2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** Split text into pieces of at most `max` chars, on sentence boundaries, else word boundaries. */
+function chunkText(text, max) {
+  const out = [];
+  let rest = text.trim();
+  while (rest.length > max) {
+    const win = rest.slice(0, max + 1);
+    let cut = -1;
+    const re = /[.!?;](?=\s)/g;
+    let m;
+    while ((m = re.exec(win))) cut = m.index + 1;
+    if (cut < max * 0.4) cut = win.lastIndexOf(" ");
+    if (cut < max * 0.4) cut = max; // no usable boundary: hard split
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
 }
 
 function entryItems(entries, prefix, kindLabel, kind) {
@@ -37,7 +70,8 @@ function entryItems(entries, prefix, kindLabel, kind) {
 /**
  * buildSources({ profile, resume, jobDescription, extra }) -> [{ id, kind, label, text }]
  * ids: exp:<entryId>, edu:<entryId>, proj:<entryId>, profile:skills|bio|experience|industry,
- * resume:summary, resume:skills, jd:<lineNo> (1-based line of the job description).
+ * resume:summary, resume:skills, jd:<lineNo> (1-based line of the job description; lines over 400
+ * chars are split into jd:<lineNo>.<n> chunks, n from 1).
  * `extra` appends caller-defined items (e.g. input:current, input:targetRole).
  */
 export function buildSources({ profile, resume, jobDescription, extra } = {}) {
@@ -62,10 +96,19 @@ export function buildSources({ profile, resume, jobDescription, extra } = {}) {
   }
   if (jobDescription && String(jobDescription).trim()) {
     String(jobDescription)
+      .slice(0, JD_MAX_CHARS)
       .split(/\r?\n/)
       .forEach((line, i) => {
         const t = line.trim();
-        if (t && i < JD_MAX_LINES) cat.push({ id: `jd:${i + 1}`, kind: "jd", label: `Job description, line ${i + 1}`, text: t });
+        if (!t) return;
+        const label = `Job description, line ${i + 1}`;
+        if (t.length <= JD_CHUNK_MAX) {
+          cat.push({ id: `jd:${i + 1}`, kind: "jd", label, text: t });
+        } else {
+          chunkText(t, JD_CHUNK_MAX).forEach((part, n) =>
+            cat.push({ id: `jd:${i + 1}.${n + 1}`, kind: "jd", label: `${label} (part ${n + 1})`, text: part })
+          );
+        }
       });
   }
   if (Array.isArray(extra)) cat.push(...extra.filter((x) => x?.id && x?.text));
@@ -94,7 +137,10 @@ export function snapshot(ids, catalog) {
 
 /** Catalog rendered for a prompt, one line per source: [id] label: text */
 export function formatCatalogForPrompt(catalog) {
-  return catalog.map((c) => `[${c.id}] ${c.label}: ${clip(c.text, PROMPT_TEXT_MAX)}`).join("\n");
+  // JD text is never clipped (chunks are already <= 400 chars); other items are.
+  return catalog
+    .map((c) => `[${c.id}] ${c.label}: ${c.kind === "jd" ? c.text : clip(c.text, PROMPT_TEXT_MAX)}`)
+    .join("\n");
 }
 
 /** Adds a stable id to entries that lack one. Existing ids are kept; duplicate ids are regenerated. */

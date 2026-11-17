@@ -1,5 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "./prisma";
+import { primaryEmail } from "./clerkEmail";
 
 export const checkUser = async () => {
   const user = await currentUser();
@@ -19,14 +20,14 @@ export const checkUser = async () => {
       return loggedInUser;
     }
 
-    const name = `${user.firstName} ${user.lastName}`;
+    const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
 
     const newUser = await db.user.create({
       data: {
         clerkUserId: user.id,
         name,
         imageUrl: user.imageUrl,
-        email: user.emailAddresses[0].emailAddress,
+        email: primaryEmail(user),
       },
     });
 
