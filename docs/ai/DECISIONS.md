@@ -111,3 +111,17 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | # | Topic | Decision |
 |---|-------|----------|
 | D54 | Industry insights removed (supersedes D9, D31) | The owner chose to remove industry insights entirely. A new migration removes the `User.industry` → `IndustryInsight` foreign key and drops the `IndustryInsight` table. It held only placeholder rows; no real data. `User.industry` stays as plain text. Remove the placeholder-row creation, the unused `industryInsight` include, the seeds and any FAQ or landing copy promising insights. The D31 "restore the FAQ promise" is dropped. |
+
+## UX flow pass (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D55 | Jobs and applications (supersedes D18) | Add `Job` and `Application` models (one migration). Pasting a job creates both, with the application in SAVED. Letters, emails, ATS scores and versions may link to a job. The old derived targets stay as a fallback for older data. |
+| D56 | Job links | Fetch any public **https** URL on the server with guards: block private, loopback, link-local and metadata IPs (re-checked after DNS and on every redirect); 5 s timeout; 2 MB cap; at most 3 redirects; `text/html` only; no cookies or credentials. If the site blocks it or the page is empty, ask the user to paste the text. The URL is saved for "Open job page". Extracted company, title and location carry job-description line sources (D26). |
+| D57 | Pipeline | Checker → Tailor → Writer → Connector run as **resumable steps** saved in the database, with no new infrastructure. The open page runs the next step, and leaving pauses it until you return. Outputs land in "needs you". The whole run counts as **one** daily-limit action (D50). No background notifications yet. |
+| D58 | Integrations | Gmail, GitHub, Scout and the daily digest are deferred. "Mark applied" and "I got an interview" are one manual tap. D35 (never send) still holds. |
+| D59 | Onboarding | Replace the profile form with a resume drop, parsed into editable sourced chips (roles, projects, skills, years), plus 2 tap questions (target role, suggested from the resume; stage: just starting / applying / interviewing) and a profile-strength ring with one next action. A manual path lets users add chips by hand without a long form. The resume is parsed in memory; only the chips and builder data are stored. Onboarding counts as done when there's a resume or the 2 questions are answered, so existing users aren't re-onboarded. |
+| D60 | Undo instead of confirm (amends D43) | Deletes become soft deletes with a 5 s Undo. Regenerate, more formal, shorten and warmer save the previous letter first, then offer Undo. Restoring a version gets Undo. The only remaining confirm is deleting the account or all data. |
+| D61 | Deleting data | Settings gets "Delete all my data" (keeps the account) and "Delete account" (also deletes the Clerk user), each behind a typed confirmation. |
+| D62 | Chat stays read-only (keeps D19) | The home input sends job text or a URL to the job-creation step and questions to chat. Chat itself never creates records. |
+| D63 | Accept all (keeps D36) | Per-line accept and "Accept all" on tracked changes save a resume **version**. The main resume changes only on "Restore". |
