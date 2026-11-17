@@ -105,3 +105,9 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D51 | Error monitoring | `@sentry/nextjs`, enabled only when a DSN is set. `beforeSend` strips request bodies, resume, job-description, answer and letter text, emails and Clerk ids, so only error codes, routes and stack frames are sent. |
 | D52 | Vercel migrations | Migrations are never run during the build. `docs/ai/DEPLOY.md` is the runbook: back up, `prisma migrate status`, `resolve` only for drift, then `prisma migrate deploy` by hand before promoting. |
 | D53 | Test runner | Vitest (default choice, no question needed). The existing self-check cases move into unit tests, and the script stays. |
+
+## Phase 8 (2026-11-17)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D54 | Industry insights removed (supersedes D9, D31) | The owner chose to remove industry insights entirely. A new migration removes the `User.industry` → `IndustryInsight` foreign key and drops the `IndustryInsight` table. It held only placeholder rows; no real data. `User.industry` stays as plain text. Remove the placeholder-row creation, the unused `industryInsight` include, the seeds and any FAQ or landing copy promising insights. The D31 "restore the FAQ promise" is dropped. |
