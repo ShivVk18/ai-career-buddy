@@ -99,6 +99,16 @@ export const paragraphsSchema = z.object({
     .min(2),
 });
 
+// Cold emails: paragraphs plus a short subject line with the catalog ids it is based on.
+export const emailParagraphsSchema = paragraphsSchema.extend({
+  subject: z.object({ text: z.string().min(1), sourceIds: z.array(z.string()).default([]) }).optional(),
+});
+
+// Cover letter "shorter": the model rewrites body paragraphs by index; the server keeps the sources.
+export const shortenSchema = z.object({
+  paragraphs: z.array(z.object({ index: z.number().int().min(0), text: z.string().min(1) })).min(1),
+});
+
 // Tailoring: the model picks an existing resume bullet and proposes a rewrite. The server supplies the
 // original text and checks entryId, bulletIndex, jd ids and numbers (D36).
 export const tailorSchema = z.object({

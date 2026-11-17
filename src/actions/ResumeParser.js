@@ -255,18 +255,52 @@ OUTPUT JSON STRUCTURE:
 }
 
 /** The stored resume text never leaves the server; clients get hasResumeText and the other evidence fields. */
-function publicScore(row) {
+function publicScore(row, candidateYears = null) {
   if (!row) return row;
   const ev = row.evidence;
-  if (!ev || typeof ev !== "object") return { ...row, hasResumeText: false, candidateLevel: null, previousScoreId: null };
+  if (!ev || typeof ev !== "object")
+    return { ...row, hasResumeText: false, resumePurged: false, candidateLevel: null, candidateYears, previousScoreId: null };
   const { resumeText, ...evidence } = ev;
   return {
     ...row,
     evidence: { ...evidence, requirements: Array.isArray(ev.requirements) ? ev.requirements : [] },
     hasResumeText: typeof resumeText === "string" && resumeText.length > 0,
+    resumePurged: typeof ev.resumePurgedAt === "string",
     candidateLevel: ev.candidateLevel ?? null,
+    candidateYears,
     previousScoreId: ev.previousScoreId ?? null,
   };
+}
+
+const yearsOf = (v) => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : null);
+
+const PURGE_DAYS = 90;
+const PURGE_BATCH = 50;
+
+/**
+ * D42: removes ONLY evidence.resumeText from this user's results older than 90 days, at most 50 rows per
+ * call (oldest first), in one atomic statement, and marks evidence.resumePurgedAt. Opportunistic (there
+ * is no job runner). Never throws: a failure is logged and the request carries on.
+ */
+async function purgeOldResumeText(userDbId) {
+  try {
+    const cutoff = new Date(Date.now() - PURGE_DAYS * 24 * 60 * 60 * 1000);
+    await db.$executeRaw`
+      UPDATE "ATSScore"
+      SET "evidence" = ("evidence" - 'resumeText') || jsonb_build_object('resumePurgedAt', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+      WHERE "id" IN (
+        SELECT "id" FROM "ATSScore"
+        WHERE "userId" = ${userDbId}
+          AND "createdAt" < ${cutoff}
+          AND "evidence" IS NOT NULL
+          AND jsonb_typeof("evidence") = 'object'
+          AND "evidence" -> 'resumeText' IS NOT NULL
+        ORDER BY "createdAt" ASC
+        LIMIT ${PURGE_BATCH}
+      )`;
+  } catch (err) {
+    console.error("ATS resume text purge failed:", safeErr(err));
+  }
 }
 
 /**
@@ -302,11 +336,12 @@ export async function createATSAnalysis(formData) {
     const name = clerkUser.firstName
       ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim()
       : null;
-    await db.user.upsert({
+    const dbUser = await db.user.upsert({
       where: { clerkUserId: userId },
       update: { ...(email ? { email } : {}), name },
       create: { clerkUserId: userId, email, name, skills: [] },
     });
+    await purgeOldResumeText(dbUser.id);
 
     const scored = await scoreResume({ userId, resumeText, jobDescription, jobTitle, companyName });
     if (scored.empty) return failure("NO_SOURCES", NO_SOURCES_MSG);
@@ -335,7 +370,7 @@ export async function createATSAnalysis(formData) {
 
     revalidatePath("/resume-parser");
 
-    return { success: true, data: publicScore(atsAnalysis) };
+    return { success: true, data: publicScore(atsAnalysis, yearsOf(dbUser.experience)) };
   } catch (err) {
     console.error("createATSAnalysis failed:", safeErr(err));
     if (err?.code === "AI_LIMIT") return failure("AI_LIMIT", "Daily AI limit reached. Please try again tomorrow.");
@@ -350,12 +385,13 @@ export async function getUserATSScores() {
   if (!userId) throw new Error("Unauthorized");
 
   try {
+    const me = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true, experience: true } });
+    if (!me) return [];
+    await purgeOldResumeText(me.id);
+    const candidateYears = yearsOf(me.experience);
+
     const scores = await db.aTSScore.findMany({
-      where: { 
-        user: {
-          clerkUserId: userId
-        }
-      },
+      where: { userId: me.id },
       orderBy: { createdAt: 'desc' },
       take: 50, // newest 50 only: Prisma can't select inside Json, so evidence (incl. resumeText) is still loaded
       select: {
@@ -380,8 +416,10 @@ export async function getUserATSScores() {
         ...row,
         isLegacy: ev === null,
         candidateLevel: ev?.candidateLevel ?? null,
+        candidateYears,
         previousScoreId: ev?.previousScoreId ?? null,
         hasResumeText: typeof ev?.resumeText === "string" && ev.resumeText.length > 0,
+        resumePurged: typeof ev?.resumePurgedAt === "string",
         requirementsMatched: reqs.filter((r) => r.status === "matched").length,
         requirementsTotal: reqs.length,
       };
@@ -405,48 +443,44 @@ export async function getATSScoreById(scoreId) {
           clerkUserId: userId
         }
       },
+      include: { user: { select: { experience: true } } },
     });
 
     if (!score) {
       throw new Error("ATS score not found");
     }
 
-    return publicScore(score);
+    const { user: owner, ...row } = score;
+    return publicScore(row, yearsOf(owner?.experience));
   } catch (error) {
     console.error("getATSScoreById failed:", safeErr(error));
     throw new Error("Failed to fetch ATS score details");
   }
 }
 
-// Delete ATS score
+/**
+ * Deletes one of the signed-in user's ATS results (owner-scoped). Returns { success: true, message } or
+ * { error, code: "INVALID" | "NOT_FOUND" | "FAILED" }. Results that point to it via previousScoreId keep working.
+ */
 export async function deleteATSScore(scoreId) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
+  const id = z.string().trim().min(1).max(100).safeParse(scoreId);
+  if (!id.success) return { error: "We couldn't find that result.", code: "INVALID" };
+
   try {
-    const score = await db.aTSScore.findFirst({
-      where: {
-        id: scoreId,
-        user: {
-          clerkUserId: userId
-        }
-      }
-    });
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return { error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
-    if (!score) {
-      throw new Error("ATS score not found or unauthorized");
-    }
-
-    await db.aTSScore.delete({
-      where: { id: scoreId }
-    });
+    const res = await db.aTSScore.deleteMany({ where: { id: id.data, userId: user.id } });
+    if (res.count === 0) return { error: "We couldn't find that result.", code: "NOT_FOUND" };
 
     revalidatePath("/resume-parser");
     return { success: true, message: "ATS score deleted successfully" };
-
   } catch (error) {
     console.error("deleteATSScore failed:", safeErr(error));
-    throw new Error("Failed to delete ATS score");
+    return { error: "We couldn't delete that result. Please try again.", code: "FAILED" };
   }
 }
 
@@ -517,7 +551,7 @@ export async function updateATSScore(scoreId, updateData) {
   }
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true, experience: true } });
     if (!user) return { success: false, error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
     const result = await db.aTSScore.updateMany({
@@ -528,7 +562,7 @@ export async function updateATSScore(scoreId, updateData) {
 
     const updated = await db.aTSScore.findFirst({ where: { id: id.data, userId: user.id } });
     revalidatePath("/resume-parser");
-    return { success: true, message: "ATS score updated successfully", data: publicScore(updated) };
+    return { success: true, message: "ATS score updated successfully", data: publicScore(updated, yearsOf(user.experience)) };
   } catch (error) {
     console.error("updateATSScore failed:", safeErr(error));
     return { success: false, error: "Failed to update ATS score.", code: "FAILED" };

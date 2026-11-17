@@ -1,8 +1,9 @@
 // Shared by cover letters and cold emails (D27/D28): structured paragraphs, every body paragraph
 // must cite at least one catalog id. Unsourced body paragraphs are dropped after one retry.
 import { runAIStructured } from "./index.js";
-import { paragraphsSchema } from "./schemas.js";
+import { paragraphsSchema, emailParagraphsSchema } from "./schemas.js";
 import { validateSourceIds, snapshot } from "./sources.js";
+import { inventedNumbers } from "./numberCheck.js";
 
 export class NoSourcesError extends Error {
   constructor() {
@@ -15,14 +16,31 @@ export class NoSourcesError extends Error {
 const RETRY_NOTE =
   "\n\nIMPORTANT: your previous answer had body paragraphs without valid sourceIds. Every body paragraph MUST list at least one id copied exactly from the SOURCES list, and must only state facts found in those sources.";
 
-function clean(parsed, catalog) {
+// `allowedText`: every number in the output must appear in it (inventedNumbers). A body paragraph that
+// fails is treated as unsourced (retry, then dropped); a greeting/closing that fails is dropped.
+function clean(parsed, catalog, allowedText) {
   return parsed.paragraphs
-    .map((p) => ({
-      kind: p.kind,
-      text: p.text.replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim(),
-      ids: validateSourceIds(p.sourceIds, catalog),
-    }))
-    .filter((p) => p.text);
+    .map((p) => {
+      const text = p.text.replace(/\r/g, "").replace(/\n{2,}/g, "\n").trim();
+      const bad = allowedText != null && inventedNumbers(text, allowedText).length > 0;
+      if (bad && p.kind !== "body") return null;
+      return { kind: p.kind, text, ids: bad ? [] : validateSourceIds(p.sourceIds, catalog) };
+    })
+    .filter((p) => p && p.text);
+}
+
+const SUBJECT_MAX = 80;
+// Unsourced marketing/performance claims are never allowed in a subject.
+const SUBJECT_CLAIM = /%|open[- ]?rate|guarantee|#\s?1|\bfree\b|\bwin\b|act now|urgent|re:|fwd:/i;
+
+/** A subject is kept only with >= 1 valid source id, no claims, no invented numbers. */
+function cleanSubject(subject, catalog, allowedText) {
+  if (!subject) return null;
+  const text = String(subject.text ?? "").replace(/\s+/g, " ").trim().replace(/^["']|["']$/g, "");
+  if (!text || text.length > SUBJECT_MAX || SUBJECT_CLAIM.test(text)) return null;
+  if (allowedText != null && inventedNumbers(text, allowedText).length > 0) return null;
+  const ids = validateSourceIds(subject.sourceIds, catalog);
+  return ids.length ? { text, ids } : null;
 }
 
 /** A greeting is only valid as the first paragraph and a closing as the last; extras count as body. */
@@ -37,24 +55,34 @@ function normalizeShape(ps) {
 const unsourced = (ps) => ps.filter((p) => p.kind === "body" && p.ids.length === 0).length;
 
 /**
- * @returns {{ content: string, sources: object }} content = paragraphs joined by a blank line;
- * sources = { version: 1, paragraphs: [{ kind, sources: Snapshot[] }] } (same order and count).
+ * @param {object} o
+ * @param {string} o.prompt
+ * @param {Array} o.catalog
+ * @param {string} o.userId
+ * @param {string} [o.allowedText] when set, numbers in the output must appear in it (inventedNumbers)
+ * @param {boolean} [o.withSubject] cold email: also read and verify a `subject`
+ * @returns {{ content: string, sources: object, subject: {text: string, sources: object[]} | null }}
+ * content = paragraphs joined by a blank line; sources = { version: 1, paragraphs: [{ kind, sources }] }.
  * @throws NoSourcesError when no body paragraph can be sourced.
  */
-export async function generateSourcedParagraphs({ prompt, catalog, userId }) {
-  const run = async (note) =>
-    normalizeShape(
-      clean(
-        await runAIStructured("write", paragraphsSchema, () => [["user", prompt + note]], { userId }),
-        catalog
-      )
-    );
+export async function generateSourcedParagraphs({ prompt, catalog, userId, allowedText, withSubject = false }) {
+  const schema = withSubject ? emailParagraphsSchema : paragraphsSchema;
+  const run = async (note) => {
+    const parsed = await runAIStructured("write", schema, () => [["user", prompt + note]], { userId });
+    return {
+      ps: normalizeShape(clean(parsed, catalog, allowedText)),
+      subject: withSubject ? cleanSubject(parsed.subject, catalog, allowedText) : null,
+    };
+  };
 
-  let ps = await run("");
+  let { ps, subject } = await run("");
   if (unsourced(ps) > 0) {
     try {
       const retry = await run(RETRY_NOTE);
-      if (unsourced(retry) <= unsourced(ps)) ps = retry;
+      if (unsourced(retry.ps) <= unsourced(ps)) {
+        ps = retry.ps;
+        subject = retry.subject ?? subject;
+      }
     } catch {
       // keep the first attempt's usable paragraphs
     }
@@ -68,5 +96,11 @@ export async function generateSourcedParagraphs({ prompt, catalog, userId }) {
       version: 1,
       paragraphs: ps.map((p) => ({ kind: p.kind, sources: snapshot(p.ids, catalog) })),
     },
+    subject: subject ? { text: subject.text, sources: snapshot(subject.ids, catalog) } : null,
   };
+}
+
+/** Text that backs the numbers in a generated letter/email: the whole catalog plus caller-given strings. */
+export function allowedNumberText(catalog, ...extra) {
+  return [...catalog.map((c) => c.text), ...extra.filter(Boolean)].join("\n");
 }

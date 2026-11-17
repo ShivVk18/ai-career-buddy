@@ -3,6 +3,7 @@ import { inventedNumbers } from "../src/lib/ai/numberCheck.js";
 import { normalizeText } from "../src/lib/ai/sources.js";
 import { legacyEntryId, ensureEntryIds } from "../src/lib/entryIds.js";
 import { extractTerms, matchText, resumeToText } from "../src/lib/match.js";
+import { findCliches, countWords, COVER_LETTER_WORDS, COLD_EMAIL_WORDS } from "../src/lib/writing.js";
 import { weightsForLevel, weightsPromptText, WEIGHT_GROUPS } from "../src/lib/ats/weights.js";
 const ok = (o, i) => assert.equal(inventedNumbers(o, i).length, 0, `ok: ${o} <- ${i}`);
 const bad = (o, i) => assert.ok(inventedNumbers(o, i).length > 0, `flagged: ${o} <- ${i}`);
@@ -64,5 +65,20 @@ for (const g of Object.values(WEIGHT_GROUPS)) {
   assert.equal(e1.projects[0].id, legacyEntryId("proj", 0, b));
   assert.deepEqual(ensureEntryIds(e1), e1);
   assert.equal(r.experience[0].id, undefined);
+}
+// Writing rules (D40): deterministic cliche check, one word range
+{
+  const t = "I am thrilled to apply. A proven track record, and I am a Team Player!";
+  const hits = findCliches(t);
+  assert.deepEqual(hits.map((h) => h.phrase), ["i am thrilled to apply", "proven track record", "team player"]);
+  assert.equal(t.slice(hits[2].start, hits[2].end), "Team Player");
+  assert.deepEqual(findCliches("I built a React dashboard and cut load time."), []);
+  assert.deepEqual(findCliches("steam players"), []);
+  assert.deepEqual(findCliches(""), []);
+  assert.deepEqual(findCliches(null), []);
+  assert.equal(countWords("  one two\nthree "), 3);
+  assert.equal(countWords(""), 0);
+  assert.ok(COVER_LETTER_WORDS.min < COVER_LETTER_WORDS.max);
+  assert.ok(COLD_EMAIL_WORDS.min <= COLD_EMAIL_WORDS.target && COLD_EMAIL_WORDS.target <= COLD_EMAIL_WORDS.max);
 }
 console.log("all self-checks passed");

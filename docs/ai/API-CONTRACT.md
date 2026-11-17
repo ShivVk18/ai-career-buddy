@@ -432,3 +432,64 @@ Legacy scores (no stored text) return `NEEDS_REUPLOAD` from both; use `hasResume
 ### 7.8 Cap behaviour (section 4 amended)
 
 In production, if the `AiUsage` count can't be read, `runAI` throws `AIError` code `AI_UNAVAILABLE` before any provider call. In dev it skips the cap with one console warning (as before).
+
+---
+
+## 8. Phase 5 (D34, D35, D40-D43): writing tools, ATS delete and purge, redirects
+
+One migration `20261119000000_cold_email_fields` (SQL only, NOT applied by the agent): optional columns on `ColdEmail`: `recipientName`, `recipientRole`, `recipientEmail`, `subject` (all `String?`) and `followUpAt` (`DateTime?`), plus an index on `(userId, followUpAt)`. Until it is applied, the cold email actions fail with `FAILED`. All actions are `"use server"`: signed-out throws `Error("Unauthorized")`; every expected failure is RETURNED as `{ error, code }` (`error` is user-safe). Everything is owner-scoped. Check `result.error` first. Nothing here sends anything (D35).
+
+New code: `NOT_SHORTENABLE` (see 8.2). Other codes as in 6.3 and 7.1 (`AI_LIMIT`, `AI_UNAVAILABLE`, `NO_SOURCES`, `INVENTED_DETAIL`, `INVALID`, `NOT_FOUND`, `FAILED`).
+
+### 8.1 `src/lib/writing.js` (plain JS, import in server and UI; no AI)
+
+```ts
+COVER_LETTER_WORDS = { min: 250, max: 350 }        // the ONE range: used in the prompt and for the UI word count
+COLD_EMAIL_WORDS   = { min: 100, max: 140, target: 120 }   // prompt says 100-140; UI shows target 120 within the range
+COVER_LETTER_TONES = ["stiff", "confident", "eager"]       // default "confident"; labels: stiff (formal), confident (solution-focused), eager (startup energy)
+COVER_LETTER_FORMALITY = ["standard", "formal"]            // default "standard"
+CLICHES: string[]                                          // curated lowercase phrases
+findCliches(text: string): { phrase: string, start: number, end: number }[]
+//   case-insensitive, whole-phrase, non-overlapping, sorted by start; offsets index into the ORIGINAL text. [] for empty/non-string.
+countWords(text: string): number                           // whitespace-separated, 0 for empty
+```
+
+### 8.2 Cover letter (`src/actions/CoverLetter.js`)
+
+- `generateCoverLetter({ jobTitle?, companyName?, jobDescription?, tone? })`: new optional `tone` in `COVER_LETTER_TONES` (invalid value => `INVALID`; omitted => "confident"). Everything else as 6.5. Tone and formality are not stored.
+- `regenerateCoverLetter(id: string, opts?: { tone?: Tone, formality?: "standard" | "formal" })`: replaces `content` and `sources` of THE SAME ROW (D43), using the row's stored `jobTitle`, `companyName`, `jobDescription` and a fresh catalog from the current profile and resume. Previous text and edits are lost: the UI must confirm first. "More formal" = `{ formality: "formal" }` (optionally with `tone`). One `write` call, up to 2 attempts, counts against the cap. Returns the updated row (same shape as `getCoverLetter`, with `sources` version 1) or `{ error, code: "INVALID" | "NOT_FOUND" | "NO_SOURCES" | "AI_LIMIT" | "AI_UNAVAILABLE" | "FAILED" }`. Numbers in the new text must appear in the SOURCES, job title or company name, otherwise the paragraph is dropped (retry, then `NO_SOURCES`).
+- `shortenCoverLetter(id: string)`: rewrites the BODY paragraphs of the CURRENT saved text (including the user's edits) shorter (aim about 25% fewer words overall), same row in place. Greeting and closing text are kept as they are. `sources` are kept exactly as stored: each paragraph keeps its existing source ids/snapshots. Every number in the result must appear in the current text (`inventedNumbers`), otherwise it retries once and returns `INVENTED_DETAIL`. A body paragraph that did not get shorter keeps its old text. Returns the updated row, or `{ error, code }` with `code`: `INVALID` | `NOT_FOUND` | `NOT_SHORTENABLE` (letter has no sources, i.e. legacy, or the edited text no longer has the same paragraph count as `sources.paragraphs`; message tells the user to regenerate instead) | `INVENTED_DETAIL` | `AI_LIMIT` | `AI_UNAVAILABLE` | `FAILED` (also when the result is not shorter). The UI must confirm first (D43) and then refresh content and sources.
+
+### 8.3 Cold email (`src/actions/ColdEmail.js`)
+
+Row shape (`getColdEmail`, `getColdEmails`, create/update results) gains: `recipientName: string|null`, `recipientRole: string|null`, `recipientEmail: string|null`, `subject: string|null`, `followUpAt: Date|null` (a Date at 00:00 UTC of the chosen day). `sources` gains an optional `subject` key (additive, version stays 1): `sources.subject?: { sources: Snapshot[] }` (what the subject was built from; absent on older rows or when the subject came from nothing).
+
+- `generateColdEmail({ jobTitle?, companyName?, jobDescription?, recipientName?, recipientRole?, recipientEmail? })`: `recipientName` trimmed, no line breaks, max 100; `recipientRole` max 150; `recipientEmail` trimmed, valid email, max 254; empty string means not provided; invalid => `INVALID`. **`recipientEmail` is only stored; it is never put in the prompt, the source catalog or any AI input** (enforced and commented in the code). The recipient name and role are used for the greeting ("Hi <first name>,") and context only; when no name is given the greeting is generic. The model also returns a `subject` (max 80 chars, no line breaks), cited to company, role or job-description ids (`input:companyName`, `input:jobTitle`, `jd:*`) and number-checked; subjects with claims such as percentages, "open rate" or guarantees are rejected. If the model gives no valid subject and both company and role were given, the server uses the plain fallback `Interested in the <jobTitle> role at <companyName>` (sourced to those inputs); otherwise `subject` is `null` (the user can type one). Returns the created row or `{ error, code }` as in 6.5. Body paragraphs also get the number check (a number not found in the SOURCES, title, company, or recipient fields drops that paragraph).
+- `updateColdEmail(id: string, content?: string, fields?: { recipientName?, recipientRole?, recipientEmail?, subject? })`: `content` (trimmed, 1-10000) is optional now: pass `null`/`undefined` to change only fields. `fields` keys: each is `string | null`; `""` or `null` clears the column; same limits as above; `subject` max 200, no line breaks; email must be a valid address. At least one of `content` / a field is required, otherwise `INVALID`. Unknown keys are rejected (`INVALID`). Sources untouched. Returns the updated row or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`. Existing calls `updateColdEmail(id, content)` keep working.
+- `setColdEmailFollowUp(id: string, date: string | null)`: `date` is `"YYYY-MM-DD"` (a real calendar day) or an ISO-8601 string (only the UTC date part is kept); `null` clears the reminder. Stored as 00:00 UTC of that day. A reminder only; nothing is ever sent. Returns the updated row (with `followUpAt`) or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }`.
+
+### 8.4 `getDashboardData()` adds `dueFollowUps`
+
+```ts
+dueFollowUps: {
+  id: string,                   // ColdEmail id
+  company: string,              // "" if unknown
+  role: string,                 // "" if unknown
+  recipientName: string | null,
+  subject: string | null,
+  followUpAt: string,           // ISO date
+  href: string                  // "/cold-email/<id>"
+}[]                              // followUpAt <= end of today (UTC), the user's own, oldest first, max 10; [] otherwise
+```
+Also `counts.dueFollowUps: number` is NOT added; use `dueFollowUps.length` (a user with more than 10 due sees the oldest 10). If the migration is not applied, `dueFollowUps` is `[]` (the rest of the dashboard still loads). The empty-state object has `dueFollowUps: []`.
+
+### 8.5 ATS (`src/actions/ResumeParser.js`)
+
+- `deleteATSScore(scoreId: string)`: owner-scoped hard delete. Returns `{ success: true, message }` or `{ error, code: "INVALID" | "NOT_FOUND" | "FAILED" }` (it used to throw; no UI called it). Other scores that point to it through `evidence.previousScoreId` keep working (`previousScoreId` then refers to a missing row: treat a failed lookup as "no previous"). Not found / not yours is `NOT_FOUND`.
+- Purge (D42): `evidence.resumeText` is removed from the signed-in user's results older than 90 days. It runs opportunistically at the start of `getUserATSScores` and `createATSAnalysis`, for that user only, at most 50 rows per call (oldest first; a user with more is purged over several calls), in one atomic SQL statement that touches ONLY the `resumeText` key (all other evidence stays) and adds `evidence.resumePurgedAt` (ISO string). A failure is logged and ignored; it never breaks the request. Afterwards the row has `hasResumeText: false`, and `proposeAtsFix` / `applyAtsFix` return `NEEDS_REUPLOAD`.
+- New field `resumePurged: boolean` (true when the text was removed by the purge, as opposed to a pre-Phase-4 result that never had text) on `getUserATSScores` rows, `getATSScoreById`, `createATSAnalysis` `data` and `updateATSScore` `data`. Use it for the note "Resume text is removed after 90 days; re-upload to use fixes".
+- New field `candidateYears: number | null` (profile `User.experience`, whole years, no AI; `null` when not set) on `getUserATSScores` rows, `getATSScoreById`, `createATSAnalysis` `data` and `updateATSScore` `data`. It is the user's current profile value, not a per-result value. Show it next to the level badge ("3 years exp") only when not null.
+
+### 8.6 Redirects (`next.config.mjs`, permanent, 308)
+
+`/tools/resume` -> `/resume`, `/tools/ats` -> `/resume-parser`, `/tools/cover-letter` -> `/cover-letter`, `/tools/cold-email` -> `/cold-email`. Next redirects run before pages, so they apply even while the old preview pages still exist; the frontend then deletes those pages. `/tools/interview` and `/tools/roadmap` stay.

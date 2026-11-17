@@ -360,10 +360,16 @@ model ColdEmail {
   jobTitle        String    
   status          String    @default("draft") 
   sources         Json?
+  recipientName   String?
+  recipientRole   String?
+  recipientEmail  String?
+  subject         String?
+  followUpAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, followUpAt])
 }   
 
 model AiUsage {

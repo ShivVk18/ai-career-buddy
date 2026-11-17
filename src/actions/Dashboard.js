@@ -6,6 +6,7 @@ import { safeErr } from "@/lib/utils";
 
 const MAX_TARGETS = 10;
 const MAX_TASKS = 5;
+const MAX_FOLLOW_UPS = 10;
 
 const norm = (v) => (typeof v === "string" ? v.trim() : "");
 
@@ -24,6 +25,7 @@ export async function getDashboardData() {
       targets: [],
       totalTargets: 0,
       nextTasks: [],
+      dueFollowUps: [],
     };
 
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
@@ -54,6 +56,31 @@ export async function getDashboardData() {
       db.assessment.count({ where: { userId: uid } }),
       db.resume.count({ where: { userId: uid } }),
     ]);
+
+    // Due follow-ups (D34): reminders only, never sends. Owner-scoped; due = on or before the end of today (UTC).
+    // If the cold_email_fields migration is not applied yet, this is just empty.
+    let dueFollowUps = [];
+    try {
+      const now = new Date();
+      const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+      const due = await db.coldEmail.findMany({
+        where: { userId: uid, followUpAt: { not: null, lt: endOfToday } },
+        orderBy: { followUpAt: "asc" },
+        take: MAX_FOLLOW_UPS,
+        select: { id: true, companyName: true, jobTitle: true, recipientName: true, subject: true, followUpAt: true },
+      });
+      dueFollowUps = due.map((e) => ({
+        id: e.id,
+        company: norm(e.companyName),
+        role: norm(e.jobTitle),
+        recipientName: e.recipientName ?? null,
+        subject: e.subject ?? null,
+        followUpAt: e.followUpAt.toISOString(),
+        href: `/cold-email/${e.id}`,
+      }));
+    } catch (err) {
+      console.error("dashboard follow-ups failed:", safeErr(err));
+    }
 
     // Targets: dedupe by (company, role); lists are newest first so the first row per kind is the latest.
     const map = new Map();
@@ -119,6 +146,7 @@ export async function getDashboardData() {
       targets,
       totalTargets: all.length,
       nextTasks,
+      dueFollowUps,
     };
   } catch (error) {
     console.error("getDashboardData failed:", safeErr(error));
