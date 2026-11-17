@@ -9,10 +9,10 @@ None.
 | # | Owner | File:line | Problem | Fix |
 |---|-------|-----------|---------|-----|
 | 1 | BACKEND | src/lib/ai/index.js:158 (pdfPart) | Inline PDF block `{type:"media", mimeType, data}` is unverified against @langchain/google-genai ^2.3.6. Build cannot catch a wrong block shape. | Run one real ATS upload (or add a PDF case to test:ai). If rejected, use `{type:"file", mimeType, data}` or `{type:"image_url"}` per the installed converter. |
-| 2 | BACKEND | src/lib/ai/index.js:14-20 (classify) | Regex `\b5\d\d\b` on the error message can misread text such as "500 characters" as a 5xx and retry or fall back. | Check numeric status first and only use the message regex for 429/quota. |
-| 3 | BACKEND | src/actions/Resume.js:~202, CoverLetter.js, ColdEmail.js, Interview.js:65 | Parity drift: resume improve was temp 0.7 with maxOutputTokens 300, now `write` 0.4 with no token cap. Cover letter and cold email were 0.3 (now 0.4). Quiz was 0.3 (now 0). | Accept as D5/D15 consequence, or add an optional `maxOutputTokens` override in runAI. Mention in the changelog. |
+| 2 (RESOLVED in 9cc2866) | BACKEND | src/lib/ai/index.js:14-20 (classify) | Regex `\b5\d\d\b` on the error message can misread text such as "500 characters" as a 5xx and retry or fall back. | Check numeric status first and only use the message regex for 429/quota. |
+| 3 (RESOLVED in 9cc2866) | BACKEND | src/actions/Resume.js:~202, CoverLetter.js, ColdEmail.js, Interview.js:65 | Parity drift: resume improve was temp 0.7 with maxOutputTokens 300, now `write` 0.4 with no token cap. Cover letter and cold email were 0.3 (now 0.4). Quiz was 0.3 (now 0). | Accept as D5/D15 consequence, or add an optional `maxOutputTokens` override in runAI. Mention in the changelog. |
 | 4 | BACKEND | src/actions/ResumeParser.js:187 | `analyzedBy` changed from "Gemini-2.5-Flash" to "AI". Existing rows differ from new ones. | Store the real model name (return it from runAI) or leave it. |
-| 5 | BACKEND | src/actions/ResumeParser.js:371, Interview.js:143, ResumeParser.js:236-377 | Still `console.error(error)` with full error objects, and a stale `revalidatePath("/ats-scores/${id}")`. These are DB errors, not AI content, but a Prisma error can echo query values. | Log `error?.code` only. Change the revalidate path to `/resume-parser`. |
+| 5 (RESOLVED in 9cc2866) | BACKEND | src/actions/ResumeParser.js:371, Interview.js:143, ResumeParser.js:236-377 | Still `console.error(error)` with full error objects, and a stale `revalidatePath("/ats-scores/${id}")`. These are DB errors, not AI content, but a Prisma error can echo query values. | Log `error?.code` only. Change the revalidate path to `/resume-parser`. |
 | 6 | BACKEND | Dockerfile (builder stage) | `npm run build` runs in Docker with no env (.env is excluded). If Clerk keys are needed to prerender `/chat` or `/`, the image build may fail. Not testable here. | Pass NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY as a build ARG, or confirm `docker compose up --build` works. |
 
 ## Checklist results
@@ -31,3 +31,12 @@ None.
 - Routes redirect signed-out users: PASS (by code review; not browser-tested).
 - npm run build: PASS.
 - All 6 tools still work: PASS by code review; live behavior (especially the PDF block, nice-to-have 1) not run.
+
+## Follow-up round (9cc2866)
+Lint: 0 errors, 1 warning (same layout.js font warning). Build: PASS. MUST-FIX: none. Nice-to-haves 2, 3 and 5 are resolved.
+
+- (a) Override works: `tempOverride ?? TASKS[task].temperature` (so an explicit 0 is honored); `maxOutputTokens` is added to the Google constructor only when truthy, so it is omitted otherwise. runAIText and runAIStructured both forward the options.
+- (b) Quiz 0.3; improveWithAI 0.7 with 300 tokens. Cover letter and cold email use the default (write, 0.4), as intended.
+- (c) classify now takes only a 3-digit numeric status from status/statusCode/response.status/code, and 5xx is limited to 500-599. The message regex no longer matches `5\d\d`. 429, 5xx and timeouts are still retried. Retrying "fetch failed" and ECONNRESET is reasonable: they are transient network errors, and the fallback to the next key or model is cheap. Nit: `\b429\b` in the message text can still match, for example "429 characters". This is low risk and was not changed.
+- (d) The `/ats-scores/${id}` revalidate is gone (grep clean). No `console.error` in src/actions logs a whole error object. They log `error?.message` or `code`/`name`. Nit: `error?.message` on a Prisma error can echo query values, so `error?.code` would be safer. The earlier log text also reads oddly ("Error saving quiz result failed").
+- (e) No returned shapes changed (the diff touches only logging, params and classify). Build passes.
