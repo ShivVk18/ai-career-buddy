@@ -32,14 +32,14 @@ export default function SkillsDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-white">
+        <Button className="bg-gradient-to-r from-primary to-lime text-white">
           Start Quiz
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="bg-[#1a1815] border-[#f59e0b]/20 text-white">
+      <DialogContent className="bg-panel border-primary/20 text-white">
         <DialogHeader>
-          <DialogTitle className="text-[#fbbf24]">
+          <DialogTitle className="text-primary-ink">
             Enter Your Tech Stack
           </DialogTitle>
         </DialogHeader>
@@ -48,13 +48,13 @@ export default function SkillsDialog() {
           placeholder="React, Node, MongoDB"
           value={skills}
           onChange={(e) => setSkills(e.target.value)}
-          className="bg-black/40 border-[#f59e0b]/20"
+          className="bg-black/40 border-primary/20"
         />
 
         <DialogFooter>
           <Button
             onClick={handleStart}
-            className="bg-gradient-to-r from-[#f59e0b] to-[#fbbf24]"
+            className="bg-gradient-to-r from-primary to-lime"
           >
             Generate AI Quiz
           </Button>

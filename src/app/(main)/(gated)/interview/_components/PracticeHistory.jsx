@@ -6,14 +6,14 @@ import { generationErrorMessage } from "@/components/shared/generationError";
 export default function PracticeHistory({ history }) {
   if (!history || history.error) {
     return (
-      <p role="alert" className="text-sm text-muted-foreground border border-dashed border-divider rounded-sm p-6">
+      <p role="alert" className="text-sm text-muted-foreground border border-dashed border-divider rounded-xl p-6">
         {generationErrorMessage(history, "Couldn't load your practice history.")}
       </p>
     );
   }
   if (!history.sessions?.length) {
     return (
-      <p className="text-sm text-muted-foreground font-light border border-dashed border-divider rounded-sm p-6">
+      <p className="text-sm text-muted-foreground font-light border border-dashed border-divider rounded-xl p-6">
         No open practice yet. Start a session to see your answers and scores here.
       </p>
     );
@@ -24,7 +24,7 @@ export default function PracticeHistory({ history }) {
         <li key={s.sessionId}>
           <Link
             href={`/interview/practice/${s.sessionId}`}
-            className="block border border-border rounded-sm p-4 hover:border-accent hover:bg-divider/5 transition-editorial"
+            className="block border border-border rounded-xl p-4 hover:border-primary hover:bg-divider/5 transition-editorial"
           >
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
@@ -41,7 +41,7 @@ export default function PracticeHistory({ history }) {
                   {s.averageOverall ?? "-"}
                   {s.averageOverall !== null && <span className="text-xs text-muted-foreground">/100</span>}
                 </p>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-accent">AI estimate</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-primary-ink">AI estimate</p>
               </div>
             </div>
           </Link>

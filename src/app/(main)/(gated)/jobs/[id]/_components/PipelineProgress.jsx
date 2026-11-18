@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Check, Loader2, RotateCw, ChevronRight } from "lucide-react";
+import { MovingBorder } from "@/components/ui/aceternity/moving-border";
 import { generationErrorMessage } from "@/components/shared/generationError";
 
 const STEPS = {
@@ -63,7 +64,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
         aria-valuenow={pipeline.completedCount}
         className="h-1.5 w-full rounded-full bg-soft overflow-hidden"
       >
-        <div className="h-full bg-pip transition-all duration-500" style={{ width: `${(pipeline.completedCount / total) * 100}%` }} />
+        <div className="h-full bg-gradient-to-r from-primary to-lime transition-all duration-500" style={{ width: `${(pipeline.completedCount / total) * 100}%` }} />
       </div>
 
       <ol className="space-y-2.5">
@@ -73,12 +74,14 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
           const link = s.status === "done" ? outputLink(s) : null;
           const failed = s.status === "failed" && !active;
           return (
-            <li
-              key={s.step}
-              className={`flex items-start gap-3 rounded-xl border p-3 ${
-                active ? "border-pip bg-pip-soft/50" : failed ? "border-[#E8C9C0] bg-[#FDF3F0]" : "border-line bg-bg/40"
-              }`}
-            >
+            <li key={s.step}>
+              <MovingBorder
+                active={active}
+                className={`rounded-xl ${!active ? (failed ? "border-danger/40" : "") : ""}`}
+                innerClassName={`flex items-start gap-3 rounded-[11px] p-3 ${
+                  active ? "bg-pip-soft/60" : failed ? "bg-danger/10" : "border border-line bg-bg/40"
+                }`}
+              >
               <div className={`relative h-10 w-10 shrink-0 ${active ? "pip-hop" : s.status === "pending" ? "opacity-40 grayscale" : ""}`}>
                 <Image
                   src={`/pip/pip-${meta.outfit}.svg`}
@@ -134,13 +137,14 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
                   {link.label} <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               )}
+              </MovingBorder>
             </li>
           );
         })}
       </ol>
 
       {callError && !driving && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-3 text-xs text-text">
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-xs text-text">
           <span className="min-w-0 flex-1">{callError}</span>
           <button type="button" onClick={onRetry} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-panel px-3 hover:border-pip active:scale-95">
             <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry

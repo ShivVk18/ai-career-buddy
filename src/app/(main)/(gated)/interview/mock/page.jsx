@@ -62,10 +62,10 @@ export default function MockInterviewPage() {
         {!quizReady && (
           <div className="flex justify-center mt-32">
             <Dialog open={!quizReady} onOpenChange={(open) => { if (!open) router.push("/interview"); }}>
-              <DialogContent className="bg-background border-border rounded-sm sm:max-w-md p-10 shadow-2xl">
+              <DialogContent className="bg-panel border-border rounded-xl sm:max-w-md p-10 shadow-2xl">
                 <DialogHeader className="mb-8">
                   <DialogTitle className="font-clash font-bold text-2xl uppercase tracking-tight text-foreground flex items-center gap-4">
-                    <Brain className="w-6 h-6 text-accent" />
+                    <Brain className="w-6 h-6 text-primary-ink" />
                     Interview Prep
                   </DialogTitle>
                   <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest mt-2">
@@ -97,7 +97,7 @@ export default function MockInterviewPage() {
                   <Button 
                     onClick={handleGenerate} 
                     disabled={loading || !skills || skills.trim() === ""} 
-                    className="w-full sm:flex-1 h-14 shadow-lg order-1 sm:order-2"
+                    className="w-full sm:flex-1 h-14 shadow-card order-1 sm:order-2"
                   >
                     {loading ? (
                       <>

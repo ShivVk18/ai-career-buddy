@@ -47,6 +47,7 @@
   --color-destructive: var(--danger-fill);
   --color-destructive-foreground: #FFFFFF;
   --color-border: var(--line);
+  --color-divider: var(--line);
   --color-input: var(--line);
   --color-ring: var(--ring);
 
@@ -184,6 +185,11 @@
   --line: #E4E4EC;
   --soft: #F1F2F8;
   --panel: #FFFFFF;
+  --primary-ink: #4F46E5;
+  --pip-ink: #3730A3;
+  --pip-soft: #ECEBFD;
+  --danger: #DC2626;
+  --success: #15803D;
   color: #14141F;
 }
 
@@ -329,4 +335,18 @@
 @keyframes wordIn {
   from { opacity: 0; filter: blur(6px); transform: translateY(4px); }
   to { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* Offer celebration: a few falling bits. Hidden under reduced motion via motion-reduce:hidden. */
+@keyframes confettiFall {
+  from { transform: translateY(-12px) rotate(0deg); opacity: 1; }
+  to { transform: translateY(90px) rotate(240deg); opacity: 0; }
+}
+.confetti-bit {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confettiFall 1.8s ease-in 1 both;
 }

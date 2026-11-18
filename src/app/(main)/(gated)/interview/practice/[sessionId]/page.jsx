@@ -29,15 +29,15 @@ export default async function PracticeReviewPage({ params }) {
         </Link>
 
         {session?.error ? (
-          <div role="alert" className="border border-destructive/40 bg-destructive/5 rounded-sm p-8 flex gap-4">
+          <div role="alert" className="border border-destructive/40 bg-destructive/5 rounded-xl p-8 flex gap-4">
             <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
             <p className="text-sm text-foreground">{generationErrorMessage(session)}</p>
           </div>
         ) : (
           <>
             <div className="mb-10 border-b border-divider pb-8">
-              <h1 className="text-3xl md:text-5xl font-clash font-bold uppercase tracking-tight text-foreground mb-3">
-                Practice <span className="text-accent">Review</span>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
+                Practice <span className="text-primary-ink">Review</span>
               </h1>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 {session.answered} of {session.total} answered
@@ -49,7 +49,7 @@ export default async function PracticeReviewPage({ params }) {
               {session.questions.map((q) => (
                 <section key={q.index} className="space-y-4">
                   <div>
-                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-accent mb-1">
+                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-primary-ink mb-1">
                       Question {q.index + 1} // {q.topic}
                     </p>
                     <h2 className="text-lg md:text-xl font-medium text-foreground">{q.question}</h2>
@@ -58,7 +58,7 @@ export default async function PracticeReviewPage({ params }) {
                   {q.answer ? (
                     <RubricCard answerText={q.answer.answerText} rubric={q.answer.rubric} overall={q.answer.overall} />
                   ) : (
-                    <p className="text-sm text-muted-foreground border border-dashed border-divider rounded-sm p-4">
+                    <p className="text-sm text-muted-foreground border border-dashed border-divider rounded-xl p-4">
                       Not answered.
                     </p>
                   )}
@@ -74,7 +74,7 @@ export default async function PracticeReviewPage({ params }) {
               )}
               <Link href="/interview/practice">
                 <Button variant="outline" className="h-12 px-8">
-                  <Brain className="w-4 h-4 mr-3 text-accent" />
+                  <Brain className="w-4 h-4 mr-3 text-primary-ink" />
                   Practice again
                 </Button>
               </Link>

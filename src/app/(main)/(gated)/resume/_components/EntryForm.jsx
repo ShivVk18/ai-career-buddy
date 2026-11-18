@@ -130,18 +130,18 @@ export function EntryForm({ type, entries, onChange }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="border border-border bg-divider/10 rounded-sm p-6 relative group hover:border-accent transition-editorial shadow-sm"
+            className="border border-border bg-divider/10 rounded-xl p-6 relative group hover:border-primary transition-editorial shadow-card"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <h4 className="text-lg font-clash font-bold text-foreground uppercase tracking-tight mb-1">
                   {item.title}
                 </h4>
-                <p className="text-accent text-xs font-bold uppercase tracking-widest mb-3">
+                <p className="text-primary-ink text-xs font-bold uppercase tracking-widest mb-3">
                   {item.organization}
                 </p>
                 <div className="flex items-center text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em]">
-                  <Calendar className="h-3.5 w-3.5 mr-3 text-accent" />
+                  <Calendar className="h-3.5 w-3.5 mr-3 text-primary-ink" />
                   {item.current
                     ? `${item.startDate} - Present`
                     : `${item.startDate} - ${item.endDate}`}
@@ -171,10 +171,10 @@ export function EntryForm({ type, entries, onChange }) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="border border-accent/50 bg-background rounded-sm overflow-hidden shadow-xl"
+            className="border border-primary/50 bg-panel rounded-xl overflow-hidden shadow-xl"
           >
             <div className="p-8">
-              <h4 className="text-xs font-bold tracking-[0.3em] text-accent uppercase mb-10 flex items-center gap-3">
+              <h4 className="text-xs font-bold tracking-[0.3em] text-primary-ink uppercase mb-10 flex items-center gap-3">
                 <PlusCircle className="h-4 w-4" />
                 Add New {type}
               </h4>
@@ -256,7 +256,7 @@ export function EntryForm({ type, entries, onChange }) {
                         setValue("endDate", "");
                       }
                     }}
-                    className="w-4 h-4 rounded-sm border-divider bg-background text-accent focus:ring-accent focus:ring-offset-0 cursor-pointer"
+                    className="w-4 h-4 rounded-xl border-divider bg-panel text-primary-ink focus:ring-primary focus:ring-offset-0 cursor-pointer"
                   />
                   <label htmlFor="current" className="text-[10px] font-bold tracking-widest text-muted-foreground group-hover:text-foreground transition-colors uppercase cursor-pointer">
                     I currently {type === "Education" ? "study" : "work"} here
@@ -273,7 +273,7 @@ export function EntryForm({ type, entries, onChange }) {
                         <button
                           type="button"
                           onClick={handleToggleRecording}
-                          className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-accent hover:text-foreground'}`}
+                          className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-primary-ink hover:text-foreground'}`}
                         >
                           <Mic className={`h-3.5 w-3.5 ${!isRecording && 'group-hover:scale-110 transition-transform'}`} />
                           <span>{isRecording ? "Recording..." : "Dictate"}</span>
@@ -283,7 +283,7 @@ export function EntryForm({ type, entries, onChange }) {
                         type="button"
                         onClick={handleImproveDescription}
                         disabled={isImproving || !watch("description")}
-                        className="text-[9px] font-bold tracking-widest text-accent hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
+                        className="text-[9px] font-bold tracking-widest text-primary-ink hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
                       >
                       {isImproving ? (
                         <>
@@ -301,7 +301,7 @@ export function EntryForm({ type, entries, onChange }) {
                   </div>
                   <Textarea
                     placeholder={`Tell us about your impact and key wins in this role...`}
-                    className="h-40 w-full px-4 py-4 bg-divider/5 border border-divider/40 rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30"
+                    className="h-40 w-full px-4 py-4 bg-divider/5 border border-divider/40 rounded-xl focus:outline-none focus:border-primary transition-editorial font-general text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30"
                     {...register("description", {
                       onChange: () => {
                         if (isRecording) {
@@ -335,7 +335,7 @@ export function EntryForm({ type, entries, onChange }) {
                 </Button>
                 <Button
                   onClick={handleAdd}
-                  className="h-12 px-10 shadow-lg"
+                  className="h-12 px-10 shadow-card"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-3" />
                   Add to Resume
@@ -349,9 +349,9 @@ export function EntryForm({ type, entries, onChange }) {
       {!isAdding && (
         <button
           onClick={() => setIsAdding(true)}
-          className="w-full border border-divider border-dashed bg-divider/5 hover:border-accent hover:bg-accent/5 py-10 rounded-sm transition-editorial flex items-center justify-center gap-4 group shadow-sm"
+          className="w-full border border-divider border-dashed bg-divider/5 hover:border-primary hover:bg-primary/5 py-10 rounded-xl transition-editorial flex items-center justify-center gap-4 group shadow-card"
         >
-          <PlusCircle className="h-5 w-5 text-muted-foreground group-hover:text-accent transition-editorial" />
+          <PlusCircle className="h-5 w-5 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
           <span className="text-xs font-bold tracking-[0.3em] text-muted-foreground group-hover:text-foreground uppercase transition-editorial">
             Add {type}
           </span>

@@ -38,14 +38,14 @@ export default async function InterviewPrepPage() {
         {/* Header */}
         <div className="mb-16 border-b border-divider pb-12">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-8 h-[1px] bg-accent"></div>
+            <div className="w-8 h-[1px] bg-primary"></div>
             <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
               Interview Prep
             </span>
           </div>
           
-          <h1 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none mb-6">
-            Interview <span className="text-accent">Preparation</span>
+          <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
+            Interview <span className="text-primary-ink">Preparation</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl font-light leading-relaxed">
             Sharpen your skills with AI-powered mock interviews. Get personalized feedback, track your progress, and walk into your next interview with confidence.
@@ -54,14 +54,14 @@ export default async function InterviewPrepPage() {
 
         {/* Quick Action Banner */}
         {!hasQuizzes ? (
-          <div className="mb-12 border border-border bg-background p-8 rounded-sm shadow-sm">
+          <div className="mb-12 border border-border bg-panel p-8 rounded-xl shadow-card">
             <div className="flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="flex-grow">
                 <div className="flex items-center gap-4 mb-3">
-                  <div className="w-10 h-10 rounded-sm bg-accent flex items-center justify-center shadow-md">
-                    <Zap className="w-5 h-5 text-accent-foreground" />
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
+                    <Zap className="w-5 h-5 text-primary-foreground" />
                   </div>
-                  <h2 className="text-2xl font-clash font-bold text-foreground uppercase tracking-tight">
+                  <h2 className="text-2xl font-clash font-bold text-foreground tracking-tight">
                     Start Your First Interview
                   </h2>
                 </div>
@@ -70,7 +70,7 @@ export default async function InterviewPrepPage() {
                 </p>
               </div>
               <Link href="/interview/mock">
-                <Button size="lg" className="h-14 px-10 shadow-lg">
+                <Button size="lg" className="h-14 px-10 shadow-card">
                   <Target className="w-5 h-5 mr-3" />
                   Start Now
                 </Button>
@@ -78,16 +78,16 @@ export default async function InterviewPrepPage() {
             </div>
           </div>
         ) : (
-          <div className="mb-12 border border-border bg-divider/10 p-8 rounded-sm">
+          <div className="mb-12 border border-border bg-divider/10 p-8 rounded-xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-6">
-                <div className="w-14 h-14 rounded-sm border border-border flex items-center justify-center bg-background shadow-sm">
-                  <Award className="w-7 h-7 text-accent" />
+                <div className="w-14 h-14 rounded-xl border border-border flex items-center justify-center bg-panel shadow-card">
+                  <Award className="w-7 h-7 text-primary-ink" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight flex items-center gap-2">
-                    Interview Status: <span className="text-accent">Active</span>
-                    <TrendingUp className="w-4 h-4 text-accent" />
+                  <h3 className="text-xl font-clash font-bold text-foreground tracking-tight flex items-center gap-2">
+                    Interview Status: <span className="text-primary-ink">Active</span>
+                    <TrendingUp className="w-4 h-4 text-primary-ink" />
                   </h3>
                   <p className="text-muted-foreground text-[10px] uppercase tracking-widest mt-1 font-bold">
                     Latest: <span className="text-foreground">{latestScore.toFixed(1)}%</span>
@@ -98,7 +98,7 @@ export default async function InterviewPrepPage() {
               </div>
               <Link href="/interview/mock">
                 <Button variant="outline" className="h-12 px-8">
-                  <Sparkles className="w-4 h-4 mr-3 text-accent" />
+                  <Sparkles className="w-4 h-4 mr-3 text-primary-ink" />
                   Start New Interview
                 </Button>
               </Link>
@@ -107,10 +107,10 @@ export default async function InterviewPrepPage() {
         )}
 
         {/* Open practice entry */}
-        <div className="mb-12 border border-border bg-background p-8 rounded-sm shadow-sm">
+        <div className="mb-12 border border-border bg-panel p-8 rounded-xl shadow-card">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
-              <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight">Open Practice</h3>
+              <h3 className="text-xl font-clash font-bold text-foreground tracking-tight">Open Practice</h3>
               <p className="text-muted-foreground text-sm font-light mt-1">
                 Answer real questions in your own words, typed or spoken, and get an AI-estimated rubric score.
               </p>
@@ -127,8 +127,8 @@ export default async function InterviewPrepPage() {
         {/* Main Content Grid */}
         <div className="space-y-12">
           {/* Stats Cards */}
-          <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
-            <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+          <div className="border border-border p-8 rounded-xl bg-panel shadow-card">
+            <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
               <span className="w-4 h-[1px] bg-divider"></span>
               Performance Summary
             </h3>
@@ -137,8 +137,8 @@ export default async function InterviewPrepPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Performance Chart */}
-            <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+            <div className="border border-border p-8 rounded-xl bg-panel shadow-card">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
                 <span className="w-4 h-[1px] bg-divider"></span>
                 Progress Analytics
               </h3>
@@ -146,8 +146,8 @@ export default async function InterviewPrepPage() {
             </div>
 
             {/* Quiz List */}
-            <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+            <div className="border border-border p-8 rounded-xl bg-panel shadow-card">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
                 <span className="w-4 h-[1px] bg-divider"></span>
                 Interview History
               </h3>
@@ -156,15 +156,15 @@ export default async function InterviewPrepPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+            <div className="border border-border p-8 rounded-xl bg-panel shadow-card">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
                 <span className="w-4 h-[1px] bg-divider"></span>
                 Open Practice History
               </h3>
               <PracticeHistory history={practiceHistory} />
             </div>
-            <div className="border border-border p-8 rounded-sm bg-background shadow-sm">
-              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+            <div className="border border-border p-8 rounded-xl bg-panel shadow-card">
+              <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
                 <span className="w-4 h-[1px] bg-divider"></span>
                 Weak Areas
               </h3>
@@ -176,13 +176,13 @@ export default async function InterviewPrepPage() {
         {/* Footer CTA */}
         {hasQuizzes && (
           <div className="mt-16 text-center">
-            <div className="inline-block border border-divider bg-divider/10 p-10 rounded-sm max-w-2xl">
+            <div className="inline-block border border-divider bg-divider/10 p-10 rounded-xl max-w-2xl">
               <p className="text-muted-foreground mb-8 font-light italic">
                 &quot;Practice makes perfect. Every mock interview gets you one step closer to your dream role.&quot;
               </p>
               <Link href="/interview/mock">
                 <Button variant="outline" className="h-12 px-10">
-                  <Brain className="w-4 h-4 mr-3 text-accent" />
+                  <Brain className="w-4 h-4 mr-3 text-primary-ink" />
                   Practice More
                 </Button>
               </Link>

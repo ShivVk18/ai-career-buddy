@@ -9,7 +9,7 @@ import DeleteAtsButton from "./DeleteAtsButton";
 import { proposeAtsFix, applyAtsFix } from "@/actions/ResumeParser";
 import { WEIGHT_GROUPS, weightsForLevel } from "@/lib/ats/weights";
 
-const SECTION = "border border-border bg-background p-10 rounded-sm mb-12 shadow-sm";
+const SECTION = "border border-border bg-panel p-10 rounded-xl mb-12 shadow-card";
 const H3 = "text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3";
 
 // Evidence list for one strength/weakness/recommendation (or the legacy label)
@@ -22,7 +22,7 @@ export const EvidenceList = ({ item, legacy }) => {
   return (
     <div className="mt-2 space-y-2">
       {quotes.map((q, i) => (
-        <p key={i} className="text-xs italic text-muted-foreground border-l-2 border-accent/40 pl-3">
+        <p key={i} className="text-xs italic text-muted-foreground border-l-2 border-primary/40 pl-3">
           From your resume: &quot;{q.quote}&quot;
         </p>
       ))}
@@ -32,9 +32,9 @@ export const EvidenceList = ({ item, legacy }) => {
 };
 
 const getScoreColor = (score) => {
-  if (score >= 90) return 'text-accent';
-  if (score >= 80) return 'text-accent/80';
-  if (score >= 70) return 'text-accent/60';
+  if (score >= 90) return 'text-primary-ink';
+  if (score >= 80) return 'text-primary-ink/80';
+  if (score >= 70) return 'text-primary-ink/60';
   return 'text-destructive';
 };
 
@@ -44,7 +44,7 @@ function RequirementChecklist({ result }) {
   return (
     <div className={SECTION}>
       <h3 className={H3}>
-        <span className="w-4 h-[1px] bg-accent"></span>
+        <span className="w-4 h-[1px] bg-primary"></span>
         Requirement Checklist
       </h3>
       {!Array.isArray(reqs) || reqs.length === 0 ? (
@@ -56,14 +56,14 @@ function RequirementChecklist({ result }) {
           {reqs.map((r, i) => (
             <li key={i} className="text-sm font-general flex items-start gap-4">
               {r.status === "matched" ? (
-                <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 text-primary-ink shrink-0 mt-0.5" />
               ) : (
                 <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               )}
               <div className="min-w-0">
                 <p className="text-foreground">
                   {r.requirement}{' '}
-                  <span className={`text-[10px] font-bold tracking-widest uppercase ${r.status === "matched" ? "text-accent" : "text-destructive"}`}>
+                  <span className={`text-[10px] font-bold tracking-widest uppercase ${r.status === "matched" ? "text-primary-ink" : "text-destructive"}`}>
                     {r.status === "matched" ? "Matched" : "Gap"}
                   </span>
                 </p>
@@ -83,13 +83,13 @@ function LevelAndWeights({ result }) {
   return (
     <div className={SECTION}>
       <h3 className={H3}>
-        <span className="w-4 h-[1px] bg-accent"></span>
+        <span className="w-4 h-[1px] bg-primary"></span>
         Candidate Level and Scoring Weights
       </h3>
       <div className="mb-6 flex items-center gap-3 flex-wrap">
         <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Detected level</span>
         {level ? (
-          <span className="px-3 py-1 border border-accent/30 bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-widest rounded-sm">
+          <span className="px-3 py-1 border border-primary/30 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest rounded-xl">
             {level}
           </span>
         ) : (
@@ -110,9 +110,9 @@ function LevelAndWeights({ result }) {
         {Object.entries(WEIGHT_GROUPS).map(([key, g]) => {
           const isActive = active && active.label === g.label;
           return (
-            <div key={key} className={`border rounded-sm p-5 ${isActive ? "border-accent bg-accent/5" : "border-divider opacity-70"}`}>
+            <div key={key} className={`border rounded-xl p-5 ${isActive ? "border-primary bg-primary/5" : "border-divider opacity-70"}`}>
               <p className="text-[10px] font-bold tracking-widest uppercase text-foreground mb-4">
-                {g.label} {isActive && <span className="text-accent">(applied)</span>}
+                {g.label} {isActive && <span className="text-primary-ink">(applied)</span>}
               </p>
               <ul className="space-y-3">
                 {g.weights.map((w) => (
@@ -122,7 +122,7 @@ function LevelAndWeights({ result }) {
                       <span className="text-muted-foreground">{w.value}%</span>
                     </div>
                     <div className="h-1 bg-divider rounded-full overflow-hidden">
-                      <div className="h-full bg-accent" style={{ width: `${w.value}%` }} />
+                      <div className="h-full bg-primary" style={{ width: `${w.value}%` }} />
                     </div>
                   </li>
                 ))}
@@ -197,7 +197,7 @@ function WeaknessFix({ scoreId, index, hasResumeText, resumePurged, onOpenScore,
         </Button>
       )}
       {proposal && phase !== "applied" && (
-        <div className="border border-divider rounded-sm p-4 space-y-3 bg-divider/5">
+        <div className="border border-divider rounded-xl p-4 space-y-3 bg-divider/5">
           <div>
             <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Original</p>
             <p className="text-xs text-muted-foreground line-through">{proposal.original}</p>
@@ -222,8 +222,8 @@ function WeaknessFix({ scoreId, index, hasResumeText, resumePurged, onOpenScore,
         </div>
       )}
       {phase === "applied" && outcome && (
-        <div className="border border-accent/40 rounded-sm p-4 space-y-3 bg-accent/5">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-accent">Re-scored</p>
+        <div className="border border-primary/40 rounded-xl p-4 space-y-3 bg-primary/5">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-primary-ink">Re-scored</p>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <p>ATS score: {outcome.before.atsScore} <ArrowRight className="inline w-3 h-3" /> <strong>{outcome.after.atsScore}</strong></p>
             <p>Job match: {outcome.before.matchPercentage}% <ArrowRight className="inline w-3 h-3" /> <strong>{outcome.after.matchPercentage}%</strong></p>
@@ -251,8 +251,8 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
   const fix = result.evidence?.appliedFix;
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-top-4 duration-700">
-      <div className="border border-border bg-background p-10 rounded-sm mb-12 shadow-xl">
-        <h2 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-10 flex items-center gap-3">
+      <div className="border border-border bg-panel p-10 rounded-xl mb-12 shadow-xl">
+        <h2 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-10 flex items-center gap-3">
           <span className="w-4 h-[1px] bg-divider"></span>
           Scan Results
         </h2>
@@ -272,7 +272,7 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
         {result.previousScoreId && (
           <p className="text-xs text-muted-foreground mb-6">
             This is a re-score after an accepted fix.{' '}
-            <button type="button" className="underline text-accent" onClick={() => onOpenScore(result.previousScoreId)}>
+            <button type="button" className="underline text-primary-ink" onClick={() => onOpenScore(result.previousScoreId)}>
               View the earlier result
             </button>
             {fix && (
@@ -282,12 +282,12 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 text-center">
-          <div className="p-8 border border-divider rounded-sm bg-divider/5">
+          <div className="p-8 border border-divider rounded-xl bg-divider/5">
             <p className={`text-6xl md:text-8xl font-clash font-bold mb-2 ${getScoreColor(result.atsScore)}`}>{result.atsScore}</p>
             <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">ATS Score</p>
           </div>
 
-          <div className="p-8 border border-divider rounded-sm bg-divider/5">
+          <div className="p-8 border border-divider rounded-xl bg-divider/5">
             <p className={`text-6xl md:text-8xl font-clash font-bold mb-2 ${getScoreColor(result.matchPercentage)}`}>
               {result.matchPercentage}%
             </p>
@@ -312,15 +312,15 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
 
       {/* Strengths / Weaknesses */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-        <div className="border border-border bg-background p-10 rounded-sm shadow-sm hover:border-accent transition-editorial">
+        <div className="border border-border bg-panel p-10 rounded-xl shadow-card hover:border-primary transition-editorial">
           <h3 className={H3}>
-            <span className="w-4 h-[1px] bg-accent"></span>
+            <span className="w-4 h-[1px] bg-primary"></span>
             Key Strengths
           </h3>
           <ul className="space-y-4">
             {result.strengths.map((s, i) => (
               <li key={i} className="text-sm font-general text-foreground flex items-start gap-4">
-                <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 text-primary-ink shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   {s}
                   <EvidenceList item={result.evidence?.strengths?.[i]} legacy={legacy} />
@@ -330,7 +330,7 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
           </ul>
         </div>
 
-        <div className="border border-border bg-background p-10 rounded-sm shadow-sm hover:border-destructive transition-editorial">
+        <div className="border border-border bg-panel p-10 rounded-xl shadow-card hover:border-destructive transition-editorial">
           <h3 className={H3}>
             <span className="w-4 h-[1px] bg-destructive"></span>
             Areas to Improve
@@ -363,14 +363,14 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
       {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
         <div className={SECTION}>
           <h3 className={H3}>
-            <span className="w-4 h-[1px] bg-accent"></span>
+            <span className="w-4 h-[1px] bg-primary"></span>
             Recommendations
           </h3>
           <ul className="space-y-6">
             {result.recommendations.map((r, i) => (
               <li key={i} className="text-sm font-general text-foreground">
                 {(r.category || r.priority) && (
-                  <p className="text-[10px] font-bold tracking-widest uppercase text-accent mb-1">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-primary-ink mb-1">
                     {[r.category, r.priority].filter(Boolean).join(" / ")}
                   </p>
                 )}
@@ -385,28 +385,28 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
 
       {/* Skills */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-        <div className="border border-border bg-background p-10 rounded-sm shadow-sm">
+        <div className="border border-border bg-panel p-10 rounded-xl shadow-card">
           <h3 className={H3}>
-            <span className="w-4 h-[1px] bg-accent"></span>
+            <span className="w-4 h-[1px] bg-primary"></span>
             Your Top Skills
           </h3>
           <div className="flex flex-wrap gap-3">
             {(result.relevantSkills || []).map((skill, i) => (
-              <span key={i} className="px-3 py-1 border border-accent/30 text-[10px] font-bold text-accent-foreground uppercase tracking-widest bg-accent rounded-sm">
+              <span key={i} className="px-3 py-1 border border-primary/30 text-[10px] font-bold text-primary-foreground uppercase tracking-widest bg-primary rounded-xl">
                 {skill}
               </span>
             ))}
           </div>
         </div>
 
-        <div className="border border-border bg-background p-10 rounded-sm shadow-sm">
+        <div className="border border-border bg-panel p-10 rounded-xl shadow-card">
           <h3 className={H3}>
             <span className="w-4 h-[1px] bg-destructive"></span>
             Skills to Add
           </h3>
           <div className="flex flex-wrap gap-3">
             {(result.missingSkills || []).map((skill, i) => (
-              <span key={i} className="px-3 py-1 border border-destructive/20 text-[10px] font-bold text-destructive-foreground uppercase tracking-widest bg-destructive rounded-sm">
+              <span key={i} className="px-3 py-1 border border-destructive/20 text-[10px] font-bold text-destructive-foreground uppercase tracking-widest bg-destructive rounded-xl">
                 {skill}
               </span>
             ))}

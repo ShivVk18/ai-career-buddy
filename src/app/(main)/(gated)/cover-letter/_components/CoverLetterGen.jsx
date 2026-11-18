@@ -66,15 +66,15 @@ export default function CoverLetterGenerator() {
         {/* Header */}
         <div className="text-center space-y-6 mb-20 border-b border-divider pb-16">
           <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-8 h-[1px] bg-accent"></div>
+            <div className="w-8 h-[1px] bg-primary"></div>
             <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
               AI Career Assistant
             </span>
-            <div className="w-8 h-[1px] bg-accent"></div>
+            <div className="w-8 h-[1px] bg-primary"></div>
           </div>
           
-          <h2 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none">
-            Cover Letter <span className="text-accent">Generator</span>
+          <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
+            Cover Letter <span className="text-primary-ink">Generator</span>
           </h2>
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
             Create a professional, high-impact cover letter in seconds. Tailored to the job description and your unique experience.
@@ -82,12 +82,12 @@ export default function CoverLetterGenerator() {
         </div>
 
         {/* Form Container */}
-        <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        <div className="border border-border bg-panel rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
           
           <div className="mb-12">
-            <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-              <Target className="h-4 w-4 text-accent" />
+            <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3">
+              <Target className="h-4 w-4 text-primary-ink" />
               Job Details
             </h3>
           </div>
@@ -145,7 +145,7 @@ export default function CoverLetterGenerator() {
               <Textarea
                 id="jobDescription"
                 placeholder="Paste the job requirements here. Our AI will use this to highlight your most relevant experience..."
-                className="h-48 bg-divider/5 border-border focus:border-accent"
+                className="h-48 bg-divider/5 border-border focus:border-primary"
                 {...register("jobDescription")}
               />
               {errors.jobDescription && (
@@ -168,10 +168,10 @@ export default function CoverLetterGenerator() {
                     role="radio"
                     aria-checked={tone === t}
                     onClick={() => setTone(t)}
-                    className={`h-12 px-4 border rounded-sm text-[10px] font-bold tracking-widest uppercase transition-editorial ${
+                    className={`h-12 px-4 border rounded-xl text-[10px] font-bold tracking-widest uppercase transition-editorial ${
                       tone === t
-                        ? "border-accent bg-accent text-accent-foreground"
-                        : "border-divider text-muted-foreground hover:border-accent"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-divider text-muted-foreground hover:border-primary"
                     }`}
                   >
                     {TONE_LABELS[t]}
@@ -184,7 +184,7 @@ export default function CoverLetterGenerator() {
             <Button 
               type="submit" 
               disabled={generating}
-              className="w-full h-16 text-xs font-bold tracking-[0.3em] uppercase shadow-lg"
+              className="w-full h-16 text-xs font-bold tracking-[0.3em] uppercase shadow-card"
             >
               {generating ? (
                 <>
@@ -203,32 +203,32 @@ export default function CoverLetterGenerator() {
 
         {/* Benefits Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 pb-20">
-          <div className="border border-divider bg-divider/10 p-8 rounded-sm transition-editorial hover:border-accent group shadow-sm">
+          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial">
-                <Target className="h-4 w-4 text-accent" />
+              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
+                <Target className="h-4 w-4 text-primary-ink" />
               </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground uppercase">Precision Matching</h3>
+              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Precision Matching</h3>
             </div>
             <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Our AI analyzes the job description to highlight your most relevant skills and wins.</p>
           </div>
           
-          <div className="border border-divider bg-divider/10 p-8 rounded-sm transition-editorial hover:border-accent group shadow-sm">
+          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial">
-                <Sparkles className="h-4 w-4 text-accent" />
+              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
+                <Sparkles className="h-4 w-4 text-primary-ink" />
               </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground uppercase">ATS Optimized</h3>
+              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">ATS Optimized</h3>
             </div>
             <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Generated content follows industry-standard formats that pass through recruiter filters.</p>
           </div>
           
-          <div className="border border-divider bg-divider/10 p-8 rounded-sm transition-editorial hover:border-accent group shadow-sm">
+          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial">
-                <FileText className="h-4 w-4 text-accent" />
+              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
+                <FileText className="h-4 w-4 text-primary-ink" />
               </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground uppercase">Ready to Use</h3>
+              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Ready to Use</h3>
             </div>
             <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Get a polished, professional cover letter that you can download and use instantly.</p>
           </div>

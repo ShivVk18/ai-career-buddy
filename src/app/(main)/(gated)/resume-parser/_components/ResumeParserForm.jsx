@@ -185,14 +185,14 @@ const ResumeParserComponent = () => {
       {/* Header */}
       <div className="mb-16 border-b border-divider pb-12">
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-8 h-[1px] bg-accent"></div>
+          <div className="w-8 h-[1px] bg-primary"></div>
           <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
             Resume Insights
           </span>
         </div>
         
-        <h1 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none mb-6">
-          Resume <span className="text-accent">Scanner</span>
+        <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
+          Resume <span className="text-primary-ink">Scanner</span>
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground max-w-3xl font-light leading-relaxed">
           Scan your resume against any job description and see how you rank. Get actionable tips to improve your ATS score and land the interview.
@@ -203,8 +203,8 @@ const ResumeParserComponent = () => {
       {!result ? (
         <>
         <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="border border-border bg-background p-10 rounded-sm shadow-xl">
-            <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-10 flex items-center gap-3">
+          <div className="border border-border bg-panel p-10 rounded-xl shadow-xl">
+            <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-10 flex items-center gap-3">
               <span className="w-4 h-[1px] bg-divider"></span>
               Analysis Setup
             </h3>
@@ -250,7 +250,7 @@ const ResumeParserComponent = () => {
                 rows={6}
                 value={formData.jobDescription}
                 onChange={(e) => setFormData(prev => ({ ...prev, jobDescription: e.target.value }))}
-                className="bg-divider/10 border border-divider rounded-sm p-4 w-full outline-none focus:border-accent transition-editorial font-general text-sm text-foreground placeholder:text-muted-foreground/30"
+                className="bg-divider/10 border border-divider rounded-xl p-4 w-full outline-none focus:border-primary transition-editorial font-general text-sm text-foreground placeholder:text-muted-foreground/30"
               />
             </div>
 
@@ -266,8 +266,8 @@ const ResumeParserComponent = () => {
                     role="radio"
                     aria-checked={source === val}
                     onClick={() => setSource(val)}
-                    className={`min-h-10 px-4 rounded-sm border text-xs font-bold uppercase tracking-widest transition-editorial ${
-                      source === val ? 'border-accent bg-accent/10 text-foreground' : 'border-divider text-muted-foreground hover:border-accent'
+                    className={`min-h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-widest transition-editorial ${
+                      source === val ? 'border-primary bg-primary/10 text-foreground' : 'border-divider text-muted-foreground hover:border-primary'
                     }`}
                   >
                     {label}
@@ -289,8 +289,8 @@ const ResumeParserComponent = () => {
             {/* FILE UPLOAD */}
             {!useSaved && (
             <div
-              className={`border-dashed border-2 rounded-sm p-12 text-center transition-editorial mb-10 group ${
-                dragActive ? 'border-accent bg-accent/5' : 'border-divider hover:border-accent bg-divider/5'
+              className={`border-dashed border-2 rounded-xl p-12 text-center transition-editorial mb-10 group ${
+                dragActive ? 'border-primary bg-primary/5' : 'border-divider hover:border-primary bg-divider/5'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -299,10 +299,10 @@ const ResumeParserComponent = () => {
             >
               <input type="file" accept=".pdf" onChange={handleFileChange} className="hidden" id="resume-upload" />
               <label htmlFor="resume-upload" className="cursor-pointer block">
-                <Upload className={`mx-auto w-10 h-10 transition-editorial ${formData.resumePdf ? 'text-accent' : 'text-muted-foreground group-hover:text-accent'}`} />
-                <p className="mt-6 font-clash font-bold uppercase tracking-widest text-sm text-foreground">
+                <Upload className={`mx-auto w-10 h-10 transition-editorial ${formData.resumePdf ? 'text-primary-ink' : 'text-muted-foreground group-hover:text-primary-ink'}`} />
+                <p className="mt-6 font-bold tracking-widest text-sm text-foreground">
                   {formData.resumePdf ? (
-                    <span className="text-accent flex items-center justify-center">
+                    <span className="text-primary-ink flex items-center justify-center">
                       <CheckCircle className="w-5 h-5 mr-3" /> {formData.resumePdf.name}
                     </span>
                   ) : (
@@ -315,13 +315,13 @@ const ResumeParserComponent = () => {
             )}
 
             {notice && (
-              <div className="mb-8 p-4 border border-accent/30 bg-accent/5 text-foreground rounded-sm text-xs">
+              <div className="mb-8 p-4 border border-primary/30 bg-primary/5 text-foreground rounded-xl text-xs">
                 {notice}
               </div>
             )}
 
             {error && (
-              <div className="mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive flex items-center rounded-sm text-xs font-bold uppercase tracking-widest animate-pulse">
+              <div className="mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive flex items-center rounded-xl text-xs font-bold uppercase tracking-widest animate-pulse">
                 <AlertCircle className="w-4 h-4 mr-3" /> {error}
                 {noResume && (
                   <Link href="/resume" className="ml-3 underline">Build your resume</Link>
@@ -333,7 +333,7 @@ const ResumeParserComponent = () => {
             <Button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full h-16 shadow-lg"
+              className="w-full h-16 shadow-card"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-4 tracking-[0.2em]">
@@ -352,7 +352,7 @@ const ResumeParserComponent = () => {
       ) : (
         <>
         {error && (
-          <div className="max-w-5xl mx-auto mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive rounded-sm text-xs font-bold uppercase tracking-widest">
+          <div className="max-w-5xl mx-auto mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive rounded-xl text-xs font-bold uppercase tracking-widest">
             {error}
           </div>
         )}

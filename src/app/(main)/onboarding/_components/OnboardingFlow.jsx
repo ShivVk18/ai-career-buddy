@@ -1,5 +1,6 @@
 "use client";
 
+import { MovingBorder } from "@/components/ui/aceternity/moving-border";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,13 +49,19 @@ function StrengthRing({ percent }) {
   return (
     <div className="relative h-36 w-36" role="img" aria-label={`Profile strength ${pct} percent`}>
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+        <defs>
+          <linearGradient id="strength-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#4F46E5" />
+            <stop offset="100%" stopColor="#A3E635" />
+          </linearGradient>
+        </defs>
         <circle cx="60" cy="60" r={r} fill="none" stroke="var(--line)" strokeWidth="10" />
         <circle
           cx="60"
           cy="60"
           r={r}
           fill="none"
-          stroke="#2F9E77"
+          stroke="url(#strength-grad)"
           strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray={c}
@@ -277,7 +284,7 @@ export default function OnboardingFlow({ editing = false }) {
   const customRole = targetRole && !roleSuggestions.includes(targetRole) ? targetRole : "";
 
   const errorBox = error && (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-3 text-xs text-text">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-xs text-text">
       <span className="flex-1 min-w-0">{error}</span>
     </div>
   );
@@ -340,11 +347,11 @@ export default function OnboardingFlow({ editing = false }) {
               setDragging(false);
               handleFile(e.dataTransfer.files?.[0]);
             }}
-            className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-[0.99] ${
-              dragging ? "border-pip bg-pip-soft" : "border-line bg-panel hover:border-pip"
+            className={`flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-[0.99] ${
+              dragging ? "border-primary bg-pip-soft shadow-[0_0_0_6px_var(--glow)]" : "border-line bg-panel hover:border-primary hover:bg-soft/50"
             }`}
           >
-            <FileUp className="h-8 w-8 text-pip" aria-hidden="true" />
+            <FileUp className="h-10 w-10 text-primary-ink" aria-hidden="true" />
             <p className="text-sm font-medium text-text">Drop your resume here, or tap to choose</p>
             <p className="text-xs text-muted">PDF, up to 5 MB. It's read once and not stored.</p>
             <input
@@ -371,6 +378,7 @@ export default function OnboardingFlow({ editing = false }) {
       )}
 
       {step === "parsing" && (
+        <MovingBorder innerClassName="p-5">
         <div className="space-y-4" aria-live="polite">
           <PipStatus step="detective" text="reading your resume and checking every detail against it…" />
           <div className="space-y-3" aria-hidden="true">
@@ -386,6 +394,7 @@ export default function OnboardingFlow({ editing = false }) {
             ))}
           </div>
         </div>
+        </MovingBorder>
       )}
 
       {step === "chips" && (

@@ -91,7 +91,7 @@ export default function TailorReview({ item, onDismiss, onSaved }) {
 
   if (state.status === "error") {
     return (
-      <div role="alert" className="space-y-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] p-4 text-xs text-text">
+      <div role="alert" className="space-y-3 rounded-xl border border-danger/40 bg-danger/10 p-4 text-xs text-text">
         <p>{state.error}</p>
         <div className="flex flex-wrap gap-2">
           {state.code !== "UNSUPPORTED" && state.code !== "STALE" && state.code !== "NOT_FOUND" && (

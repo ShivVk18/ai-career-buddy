@@ -24,14 +24,14 @@ export default function QuizList({ assessments, onStartNew }) {
 
   return (
     <>
-      <div className="border border-border bg-background rounded-sm p-8 shadow-sm">
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12 gap-4">
           <div>
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
-                <FileText className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-divider/20 flex items-center justify-center border border-divider/30">
+                <FileText className="w-5 h-5 text-primary-ink" />
               </div>
-              <h2 className="text-3xl font-clash font-bold text-foreground uppercase tracking-tight">
+              <h2 className="text-3xl font-clash font-bold text-foreground tracking-tight">
                 Quiz History
               </h2>
             </div>
@@ -41,7 +41,7 @@ export default function QuizList({ assessments, onStartNew }) {
           </div>
           <Button
             onClick={onStartNew}
-            className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-lg"
+            className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-card"
           >
             <Plus className="w-4 h-4 mr-3" />
             Start New Quiz
@@ -50,11 +50,11 @@ export default function QuizList({ assessments, onStartNew }) {
 
         {/* Empty State */}
         {!assessments || assessments.length === 0 ? (
-          <div className="text-center py-16 border border-divider bg-divider/5 rounded-sm">
-            <div className="w-16 h-16 rounded-sm bg-divider/20 flex items-center justify-center mb-6 mx-auto border border-divider/30">
-              <FileText className="w-8 h-8 text-accent" />
+          <div className="text-center py-16 border border-divider bg-divider/5 rounded-xl">
+            <div className="w-16 h-16 rounded-xl bg-divider/20 flex items-center justify-center mb-6 mx-auto border border-divider/30">
+              <FileText className="w-8 h-8 text-primary-ink" />
             </div>
-            <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight mb-2">No Quizzes Yet</h3>
+            <h3 className="text-xl font-clash font-bold text-foreground tracking-tight mb-2">No Quizzes Yet</h3>
             <p className="text-muted-foreground font-light mb-8 max-w-md mx-auto text-sm">
               Start your first quiz to test your technical knowledge and track your progress over time.
             </p>
@@ -63,7 +63,7 @@ export default function QuizList({ assessments, onStartNew }) {
               variant="outline"
               className="h-12 px-8"
             >
-              <Sparkles className="w-4 h-4 mr-3 text-accent" />
+              <Sparkles className="w-4 h-4 mr-3 text-primary-ink" />
               Take Your First Quiz
             </Button>
           </div>
@@ -77,21 +77,21 @@ export default function QuizList({ assessments, onStartNew }) {
                 <div
                   key={assessment.id}
                   onClick={() => setSelectedQuiz(assessment)}
-                  className="border border-border bg-background rounded-sm p-6 cursor-pointer hover:border-accent hover:bg-divider/5 transition-editorial shadow-sm"
+                  className="border border-border bg-panel rounded-xl p-6 cursor-pointer hover:border-primary hover:bg-divider/5 transition-editorial shadow-card"
                 >
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-4">
-                        <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
-                          <Trophy className="w-4 h-4 text-accent" />
+                        <div className="w-10 h-10 rounded-xl bg-divider/20 flex items-center justify-center border border-divider/30">
+                          <Trophy className="w-4 h-4 text-primary-ink" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-clash font-bold text-foreground uppercase tracking-tight">
+                          <h3 className="text-xl font-clash font-bold text-foreground tracking-tight">
                             Quiz {assessments.length - i}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <BadgeIcon className="w-3 h-3 text-accent" />
-                            <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                            <BadgeIcon className="w-3 h-3 text-primary-ink" />
+                            <span className="text-[10px] font-bold text-primary-ink uppercase tracking-widest">
                               {badge.label}
                             </span>
                           </div>
@@ -115,11 +115,11 @@ export default function QuizList({ assessments, onStartNew }) {
                   </div>
 
                   {assessment.improvementTip && (
-                    <div className="border border-accent/20 bg-accent/5 rounded-sm p-4 mt-6">
+                    <div className="border border-primary/20 bg-primary/5 rounded-xl p-4 mt-6">
                       <div className="flex items-start gap-3">
-                        <Sparkles className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                        <Sparkles className="w-4 h-4 text-primary-ink flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-accent mb-2">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-primary-ink mb-2">
                             Improvement Tip
                           </p>
                           <p className="text-xs text-muted-foreground font-light leading-relaxed">
@@ -134,7 +134,7 @@ export default function QuizList({ assessments, onStartNew }) {
                     <span className="text-muted-foreground/50">
                       Click to view detailed results
                     </span>
-                    <span className="text-accent group-hover:underline">
+                    <span className="text-primary-ink group-hover:underline">
                       View Details →
                     </span>
                   </div>
@@ -146,7 +146,7 @@ export default function QuizList({ assessments, onStartNew }) {
       </div>
 
       <Dialog open={!!selectedQuiz} onOpenChange={() => setSelectedQuiz(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-border rounded-sm p-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-panel border-border rounded-xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>Quiz Results</DialogTitle>
           </DialogHeader>

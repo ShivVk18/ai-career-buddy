@@ -112,11 +112,11 @@ const RoadmapDetailView = ({ roadmap }) => {
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
-        return "bg-[#f59e0b]/20 text-[#fbbf24] border-[#f59e0b]/30";
+        return "bg-primary/20 text-primary-ink border-primary/30";
       case "medium":
-        return "bg-[#f59e0b]/15 text-[#fbbf24] border-[#f59e0b]/25";
+        return "bg-primary/15 text-primary-ink border-primary/25";
       case "low":
-        return "bg-[#f59e0b]/10 text-[#b0b0b0] border-[#f59e0b]/20";
+        return "bg-primary/10 text-muted border-primary/20";
       default:
         return "bg-gray-500/20 text-gray-300 border-gray-500/30";
     }
@@ -140,18 +140,18 @@ const RoadmapDetailView = ({ roadmap }) => {
   };
 
   const getProgressColor = (progress) => {
-    if (progress >= 70) return "from-[#f59e0b] to-[#fbbf24]";
-    if (progress >= 50) return "from-[#f59e0b] to-[#fbbf24]";
-    if (progress >= 30) return "from-[#f59e0b]/80 to-[#fbbf24]/80";
-    return "from-[#f59e0b]/60 to-[#fbbf24]/60";
+    if (progress >= 70) return "from-primary to-lime";
+    if (progress >= 50) return "from-primary to-lime";
+    if (progress >= 30) return "from-primary/80 to-lime/80";
+    return "from-primary/60 to-lime/60";
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0e0a] text-white py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-bg text-white py-12 px-4 sm:px-6 lg:px-8">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#f59e0b]/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#fbbf24]/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-lime/10 rounded-full blur-3xl animate-pulse"></div>
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto space-y-8">
@@ -163,15 +163,15 @@ const RoadmapDetailView = ({ roadmap }) => {
         >
           <button
             onClick={() => router.back()}
-            className="p-3 backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border border-[#f59e0b]/30 hover:border-[#f59e0b]/50 rounded-2xl transition-all duration-300"
+            className="p-3 backdrop-blur-xl bg-gradient-to-br from-panel/80 to-soft/60 border border-primary/30 hover:border-primary/50 rounded-2xl transition-all duration-300"
           >
-            <ArrowLeft className="h-5 w-5 text-[#f59e0b]" />
+            <ArrowLeft className="h-5 w-5 text-primary-ink" />
           </button>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-[#f59e0b] via-[#fbbf24] to-[#f59e0b] bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary via-lime to-primary bg-clip-text text-transparent">
               {roadmap.currentRole} → {roadmap.targetRole}
             </h1>
-            <p className="text-[#b0b0b0] mt-1">
+            <p className="text-muted mt-1">
               {roadmap.industry} • {roadmap.timeline?.estimatedDuration}
             </p>
           </div>
@@ -182,14 +182,14 @@ const RoadmapDetailView = ({ roadmap }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 border border-[#f59e0b]/20 rounded-3xl p-8 shadow-xl shadow-[#f59e0b]/5"
+          className="backdrop-blur-xl bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border border-primary/20 rounded-3xl p-8 shadow-xl shadow-primary/5"
         >
           <div className="flex items-center gap-3 mb-6">
             <motion.div
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
             >
-              <Sparkles className="h-6 w-6 text-[#f59e0b]" />
+              <Sparkles className="h-6 w-6 text-primary-ink" />
             </motion.div>
             <h2 className="text-2xl font-semibold text-white">
               Overall Progress
@@ -198,14 +198,14 @@ const RoadmapDetailView = ({ roadmap }) => {
 
           <div className="space-y-4 mb-6">
             <div className="flex items-center justify-between">
-              <span className="text-[#b0b0b0]">
+              <span className="text-muted">
                 {completedSteps} of {totalSteps} steps completed
               </span>
-              <span className="text-2xl font-bold text-[#fbbf24]">
+              <span className="text-2xl font-bold text-primary-ink">
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="relative h-4 bg-[#1a1815]/50 rounded-full overflow-hidden">
+            <div className="relative h-4 bg-panel/50 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
@@ -220,21 +220,21 @@ const RoadmapDetailView = ({ roadmap }) => {
           {/* Timeline Breakdown */}
           {roadmap.timeline?.phaseBreakdown?.length > 0 && (
             <div className="mt-8 space-y-4">
-              <h3 className="text-lg font-semibold text-[#f59e0b]">
+              <h3 className="text-lg font-semibold text-primary-ink">
                 Timeline Phases
               </h3>
               <ul className="space-y-3">
                 {roadmap.timeline.phaseBreakdown.map((phase, index) => (
                   <li
                     key={index}
-                    className="flex items-start gap-3 text-[#b0b0b0]"
+                    className="flex items-start gap-3 text-muted"
                   >
                     <div className="mt-1.5">
-                      <CheckCircle className="h-4 w-4 text-[#f59e0b]" />
+                      <CheckCircle className="h-4 w-4 text-primary-ink" />
                     </div>
                     <div>
                       <p className="font-medium text-white">{phase.title}</p>
-                      <p className="text-sm text-[#b0b0b0]">
+                      <p className="text-sm text-muted">
                         {phase.description}
                       </p>
                     </div>
@@ -247,25 +247,25 @@ const RoadmapDetailView = ({ roadmap }) => {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 to-[#252218]/60 border border-[#f59e0b]/20 rounded-2xl p-2">
+          <div className="backdrop-blur-xl bg-gradient-to-br from-panel/80 to-soft/60 border border-primary/20 rounded-2xl p-2">
             <TabsList className="grid w-full grid-cols-3 bg-transparent gap-2">
               <TabsTrigger
                 value="steps"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#f59e0b] data-[state=active]:to-[#fbbf24] data-[state=active]:text-white rounded-xl transition-all duration-300"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-lime data-[state=active]:text-white rounded-xl transition-all duration-300"
               >
                 <Zap className="h-4 w-4 mr-2" />
                 Steps
               </TabsTrigger>
               <TabsTrigger
                 value="milestones"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#f59e0b] data-[state=active]:to-[#fbbf24] data-[state=active]:text-white rounded-xl transition-all duration-300"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-lime data-[state=active]:text-white rounded-xl transition-all duration-300"
               >
                 <Target className="h-4 w-4 mr-2" />
                 Milestones
               </TabsTrigger>
               <TabsTrigger
                 value="resources"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#f59e0b] data-[state=active]:to-[#fbbf24] data-[state=active]:text-white rounded-xl transition-all duration-300"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-lime data-[state=active]:text-white rounded-xl transition-all duration-300"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
                 Resources
@@ -275,18 +275,18 @@ const RoadmapDetailView = ({ roadmap }) => {
 
           {/* --- Steps Tab --- */}
           <TabsContent value="steps" className="space-y-4">
-            <p className="text-xs text-[#b0b0b0]">
+            <p className="text-xs text-muted">
               AI estimate: steps are grouped by phase in order, and the roadmap itself is AI generated.
             </p>
             {groups.map((group, gi) => (
             <div key={gi} className="space-y-4">
               {group.title && (
                 <div className="pt-2">
-                  <h3 className="text-lg font-semibold text-[#f59e0b]">
+                  <h3 className="text-lg font-semibold text-primary-ink">
                     {group.title}
-                    {group.duration ? <span className="text-sm font-normal text-[#b0b0b0]"> ({group.duration})</span> : null}
+                    {group.duration ? <span className="text-sm font-normal text-muted"> ({group.duration})</span> : null}
                   </h3>
-                  {group.description && <p className="text-sm text-[#b0b0b0]">{group.description}</p>}
+                  {group.description && <p className="text-sm text-muted">{group.description}</p>}
                 </div>
               )}
             <AnimatePresence>
@@ -300,8 +300,8 @@ const RoadmapDetailView = ({ roadmap }) => {
                     transition={{ delay: index * 0.05 }}
                     className={`backdrop-blur-xl border-2 rounded-3xl p-6 transition-all duration-300 shadow-xl ${
                       step.completed
-                        ? "bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 border-[#fbbf24]/30 shadow-[#fbbf24]/5"
-                        : "bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 border-[#f59e0b]/20 hover:border-[#f59e0b]/40 hover:shadow-[#f59e0b]/10"
+                        ? "bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-lime/30 shadow-lime/5"
+                        : "bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-primary/20 hover:border-primary/40 hover:shadow-primary/10"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -309,8 +309,8 @@ const RoadmapDetailView = ({ roadmap }) => {
                         <div
                           className={`p-3 rounded-2xl ${
                             step.completed
-                              ? "bg-[#fbbf24]/20 text-[#fbbf24]"
-                              : "bg-[#f59e0b]/20 text-[#f59e0b]"
+                              ? "bg-lime/20 text-primary-ink"
+                              : "bg-primary/20 text-primary-ink"
                           }`}
                         >
                           {step.completed ? (
@@ -334,20 +334,20 @@ const RoadmapDetailView = ({ roadmap }) => {
                             </span>
                           </div>
 
-                          <p className="text-[#b0b0b0] leading-relaxed">
+                          <p className="text-muted leading-relaxed">
                             {step.description}
                           </p>
 
                           {targetsState === "ready" && targets?.[step.id]?.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] font-bold tracking-widest uppercase text-[#b0b0b0]">
+                              <span className="text-[10px] font-bold tracking-widest uppercase text-muted">
                                 Closes gaps for
                               </span>
                               {targets[step.id].map((t, ti) => (
                                 <span
                                   key={ti}
                                   title={t.jdExcerpt}
-                                  className="px-2 py-1 rounded-full text-xs border border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#fbbf24] cursor-help"
+                                  className="px-2 py-1 rounded-full text-xs border border-primary/30 bg-primary/10 text-primary-ink cursor-help"
                                 >
                                   {[t.company, t.role].filter(Boolean).join(" - ")}
                                 </span>
@@ -363,16 +363,16 @@ const RoadmapDetailView = ({ roadmap }) => {
 
                           {step.resources && step.resources.length > 0 && (
                             <div className="space-y-2">
-                              <h4 className="font-medium text-sm text-[#b0b0b0]">
+                              <h4 className="font-medium text-sm text-muted">
                                 Resources:
                               </h4>
                               <ul className="space-y-1">
                                 {step.resources.map((resource, i) => (
                                   <li
                                     key={i}
-                                    className="text-sm text-[#b0b0b0] flex items-center gap-2"
+                                    className="text-sm text-muted flex items-center gap-2"
                                   >
-                                    <ChevronRight className="h-3 w-3 text-[#f59e0b]" />
+                                    <ChevronRight className="h-3 w-3 text-primary-ink" />
                                     {resource}
                                   </li>
                                 ))}
@@ -388,8 +388,8 @@ const RoadmapDetailView = ({ roadmap }) => {
                           disabled={completingStep !== null}
                           className={
                             step.completed
-                              ? "px-4 py-2 border border-[#f59e0b]/40 rounded-xl text-[#fbbf24] font-semibold transition-all duration-300 disabled:opacity-50 hover:bg-[#f59e0b]/10"
-                              : "px-4 py-2 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50 shadow-lg shadow-[#f59e0b]/30 hover:shadow-xl hover:shadow-[#f59e0b]/40"
+                              ? "px-4 py-2 border border-primary/40 rounded-xl text-primary-ink font-semibold transition-all duration-300 disabled:opacity-50 hover:bg-primary/10"
+                              : "px-4 py-2 bg-gradient-to-r from-primary to-lime hover:from-lime hover:to-primary rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50 shadow-card shadow-primary/30 hover:shadow-xl hover:shadow-primary/40"
                           }
                         >
                           {completingStep === step.id
@@ -407,10 +407,10 @@ const RoadmapDetailView = ({ roadmap }) => {
             </div>
             ))}
             {targetsState === "error" && (
-              <p className="text-xs text-[#b0b0b0]">Couldn&apos;t load which of your targets each step closes gaps for.</p>
+              <p className="text-xs text-muted">Couldn&apos;t load which of your targets each step closes gaps for.</p>
             )}
             {steps.length === 0 && (
-              <p className="text-[#b0b0b0]">This roadmap has no steps yet.</p>
+              <p className="text-muted">This roadmap has no steps yet.</p>
             )}
           </TabsContent>
 
@@ -423,20 +423,20 @@ const RoadmapDetailView = ({ roadmap }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 border-2 border-[#f59e0b]/20 hover:border-[#f59e0b]/40 rounded-3xl p-6 shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10 transition-all duration-300"
+                  className="backdrop-blur-xl bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-2 border-primary/20 hover:border-primary/40 rounded-3xl p-6 shadow-xl shadow-primary/5 hover:shadow-primary/10 transition-all duration-300"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-[#f59e0b]/20 text-[#f59e0b] rounded-2xl">
+                    <div className="p-3 bg-primary/20 text-primary-ink rounded-2xl">
                       <Target className="h-6 w-6" />
                     </div>
                     <div className="space-y-3 flex-1">
                       <h3 className="font-semibold text-lg text-white">
                         {milestone.title}
                       </h3>
-                      <p className="text-[#b0b0b0] leading-relaxed">
+                      <p className="text-muted leading-relaxed">
                         {milestone.summary}
                       </p>
-                      <div className="px-3 py-1 bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30 rounded-full text-xs w-fit">
+                      <div className="px-3 py-1 bg-primary/20 text-primary-ink border border-primary/30 rounded-full text-xs w-fit">
                         {milestone.targetDate}
                       </div>
                     </div>
@@ -455,10 +455,10 @@ const RoadmapDetailView = ({ roadmap }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="backdrop-blur-xl bg-gradient-to-br from-[#1a1815]/80 via-[#252218]/60 to-[#1a1815]/80 border-2 border-[#f59e0b]/20 hover:border-[#f59e0b]/40 rounded-3xl p-6 transition-all duration-300 shadow-xl shadow-[#f59e0b]/5 hover:shadow-[#f59e0b]/10"
+                  className="backdrop-blur-xl bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-2 border-primary/20 hover:border-primary/40 rounded-3xl p-6 transition-all duration-300 shadow-xl shadow-primary/5 hover:shadow-primary/10"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-[#f59e0b]/20 text-[#f59e0b] rounded-2xl">
+                    <div className="p-3 bg-primary/20 text-primary-ink rounded-2xl">
                       <BookOpen className="h-6 w-6" />
                     </div>
                     <div className="space-y-3 flex-1">
@@ -469,14 +469,14 @@ const RoadmapDetailView = ({ roadmap }) => {
                         {resource.items.map((item, i) => (
                           <li
                             key={i}
-                            className="flex items-center gap-2 text-[#b0b0b0]"
+                            className="flex items-center gap-2 text-muted"
                           >
-                            <ChevronRight className="h-3 w-3 text-[#f59e0b]" />
+                            <ChevronRight className="h-3 w-3 text-primary-ink" />
                             <a
                               href={item.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="hover:text-[#fbbf24] transition"
+                              className="hover:text-primary-ink transition"
                             >
                               {item.title}
                             </a>

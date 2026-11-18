@@ -83,9 +83,9 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
           />
         ) : (
           <>
-            {decision !== "accepted" && <del className="mr-1 text-[#B4483A] decoration-[#B4483A]/70">{proposal.original}</del>}
+            {decision !== "accepted" && <del className="mr-1 text-danger decoration-danger/70">{proposal.original}</del>}
             <ins
-              className={`no-underline ${decision === "accepted" ? "text-text" : "rounded bg-pip-soft px-0.5 text-pip-ink underline decoration-pip/50"} ${
+              className={`no-underline ${decision === "accepted" ? "text-text" : "rounded bg-lime/40 px-0.5 text-text underline decoration-primary/60"} ${
                 EDIT_LINES_SUPPORTED ? "cursor-text" : ""
               }`}
               onClick={
@@ -117,7 +117,7 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
             <button type="button" onClick={() => onDecide(proposal.proposalId, "accepted")} className={`${btn} border-pip bg-pip text-white hover:bg-pip-ink`}>
               <Check className="h-3 w-3" aria-hidden="true" /> Accept
             </button>
-            <button type="button" onClick={() => onDecide(proposal.proposalId, "rejected")} className={`${btn} border-line bg-panel text-text hover:border-[#B4483A]`}>
+            <button type="button" onClick={() => onDecide(proposal.proposalId, "rejected")} className={`${btn} border-line bg-panel text-text hover:border-danger`}>
               <X className="h-3 w-3" aria-hidden="true" /> Reject
             </button>
           </>

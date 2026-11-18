@@ -30,15 +30,15 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
           <div className="flex flex-col lg:flex-row gap-12 items-start lg:items-center justify-between">
             <div className="space-y-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-[1px] bg-accent" />
+                <div className="w-12 h-[1px] bg-primary" />
                 <span className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
                   Career Planning
                 </span>
               </div>
 
-              <h1 className="text-5xl md:text-8xl font-clash font-bold text-foreground uppercase tracking-tight leading-[0.9] mb-8">
+              <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
                 Your Career{" "}
-                <span className="text-accent underline decoration-1 underline-offset-8">
+                <span className="text-primary-ink underline decoration-1 underline-offset-8">
                   Roadmaps
                 </span>
               </h1>
@@ -50,7 +50,7 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
 
             <button
               onClick={() => setShowCreateModal(true)}
-              className="group inline-flex items-center h-20 px-12 bg-accent text-accent-foreground rounded-sm font-clash font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-editorial text-sm"
+              className="group inline-flex items-center h-20 px-12 bg-primary text-primary-foreground rounded-xl font-bold tracking-[0.2em] hover:brightness-110 transition-editorial text-sm"
             >
               <Plus className="h-5 w-5 mr-4 group-hover:rotate-90 transition-editorial" />
               New Roadmap
@@ -61,10 +61,10 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-          <div className="border border-divider bg-divider/10 p-10 rounded-sm group hover:border-accent transition-editorial">
+          <div className="border border-divider bg-divider/10 p-10 rounded-xl group hover:border-primary transition-editorial">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <Target className="h-6 w-6 text-accent" />
+                <Target className="h-6 w-6 text-primary-ink" />
                 <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
                   Active Roadmaps
                 </div>
@@ -75,10 +75,10 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
             </div>
           </div>
 
-          <div className="border border-divider bg-divider/10 p-10 rounded-sm group hover:border-accent transition-editorial">
+          <div className="border border-divider bg-divider/10 p-10 rounded-xl group hover:border-primary transition-editorial">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <CheckCircle className="h-6 w-6 text-accent" />
+                <CheckCircle className="h-6 w-6 text-primary-ink" />
                 <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
                   Completed
                 </div>
@@ -89,10 +89,10 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
             </div>
           </div>
 
-          <div className="border border-divider bg-divider/10 p-10 rounded-sm group hover:border-accent transition-editorial">
+          <div className="border border-divider bg-divider/10 p-10 rounded-xl group hover:border-primary transition-editorial">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <TrendingUp className="h-6 w-6 text-accent" />
+                <TrendingUp className="h-6 w-6 text-primary-ink" />
                 <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
                   Avg. Progress
                 </div>
@@ -115,7 +115,7 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
         {/* Active Roadmaps */}
         {activeRoadmaps.length > 0 && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-[10px] font-bold tracking-[0.4em] text-accent uppercase mb-12 flex items-center gap-4">
+            <h2 className="text-[10px] font-bold tracking-[0.4em] text-primary-ink mb-12 flex items-center gap-4">
               <Zap className="h-4 w-4" />
               In Progress
             </h2>
@@ -139,7 +139,7 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
         {/* Completed Roadmaps */}
         {completedRoadmaps.length > 0 && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-[10px] font-bold tracking-[0.4em] text-muted-foreground uppercase mb-12 flex items-center gap-4">
+            <h2 className="text-[10px] font-bold tracking-[0.4em] text-muted-foreground mb-12 flex items-center gap-4">
               <Star className="h-4 w-4" />
               Completed
             </h2>
@@ -162,11 +162,11 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
 
         {/* Empty State */}
         {roadmaps.length === 0 && (
-          <div className="text-center py-40 border border-divider border-dashed rounded-sm bg-divider/5">
-            <div className="w-24 h-24 mx-auto rounded-sm border border-divider flex items-center justify-center bg-background mb-10 group hover:border-accent transition-editorial">
-              <Target className="h-10 w-10 text-muted-foreground group-hover:text-accent transition-editorial" />
+          <div className="text-center py-40 border border-divider border-dashed rounded-xl bg-divider/5">
+            <div className="w-24 h-24 mx-auto rounded-xl border border-divider flex items-center justify-center bg-panel mb-10 group hover:border-primary transition-editorial">
+              <Target className="h-10 w-10 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
             </div>
-            <h3 className="text-2xl md:text-4xl font-clash font-bold text-foreground uppercase tracking-tight mb-6">
+            <h3 className="text-2xl md:text-4xl font-clash font-bold text-foreground tracking-tight mb-6">
               No Roadmaps Yet
             </h3>
             <p className="text-muted-foreground mb-12 max-w-md mx-auto font-general font-light leading-relaxed">
@@ -175,7 +175,7 @@ const RoadmapDashboard = ({ roadmaps, gapData }) => {
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center h-16 px-12 bg-accent text-accent-foreground rounded-sm font-clash font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-editorial text-xs"
+              className="inline-flex items-center h-16 px-12 bg-primary text-primary-foreground rounded-xl font-bold tracking-[0.2em] hover:brightness-110 transition-editorial text-xs"
             >
               <Plus className="h-4 w-4 mr-4" />
               Create My First Roadmap

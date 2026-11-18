@@ -333,7 +333,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "480px", background: "var(--divider)", border: "1px dashed var(--border)", opacity: 0.5 }}>
           <Layout className="h-16 w-16 text-muted-foreground mb-6" />
-          <p className="text-foreground text-lg font-clash font-bold uppercase tracking-tight">Select a Template</p>
+          <p className="text-foreground text-lg font-bold tracking-tight">Select a Template</p>
           <p className="text-muted-foreground text-sm mt-2 font-general font-light">Choose from 6 professional designs above</p>
         </div>
       );
@@ -480,15 +480,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
         {/* Header */}
         <div className="text-center mb-16 border-b border-divider pb-12">
           <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-8 h-[1px] bg-accent"></div>
+            <div className="w-8 h-[1px] bg-primary"></div>
             <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
               Resume Builder
             </span>
-            <div className="w-8 h-[1px] bg-accent"></div>
+            <div className="w-8 h-[1px] bg-primary"></div>
           </div>
           
-          <h1 className="text-4xl md:text-7xl font-clash font-bold text-foreground uppercase tracking-tight leading-none mb-6">
-            Your Professional <span className="text-accent">Story</span>
+          <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
+            Your Professional <span className="text-primary-ink">Story</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
             Choose a premium template and let AI help you craft a resume that gets you hired.
@@ -498,11 +498,11 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
           <div className="mt-12 max-w-md mx-auto">
             <div className="flex items-center justify-between text-[10px] font-bold tracking-widest uppercase mb-3">
               <span className="text-muted-foreground">Resume Completion</span>
-              <span className="text-accent">{formCompletion}%</span>
+              <span className="text-primary-ink">{formCompletion}%</span>
             </div>
             <div className="h-1 bg-divider rounded-full overflow-hidden border border-divider/20">
               <div 
-                className="h-full bg-accent transition-all duration-700 ease-editorial"
+                className="h-full bg-primary transition-all duration-700 ease-editorial"
                 style={{ width: `${formCompletion}%` }}
               />
             </div>
@@ -514,7 +514,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
           <Button
             onClick={handleSubmit(onSubmit)}
             disabled={isSaving || !isDirty || resumeDeleted}
-            className="min-w-[200px] shadow-lg"
+            className="min-w-[200px] shadow-card"
           >
             {isSaving ? (
               <>
@@ -533,7 +533,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
             onClick={generatePDF}
             disabled={!selectedTemplate}
             variant="outline"
-            className="min-w-[200px] border-divider hover:border-accent"
+            className="min-w-[200px] border-divider hover:border-primary"
           >
             <Download className="h-5 w-5 mr-3" />
             Download PDF
@@ -564,17 +564,17 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
 
         {/* Auto-save and Status */}
         <div className="flex justify-center items-center gap-6 text-[10px] font-bold tracking-widest uppercase flex-wrap">
-          <label className="flex items-center gap-3 cursor-pointer text-muted-foreground hover:text-foreground transition-editorial bg-divider/10 px-6 py-2 rounded-sm border border-divider/20">
+          <label className="flex items-center gap-3 cursor-pointer text-muted-foreground hover:text-foreground transition-editorial bg-divider/10 px-6 py-2 rounded-xl border border-divider/20">
             <input
               type="checkbox"
               checked={autoSaveEnabled}
               onChange={(e) => setAutoSaveEnabled(e.target.checked)}
-              className="w-4 h-4 rounded-sm border-divider bg-background text-accent focus:ring-accent focus:ring-offset-0"
+              className="w-4 h-4 rounded-xl border-divider bg-panel text-primary-ink focus:ring-primary focus:ring-offset-0"
             />
             <span>Auto-save Changes</span>
           </label>
           {isDirty && autoSaveEnabled && (
-            <span className="text-accent flex items-center gap-3 bg-accent/5 px-6 py-2 rounded-sm border border-accent/20 animate-pulse">
+            <span className="text-primary-ink flex items-center gap-3 bg-primary/5 px-6 py-2 rounded-xl border border-primary/20 animate-pulse">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Saving...</span>
             </span>
@@ -583,10 +583,10 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
 
         {/* Error Alert */}
         {hasErrors && (
-          <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-6 flex items-start gap-4 animate-in fade-in slide-in-from-top-2">
+          <div className="border border-destructive/30 bg-destructive/5 rounded-xl p-6 flex items-start gap-4 animate-in fade-in slide-in-from-top-2">
             <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="text-destructive font-clash font-bold uppercase tracking-tight mb-2">Oops! Check these fields</h3>
+              <h3 className="text-destructive font-bold tracking-tight mb-2">Oops! Check these fields</h3>
               <ul className="text-[10px] font-bold uppercase tracking-widest text-destructive/80 space-y-1">
                 {Object.entries(errors).map(([key, error]) => (
                   <li key={key} className="flex items-center gap-2">
@@ -601,24 +601,24 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex justify-center mb-12">
-            <TabsList className="bg-background border border-border p-1 rounded-sm gap-1">
+            <TabsList className="bg-panel border border-border p-1 rounded-xl gap-1">
               <TabsTrigger 
                 value="template"
-                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-sm px-10 py-3 transition-editorial font-clash font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
+                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-xl px-10 py-3 transition-editorial font-bold tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
               >
                 <Layout className="h-4 w-4" />
                 Templates
               </TabsTrigger>
               <TabsTrigger 
                 value="form"
-                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-sm px-10 py-3 transition-editorial font-clash font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
+                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-xl px-10 py-3 transition-editorial font-bold tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
               >
                 <FileText className="h-4 w-4" />
                 Edit Details
               </TabsTrigger>
               <TabsTrigger 
                 value="tailor"
-                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-sm px-10 py-3 transition-editorial font-clash font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
+                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-xl px-10 py-3 transition-editorial font-bold tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
               >
                 <Sparkles className="h-4 w-4" />
                 Tailor &amp; Versions
@@ -632,12 +632,12 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
 
           {/* Template Selection */}
           <TabsContent value="template" className="animate-in fade-in duration-500">
-            <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
+            <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-divider pb-8">
                 <div className="space-y-2">
-                  <span className="text-[10px] font-bold text-accent uppercase tracking-[0.3em]">Step 1</span>
-                  <h2 className="text-2xl md:text-3xl font-clash font-bold text-foreground flex items-center gap-3 uppercase tracking-tight">
-                    <Palette className="h-6 w-6 text-accent" />
+                  <span className="text-[10px] font-bold text-primary-ink uppercase tracking-[0.3em]">Step 1</span>
+                  <h2 className="text-2xl md:text-3xl font-clash font-bold text-foreground flex items-center gap-3 tracking-tight">
+                    <Palette className="h-6 w-6 text-primary-ink" />
                     Select a Template
                   </h2>
                 </div>
@@ -661,10 +661,10 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                     <div
                       key={template.id}
                       onClick={() => handleTemplateSelect(template.id)}
-                      className={`group cursor-pointer rounded-sm border transition-editorial overflow-hidden shadow-sm hover:shadow-md ${
+                      className={`group cursor-pointer rounded-xl border transition-editorial overflow-hidden shadow-card hover:shadow-md ${
                         selectedTemplate === template.id
-                          ? "border-accent ring-1 ring-accent/20"
-                          : "border-divider/50 hover:border-accent"
+                          ? "border-primary ring-1 ring-primary/20"
+                          : "border-divider/50 hover:border-primary"
                       }`}
                     >
                       {/* Live Template Thumbnail */}
@@ -685,9 +685,9 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                           />
                         </div>
                         {selectedTemplate === template.id && (
-                          <div className="absolute inset-0 bg-accent/20 flex items-center justify-center animate-in fade-in">
-                            <div className="bg-background rounded-full p-2 shadow-lg">
-                              <CheckCircle className="h-8 w-8 text-accent" />
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center animate-in fade-in">
+                            <div className="bg-panel rounded-full p-2 shadow-card">
+                              <CheckCircle className="h-8 w-8 text-primary-ink" />
                             </div>
                           </div>
                         )}
@@ -696,7 +696,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                       {/* Card Info */}
                       <div className="p-5 bg-divider/5 border-t border-divider/30 space-y-3">
                         <div>
-                          <h3 className="text-sm font-clash font-bold text-foreground group-hover:text-accent transition-editorial uppercase tracking-tight">
+                          <h3 className="text-sm font-clash font-bold text-foreground group-hover:text-primary-ink transition-editorial tracking-tight">
                             {template.name}
                           </h3>
                           <p className="text-[11px] text-muted-foreground leading-relaxed font-general font-light mt-1">
@@ -704,7 +704,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                           </p>
                         </div>
                         {template.requiresPhoto && (
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-accent bg-accent/5 px-3 py-1 rounded-sm border border-accent/20 uppercase tracking-widest w-fit">
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-primary-ink bg-primary/5 px-3 py-1 rounded-xl border border-primary/20 uppercase tracking-widest w-fit">
                             <ImageIcon className="h-3 w-3" />
                             <span>Photo Supported</span>
                           </div>
@@ -723,15 +723,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Photo Upload */}
               {currentTemplate?.requiresPhoto && (
-                <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                  <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                    <ImageIcon className="h-4 w-4 text-accent" />
+                <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                  <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
+                    <ImageIcon className="h-4 w-4 text-primary-ink" />
                     Your Photo
                   </h3>
                   <div className="flex flex-col sm:flex-row items-center gap-8">
-                    <label className="cursor-pointer border-2 border-dashed border-divider hover:border-accent bg-divider/5 rounded-sm p-10 transition-editorial flex flex-col items-center justify-center min-w-[200px] group">
-                      <Upload className="h-10 w-10 text-muted-foreground group-hover:text-accent transition-editorial mb-4" />
-                      <span className="text-foreground font-clash font-bold uppercase tracking-widest text-xs">Upload Photo</span>
+                    <label className="cursor-pointer border-2 border-dashed border-divider hover:border-primary bg-divider/5 rounded-xl p-10 transition-editorial flex flex-col items-center justify-center min-w-[200px] group">
+                      <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary-ink transition-editorial mb-4" />
+                      <span className="text-foreground font-bold tracking-widest text-xs">Upload Photo</span>
                       <span className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest">Drag or select</span>
                       <input
                         type="file"
@@ -742,16 +742,16 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                     </label>
                     {photoPreview && (
                       <div className="relative group">
-                        <div className="absolute inset-0 bg-accent/20 rounded-sm blur-xl group-hover:blur-2xl transition-editorial"></div>
+                        <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl group-hover:blur-2xl transition-editorial"></div>
                         <img
                           src={photoPreview}
                           alt="Preview"
-                          className="relative w-40 h-40 rounded-sm object-cover border border-accent/50 shadow-2xl"
+                          className="relative w-40 h-40 rounded-xl object-cover border border-primary/50 shadow-2xl"
                         />
                         <button
                           type="button"
                           onClick={handleRemovePhoto}
-                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-2 transition-editorial opacity-0 group-hover:opacity-100 hover:scale-110 shadow-lg"
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-2 transition-editorial opacity-0 group-hover:opacity-100 hover:scale-110 shadow-card"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -762,9 +762,9 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
               )}
 
               {/* Contact Information */}
-              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
-                  <User className="h-4 w-4 text-accent" />
+              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
+                  <User className="h-4 w-4 text-primary-ink" />
                   Contact Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -839,7 +839,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                       type="button"
                       variant="ghost"
                       onClick={() => appendSocial({ name: "", url: "" })}
-                      className="text-accent hover:text-foreground h-auto p-0 hover:bg-transparent"
+                      className="text-primary-ink hover:text-foreground h-auto p-0 hover:bg-transparent"
                     >
                       <PlusCircle className="h-4 w-4 mr-2" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">Add Link</span>
@@ -888,15 +888,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
               </div>
 
               {/* Summary */}
-              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
+              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-accent" />
+                    <FileText className="h-4 w-4 text-primary-ink" />
                     Professional Summary
                   </span>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-sm border ${
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border ${
                     (watch("summary")?.length || 0) < 50 ? 'bg-destructive/5 text-destructive border-destructive/20' :
-                    (watch("summary")?.length || 0) > 450 ? 'bg-accent/10 text-accent border-accent/20' :
+                    (watch("summary")?.length || 0) > 450 ? 'bg-primary/10 text-primary-ink border-primary/20' :
                     'bg-divider/10 text-muted-foreground border-divider/20'
                   }`}>
                     {watch("summary")?.length || 0} / 500
@@ -914,7 +914,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                   )}
                 />
                 {errors.summary && (
-                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-sm">
+                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-xl">
                     <AlertCircle className="h-3 w-3" />
                     {errors.summary.message}
                   </p>
@@ -922,15 +922,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
               </div>
 
               {/* Skills */}
-              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
+              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Sparkles className="h-4 w-4 text-accent" />
+                    <Sparkles className="h-4 w-4 text-primary-ink" />
                     Your Skills
                   </span>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-sm border ${
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border ${
                     (watch("skills")?.length || 0) < 10 ? 'bg-destructive/5 text-destructive border-destructive/20' :
-                    (watch("skills")?.length || 0) > 900 ? 'bg-accent/10 text-accent border-accent/20' :
+                    (watch("skills")?.length || 0) > 900 ? 'bg-primary/10 text-primary-ink border-primary/20' :
                     'bg-divider/10 text-muted-foreground border-divider/20'
                   }`}>
                     {watch("skills")?.length || 0} / 1000
@@ -948,7 +948,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                   )}
                 />
                 {errors.skills && (
-                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-sm">
+                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-xl">
                     <AlertCircle className="h-3 w-3" />
                     {errors.skills.message}
                   </p>
@@ -956,13 +956,13 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
               </div>
 
               {/* Experience */}
-              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
+              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Briefcase className="h-4 w-4 text-accent" />
+                    <Briefcase className="h-4 w-4 text-primary-ink" />
                     Work Experience
                   </span>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-sm bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-xl bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
                     {formValues.experience?.length || 0} Entries
                   </span>
                 </h3>
@@ -980,13 +980,13 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
               </div>
 
               {/* Education */}
-              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
+              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <GraduationCap className="h-4 w-4 text-accent" />
+                    <GraduationCap className="h-4 w-4 text-primary-ink" />
                     Education
                   </span>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-sm bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-xl bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
                     {formValues.education?.length || 0} Entries
                   </span>
                 </h3>
@@ -1004,13 +1004,13 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
               </div>
 
               {/* Projects */}
-              <div className="border border-border bg-background rounded-sm p-8 shadow-lg">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center justify-between">
+              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
+                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Layers className="h-4 w-4 text-accent" />
+                    <Layers className="h-4 w-4 text-primary-ink" />
                     Personal Projects
                   </span>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-sm bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-xl bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
                     {formValues.projects?.length || 0} Entries
                   </span>
                 </h3>
@@ -1042,14 +1042,14 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
 
       {/* Full Screen Preview Modal */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-divider bg-background shadow-sm relative z-10">
-            <h2 className="text-xl md:text-2xl font-clash font-bold uppercase tracking-tight flex items-center gap-3">
-              <Eye className="h-6 w-6 text-accent" />
+        <div className="fixed inset-0 z-50 flex flex-col bg-panel/95 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-divider bg-panel shadow-card relative z-10">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-3">
+              <Eye className="h-6 w-6 text-primary-ink" />
               Resume Preview
             </h2>
             <div className="flex items-center gap-3">
-              <Button onClick={generatePDF} className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg">
+              <Button onClick={generatePDF} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-card">
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>

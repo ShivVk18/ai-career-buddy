@@ -73,7 +73,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
             <button
               type="button"
               onClick={handleToggleRecording}
-              className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-accent hover:text-foreground'}`}
+              className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-primary-ink hover:text-foreground'}`}
             >
               <Mic className={`h-3.5 w-3.5 ${!isRecording && 'group-hover:scale-110 transition-transform'}`} />
               <span>{isRecording ? "Recording..." : "Dictate"}</span>
@@ -83,7 +83,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
             type="button"
             onClick={handleImprove}
             disabled={isImproving || !value}
-            className="text-[9px] font-bold tracking-widest text-accent hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
+            className="text-[9px] font-bold tracking-widest text-primary-ink hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
           >
             {isImproving ? (
               <>
@@ -110,7 +110,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
           if (onChange) onChange(e);
         }}
         placeholder={placeholder}
-        className="h-40 w-full px-4 py-4 bg-divider/5 border border-border rounded-sm focus:outline-none focus:border-accent transition-editorial font-general text-sm leading-relaxed"
+        className="h-40 w-full px-4 py-4 bg-divider/5 border border-border rounded-xl focus:outline-none focus:border-primary transition-editorial font-general text-sm leading-relaxed"
         {...props}
       />
       <SourceChips sources={improvedSources} heading="Based on" />

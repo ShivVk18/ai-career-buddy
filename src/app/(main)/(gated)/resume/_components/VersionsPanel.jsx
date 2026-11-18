@@ -40,9 +40,9 @@ function VersionSources({ versionId }) {
   }, [versionId]);
 
   return (
-    <div className="mt-4 border border-divider rounded-sm p-4 space-y-4 bg-divider/5">
+    <div className="mt-4 border border-divider rounded-xl p-4 space-y-4 bg-divider/5">
       <p className={`${LABEL_CLASS} flex items-center gap-2`}>
-        <Link2 className="h-3 w-3 text-accent" /> Sources for accepted edits
+        <Link2 className="h-3 w-3 text-primary-ink" /> Sources for accepted edits
       </p>
       {state.loading && <p className="text-xs text-muted-foreground">Loading...</p>}
       {state.error && <p className="text-xs text-destructive">{state.error}</p>}
@@ -186,7 +186,7 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
   return (
     <div className={SECTION_CLASS}>
       <h3 className={HEADING_CLASS}>
-        <History className="h-4 w-4 text-accent" />
+        <History className="h-4 w-4 text-primary-ink" />
         Versions
       </h3>
 
@@ -213,7 +213,7 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
       )}
       <ul className="space-y-3">
         {versions?.map((v) => (
-          <li key={v.id} className="border border-divider rounded-sm p-4">
+          <li key={v.id} className="border border-divider rounded-xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-foreground truncate">{v.label}</p>

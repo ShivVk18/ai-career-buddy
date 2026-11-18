@@ -106,7 +106,12 @@ export default function StatusActions({ application, onChange }) {
       </div>
 
       {status === "OFFER" && (
-        <div className="flex items-center gap-4 rounded-xl border border-pip bg-pip-soft/60 p-4" role="status">
+        <div className="relative flex items-center gap-4 overflow-hidden rounded-xl border border-primary bg-pip-soft/60 p-4" role="status">
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 motion-reduce:hidden">
+            {[8, 22, 36, 50, 64, 78, 90].map((left, i) => (
+              <span key={left} className="confetti-bit" style={{ left: `${left}%`, animationDelay: `${i * 0.12}s`, background: i % 2 ? "var(--lime)" : "var(--primary)" }} />
+            ))}
+          </span>
           <Image src="/pip/pip-rocket.svg" alt="" width={56} height={56} className="pip-hop" style={{ imageRendering: "pixelated" }} unoptimized />
           <div>
             <p className="text-sm font-semibold text-text flex items-center gap-1.5">

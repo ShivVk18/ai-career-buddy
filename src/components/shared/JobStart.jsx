@@ -68,14 +68,14 @@ export default function JobStart({ onPick, onClear, hasErrors = false, children,
         <div className="space-y-3">
           <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Start from one of your jobs</p>
           {picked ? (
-            <div className="flex items-center gap-3 rounded-md border border-accent/40 bg-accent/5 px-4 py-3 text-sm">
-              <Briefcase className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+            <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/5 px-4 py-3 text-sm">
+              <Briefcase className="h-4 w-4 shrink-0 text-primary-ink" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">{[picked.company, picked.title].filter(Boolean).join(" - ") || "Untitled job"}</span>
               <button
                 type="button"
                 onClick={clear}
                 aria-label="Use a different job"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -100,7 +100,7 @@ export default function JobStart({ onPick, onClear, hasErrors = false, children,
         <button
           type="button"
           onClick={() => setManual(true)}
-          className="min-h-10 rounded text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-10 rounded text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-primary"
         >
           {picked ? "edit details" : manualLabel}
         </button>

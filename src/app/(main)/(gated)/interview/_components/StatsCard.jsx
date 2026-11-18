@@ -25,33 +25,33 @@ export default function StatsCards({ assessments }) {
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
-      <div className="border border-border bg-background rounded-sm p-8 shadow-sm transition-editorial hover:border-accent hover:bg-divider/5">
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-card transition-editorial hover:border-primary hover:bg-divider/5">
         <div className="flex items-center justify-between mb-8">
-          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Average Score</h3>
-          <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
-            <Trophy className="w-5 h-5 text-accent" />
+          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground ">Average Score</h3>
+          <div className="w-10 h-10 rounded-xl bg-divider/20 flex items-center justify-center border border-divider/30">
+            <Trophy className="w-5 h-5 text-primary-ink" />
           </div>
         </div>
         <div className="text-4xl md:text-5xl font-clash font-bold text-foreground mb-2">{getAverageScore()}%</div>
         <p className="text-xs text-muted-foreground font-light">Across all assessments</p>
       </div>
 
-      <div className="border border-border bg-background rounded-sm p-8 shadow-sm transition-editorial hover:border-accent hover:bg-divider/5">
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-card transition-editorial hover:border-primary hover:bg-divider/5">
         <div className="flex items-center justify-between mb-8">
-          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Questions Practiced</h3>
-          <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
-            <Brain className="w-5 h-5 text-accent" />
+          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground ">Questions Practiced</h3>
+          <div className="w-10 h-10 rounded-xl bg-divider/20 flex items-center justify-center border border-divider/30">
+            <Brain className="w-5 h-5 text-primary-ink" />
           </div>
         </div>
         <div className="text-4xl md:text-5xl font-clash font-bold text-foreground mb-2">{getTotalQuestions()}</div>
         <p className="text-xs text-muted-foreground font-light">Total questions</p>
       </div>
 
-      <div className="border border-border bg-background rounded-sm p-8 shadow-sm transition-editorial hover:border-accent hover:bg-divider/5">
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-card transition-editorial hover:border-primary hover:bg-divider/5">
         <div className="flex items-center justify-between mb-8">
-          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Latest Score</h3>
-          <div className="w-10 h-10 rounded-sm bg-divider/20 flex items-center justify-center border border-divider/30">
-            <Target className="w-5 h-5 text-accent" />
+          <h3 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground ">Latest Score</h3>
+          <div className="w-10 h-10 rounded-xl bg-divider/20 flex items-center justify-center border border-divider/30">
+            <Target className="w-5 h-5 text-primary-ink" />
           </div>
         </div>
         <div className="text-4xl md:text-5xl font-clash font-bold text-foreground mb-2">

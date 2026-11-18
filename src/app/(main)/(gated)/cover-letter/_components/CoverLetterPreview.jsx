@@ -121,28 +121,28 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
   return (
     <div className="space-y-12 pb-20">
       {/* Action Bar */}
-      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl relative overflow-hidden">
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-6">
-            <div className="w-12 h-12 rounded-sm border border-divider bg-divider/10 flex items-center justify-center transition-editorial shadow-sm">
-              <FileText className="h-5 w-5 text-accent" />
+            <div className="w-12 h-12 rounded-xl border border-divider bg-divider/10 flex items-center justify-center transition-editorial shadow-card">
+              <FileText className="h-5 w-5 text-primary-ink" />
             </div>
             <div>
-              <h2 className="text-lg font-clash font-bold text-foreground uppercase tracking-tight">Preview & Edit</h2>
+              <h2 className="text-lg font-clash font-bold text-foreground tracking-tight">Preview & Edit</h2>
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Ready to download</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <div className="flex items-center gap-1 p-1 border border-divider bg-divider/5 rounded-sm">
+            <div className="flex items-center gap-1 p-1 border border-divider bg-divider/5 rounded-xl">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setPreviewMode("edit")}
-                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-sm ${
+                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-xl ${
                   previewMode === "edit" 
-                    ? "bg-accent text-accent-foreground border border-accent hover:bg-accent/90" 
+                    ? "bg-primary text-primary-foreground border border-primary hover:bg-primary/90" 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -153,9 +153,9 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
                 variant="ghost"
                 size="sm"
                 onClick={() => setPreviewMode("preview")}
-                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-sm ${
+                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-xl ${
                   previewMode === "preview" 
-                    ? "bg-accent text-accent-foreground border border-accent hover:bg-accent/90" 
+                    ? "bg-primary text-primary-foreground border border-primary hover:bg-primary/90" 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -169,7 +169,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
               size="sm"
               onClick={handleSave}
               disabled={saving || !isDirty || !id}
-              className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase transition-editorial"
+              className="h-12 px-6 border-divider hover:border-primary text-[10px] font-bold tracking-widest uppercase transition-editorial"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-3 animate-spin" /> : <Save className="h-4 w-4 mr-3" />}
               {saving ? "Saving..." : isDirty ? "Save changes" : "Saved"}
@@ -179,7 +179,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase transition-editorial"
+              className="h-12 px-6 border-divider hover:border-primary text-[10px] font-bold tracking-widest uppercase transition-editorial"
             >
               <Copy className="h-4 w-4 mr-3" />
               Copy Text
@@ -187,7 +187,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
 
             <Button
               onClick={handleDownload}
-              className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-lg"
+              className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-card"
             >
               <FileDown className="h-4 w-4 mr-3" />
               Download TXT
@@ -197,9 +197,9 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
       </div>
 
       {/* Rewrite actions */}
-      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-6">
-        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase flex items-center gap-4">
-          <Sparkles className="h-4 w-4 text-accent" />
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-2xl space-y-6">
+        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground flex items-center gap-4">
+          <Sparkles className="h-4 w-4 text-primary-ink" />
           Rewrite
         </h3>
         <div className="flex flex-wrap items-center gap-3">
@@ -208,7 +208,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
             value={tone}
             onChange={(e) => setTone(e.target.value)}
             disabled={working}
-            className="h-12 px-4 border border-divider bg-background text-[10px] font-bold tracking-widest uppercase rounded-sm"
+            className="h-12 px-4 border border-divider bg-panel text-[10px] font-bold tracking-widest uppercase rounded-xl"
           >
             {COVER_LETTER_TONES.map((t) => (
               <option key={t} value={t}>{TONE_LABELS[t]}</option>
@@ -220,7 +220,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
               variant="outline"
               disabled={working || !id}
               onClick={() => runAction(k)}
-              className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase"
+              className="h-12 px-6 border-divider hover:border-primary text-[10px] font-bold tracking-widest uppercase"
             >
               {working && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {label}
@@ -231,14 +231,14 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
       </div>
 
       {/* Editor Container */}
-      <div className="border border-border bg-background rounded-sm overflow-hidden shadow-2xl relative">
+      <div className="border border-border bg-panel rounded-xl overflow-hidden shadow-2xl relative">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
         <div className="border-b border-divider p-6 bg-divider/5 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-accent/60 rounded-full"></div>
-              <div className="w-2 h-2 bg-accent/40 rounded-full"></div>
-              <div className="w-2 h-2 bg-accent/20 rounded-full"></div>
+              <div className="w-2 h-2 bg-primary/60 rounded-full"></div>
+              <div className="w-2 h-2 bg-primary/40 rounded-full"></div>
+              <div className="w-2 h-2 bg-primary/20 rounded-full"></div>
             </div>
             <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">cover-letter.md</span>
           </div>
@@ -275,7 +275,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
         </div>
       </div>
 
-      <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-6">
+      <div className="border border-border bg-panel rounded-xl p-8 shadow-2xl space-y-6">
         <WordCount text={editedContent} range={COVER_LETTER_WORDS} />
         <ClicheCheck text={editedContent || ""} />
       </div>
@@ -284,19 +284,19 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
 
 
       {/* Optimization Tips */}
-      <div className="border border-border bg-background rounded-sm p-8 md:p-12 shadow-2xl">
-        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase mb-10 flex items-center gap-4">
-          <Sparkles className="h-4 w-4 text-accent" />
+      <div className="border border-border bg-panel rounded-xl p-8 md:p-12 shadow-2xl">
+        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground mb-10 flex items-center gap-4">
+          <Sparkles className="h-4 w-4 text-primary-ink" />
           Pro Tips from your Buddy
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <Zap className="h-4 w-4 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <Zap className="h-4 w-4 text-primary-ink" />
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Personalize It</h4>
+                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Personalize It</h4>
                 <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
                   Add a specific project or achievement that directly addresses the company&apos;s pain points.
                 </p>
@@ -304,13 +304,13 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
             </div>
           </div>
 
-          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <FileText className="h-4 w-4 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <FileText className="h-4 w-4 text-primary-ink" />
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Check the Tone</h4>
+                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Check the Tone</h4>
                 <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
                   Match the company&apos;s culture. Use a more formal tone for finance/law, and a friendlier tone for startups.
                 </p>
@@ -318,13 +318,13 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
             </div>
           </div>
 
-          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <Edit3 className="h-4 w-4 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <Edit3 className="h-4 w-4 text-primary-ink" />
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Final Proofread</h4>
+                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Final Proofread</h4>
                 <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
                   Make sure all placeholders (like [Company Name]) are filled in correctly.
                 </p>
@@ -332,13 +332,13 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
             </div>
           </div>
 
-          <div className="border border-divider bg-divider/10 p-6 rounded-sm transition-editorial hover:border-accent group">
+          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-sm bg-divider/20 border border-divider/30 group-hover:border-accent transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <CheckCircle2 className="h-4 w-4 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
+                <CheckCircle2 className="h-4 w-4 text-primary-ink" />
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-accent mb-3 tracking-widest uppercase">Ready to Go</h4>
+                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Ready to Go</h4>
                 <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
                   Once you&apos;re happy, copy the text or download it and attach it to your application.
                 </p>

@@ -314,7 +314,7 @@ export default function JobView({ id, notice }) {
         <button
           type="button"
           onClick={removeJob}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-xs text-muted outline-none transition hover:text-[#B3402A] focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-xs text-muted outline-none transition hover:text-danger focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete this job
         </button>

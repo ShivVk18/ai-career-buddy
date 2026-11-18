@@ -10,7 +10,7 @@ export function WordCount({ text, range, label = "Words" }) {
   const state = n < range.min ? "Too short" : n > range.max ? "Too long" : "In range";
   return (
     <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold tracking-widest uppercase">
-      <span className={inRange ? "text-accent" : "text-destructive"}>
+      <span className={inRange ? "text-primary-ink" : "text-destructive"}>
         {label}: {n}
       </span>
       <span className="text-muted-foreground">
@@ -18,7 +18,7 @@ export function WordCount({ text, range, label = "Words" }) {
         {range.min}-{range.max}
         {range.target ? ")" : ""} words
       </span>
-      <span className={`inline-flex items-center gap-1 ${inRange ? "text-accent" : "text-destructive"}`}>
+      <span className={`inline-flex items-center gap-1 ${inRange ? "text-primary-ink" : "text-destructive"}`}>
         {inRange ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
         {state}
       </span>
@@ -32,7 +32,7 @@ export function ClicheCheck({ text }) {
   if (hits.length === 0) {
     return (
       <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground flex items-center gap-2">
-        <CheckCircle2 className="h-3 w-3 text-accent" /> No overused phrases found
+        <CheckCircle2 className="h-3 w-3 text-primary-ink" /> No overused phrases found
       </p>
     );
   }

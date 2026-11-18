@@ -99,19 +99,19 @@ const CreateRoadmapModal = ({ open, onClose }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl border border-divider bg-background p-0 rounded-sm overflow-hidden shadow-2xl">
+      <DialogContent className="max-w-2xl border border-divider bg-panel p-0 rounded-xl overflow-hidden shadow-2xl">
         <div className="p-10 space-y-10">
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <div className="w-8 h-[1px] bg-accent" />
-              <span className="text-[10px] font-bold tracking-[0.3em] text-accent uppercase">
+              <div className="w-8 h-[1px] bg-primary" />
+              <span className="text-[10px] font-bold tracking-[0.3em] text-primary-ink uppercase">
                 AI Career Roadmap
               </span>
             </div>
 
             <div className="flex flex-col gap-4">
               <DialogTitle asChild>
-                <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground uppercase tracking-tight leading-none">
+                <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
                   Build Your <span className="text-muted-foreground">Plan</span>
                 </h2>
               </DialogTitle>
@@ -152,7 +152,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                         key={c.key}
                         type="button"
                         onClick={() => setChipEdit(c.key)}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-divider px-4 text-sm text-foreground outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent/50"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-divider px-4 text-sm text-foreground outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-primary/50"
                       >
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{c.label}</span>
                         {formData[c.key]}
@@ -162,7 +162,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="min-h-11 px-2 text-xs text-muted-foreground underline outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/50"
+                    className="min-h-11 px-2 text-xs text-muted-foreground underline outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     edit details
                   </button>
@@ -195,7 +195,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                     value={formData.currentRole}
                     onChange={handleChange}
                     required
-                    className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                    className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
                   />
                   <Brain className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
                 </div>
@@ -216,7 +216,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                     value={formData.targetRole}
                     onChange={handleChange}
                     required
-                    className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                    className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
                   />
                   <Zap className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
                 </div>
@@ -238,7 +238,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                   value={formData.industry}
                   onChange={handleChange}
                   required
-                  className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                  className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
                 />
               </div>
 
@@ -255,7 +255,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                   placeholder="e.g. 12 months, 2 years"
                   value={formData.timeline}
                   onChange={handleChange}
-                  className="h-14 bg-divider/10 border-divider rounded-sm text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-accent transition-editorial"
+                  className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
                 />
               </div>
             </div>
@@ -267,7 +267,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="flex-1 h-14 border-divider text-[10px] font-bold tracking-widest uppercase hover:bg-divider/20 rounded-sm transition-editorial"
+                className="flex-1 h-14 border-divider text-[10px] font-bold tracking-widest uppercase hover:bg-divider/20 rounded-xl transition-editorial"
                 disabled={loading}
               >
                 Cancel
@@ -275,7 +275,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="flex-1 h-14 text-[10px] font-bold tracking-widest uppercase rounded-sm transition-editorial"
+                className="flex-1 h-14 text-[10px] font-bold tracking-widest uppercase rounded-xl transition-editorial"
               >
                 {loading ? (
                   <>

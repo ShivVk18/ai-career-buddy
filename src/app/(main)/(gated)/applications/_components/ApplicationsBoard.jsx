@@ -57,8 +57,8 @@ function Card({ app, onMove, onDragStart, onDragEnd, dragging, askDate, onPickDa
         onDragStart(app.id);
       }}
       onDragEnd={onDragEnd}
-      className={`rounded-xl border border-line bg-panel p-3 shadow-2xs transition ${
-        dragging ? "opacity-40" : "hover:border-pip/60"
+      className={`rounded-xl border border-line bg-panel p-3 shadow-card transition ${
+        dragging ? "opacity-40" : "hover:border-primary/50 hover:shadow-pop"
       }`}
     >
       <div className="flex items-start gap-1">
@@ -249,7 +249,7 @@ export default function ApplicationsBoard() {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-5">
         {header}
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-3 text-xs text-text">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-xs text-text">
           <span className="min-w-0 flex-1">{error}</span>
           <button type="button" onClick={() => load()} className="btn-pill-secondary inline-flex min-h-10 items-center gap-1.5 px-4 text-xs">
             <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
@@ -312,7 +312,7 @@ export default function ApplicationsBoard() {
                 if (id) move(id, col.status);
               }}
               className={`min-w-[78vw] snap-start rounded-2xl border p-3 transition sm:min-w-[16rem] md:min-w-0 ${
-                overCol === col.status ? "border-pip bg-pip-soft/60" : "border-line bg-soft/50"
+                overCol === col.status ? "border-primary bg-pip-soft/60 shadow-[0_0_0_4px_var(--glow)]" : "border-transparent bg-soft/70"
               }`}
             >
               <h2 className="mb-3 flex items-center justify-between px-1 font-pixel text-xs uppercase tracking-wider text-muted">

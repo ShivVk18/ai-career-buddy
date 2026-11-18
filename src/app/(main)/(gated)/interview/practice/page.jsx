@@ -195,8 +195,8 @@ function PracticeInner() {
           </Button>
         </Link>
 
-        <h1 className="text-3xl md:text-5xl font-clash font-bold uppercase tracking-tight text-foreground mb-3">
-          Open <span className="text-accent">Practice</span>
+        <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
+          Open <span className="text-primary-ink">Practice</span>
         </h1>
         <p className="text-sm text-muted-foreground font-light mb-10">
           Answer in your own words, typed or spoken. Scores are an AI estimate, and every quote comes from your answer.
@@ -210,7 +210,7 @@ function PracticeInner() {
         )}
 
         {sessionParam && loadError && (
-          <div role="alert" className="border border-border bg-background rounded-sm p-8 space-y-4">
+          <div role="alert" className="border border-border bg-panel rounded-xl p-8 space-y-4">
             <p className="flex gap-2 text-sm text-foreground">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
               {loadError.notFound ? "We couldn't find that practice session. It may have been removed." : loadError.message}
@@ -224,7 +224,7 @@ function PracticeInner() {
         )}
 
         {!session && !sessionParam && (
-          <div className="border border-border bg-background rounded-sm p-8 shadow-sm space-y-6">
+          <div className="border border-border bg-panel rounded-xl p-8 shadow-card space-y-6">
             <div className="space-y-2">
               <label htmlFor="jd" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
                 Job description (optional)
@@ -279,13 +279,13 @@ function PracticeInner() {
         {session && q && (
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-accent">
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-primary-ink">
                 Question {idx + 1} of {session.questions.length} // {q.topic}
               </span>
               <QuestionTimer key={idx} limitSec={q.timeLimitSec} running={!result} />
             </div>
 
-            <div className="border border-border bg-background rounded-sm p-6 shadow-sm space-y-4">
+            <div className="border border-border bg-panel rounded-xl p-6 shadow-card space-y-4">
               <h2 className="text-lg md:text-xl font-medium text-foreground">{q.question}</h2>
               <SourceChips sources={q.sources} heading="Based on" />
             </div>
@@ -311,7 +311,7 @@ function PracticeInner() {
                   <div className="flex items-center gap-3">
                     {isSupported ? (
                       <Button type="button" variant="outline" onClick={handleVoice} disabled={submitting} className="h-11">
-                        {isRecording ? <Square className="w-4 h-4 mr-2 text-destructive" /> : <Mic className="w-4 h-4 mr-2 text-accent" />}
+                        {isRecording ? <Square className="w-4 h-4 mr-2 text-destructive" /> : <Mic className="w-4 h-4 mr-2 text-primary-ink" />}
                         {isRecording ? "Stop" : "Speak"}
                       </Button>
                     ) : (

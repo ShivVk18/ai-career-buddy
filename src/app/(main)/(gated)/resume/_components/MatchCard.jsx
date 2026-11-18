@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { computeMatch } from "@/actions/Resume";
 import { generationErrorMessage } from "@/components/shared/generationError";
 
-export const SECTION_CLASS = "border border-border bg-background rounded-sm p-8 shadow-lg";
+export const SECTION_CLASS = "border border-border bg-panel rounded-xl p-8 shadow-card";
 export const HEADING_CLASS =
   "text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-6 flex items-center gap-3";
 export const LABEL_CLASS = "text-[10px] font-bold tracking-widest uppercase text-muted-foreground";
@@ -18,12 +18,12 @@ export function TermList({ terms, tone }) {
   if (!terms?.length) return <p className="text-xs text-muted-foreground">None</p>;
   const cls =
     tone === "match"
-      ? "border-accent/30 bg-accent/5 text-foreground"
+      ? "border-primary/30 bg-primary/5 text-foreground"
       : "border-destructive/30 bg-destructive/5 text-destructive";
   return (
     <div className="flex flex-wrap gap-2">
       {terms.map((t) => (
-        <span key={t} className={`px-2 py-1 border rounded-sm text-[10px] font-medium tracking-wide ${cls}`}>
+        <span key={t} className={`px-2 py-1 border rounded-xl text-[10px] font-medium tracking-wide ${cls}`}>
           {t}
         </span>
       ))}
@@ -41,7 +41,7 @@ export function MatchResult({ match, title }) {
         <p className="text-sm text-muted-foreground">No recognised skills found in this job description.</p>
       ) : (
         <>
-          <p className="text-4xl font-clash font-bold text-accent">{match.percent}%</p>
+          <p className="text-4xl font-clash font-bold text-primary-ink">{match.percent}%</p>
           <div className="space-y-2">
             <p className={LABEL_CLASS}>Matched ({match.matched.length})</p>
             <TermList terms={match.matched} tone="match" />
@@ -88,7 +88,7 @@ export default function MatchCard({ getResumeLike }) {
   return (
     <div className={SECTION_CLASS}>
       <h3 className={HEADING_CLASS}>
-        <Target className="h-4 w-4 text-accent" />
+        <Target className="h-4 w-4 text-primary-ink" />
         Job match
       </h3>
       <div className="space-y-4">

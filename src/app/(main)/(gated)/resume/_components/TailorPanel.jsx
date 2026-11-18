@@ -108,7 +108,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
   return (
     <div className={SECTION_CLASS}>
       <h3 className={HEADING_CLASS}>
-        <Sparkles className="h-4 w-4 text-accent" />
+        <Sparkles className="h-4 w-4 text-primary-ink" />
         Tailor to a job
       </h3>
 
@@ -196,7 +196,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
             <MatchResult match={saved.matchAfter} title="Match after" />
           </div>
           {saved.skipped?.length > 0 && (
-            <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-4 space-y-1">
+            <div className="border border-destructive/30 bg-destructive/5 rounded-xl p-4 space-y-1">
               <p className={LABEL_CLASS}>Skipped ({saved.skipped.length})</p>
               {saved.skipped.map((s) => (
                 <p key={s.proposalId} className="text-xs text-muted-foreground">

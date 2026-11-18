@@ -134,7 +134,7 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
   }
   if (state.status === "error") {
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] p-3 text-xs text-text">
+      <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 p-3 text-xs text-text">
         <span className="min-w-0 flex-1">{state.error}</span>
         <button type="button" onClick={load} className="btn-pill-secondary min-h-10 px-4 text-xs">
           Retry

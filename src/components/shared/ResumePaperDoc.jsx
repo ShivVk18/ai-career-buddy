@@ -66,12 +66,12 @@ export default function ResumePaperDoc({
 
   return (
     <div
-      className={`paper-doc rounded-xl p-4 sm:p-8 bg-white border border-[#ECEAE4] text-[#23222B] shadow-lg max-w-2xl mx-auto transition-all ${className}`}
+      className={`paper-doc rounded-xl p-4 sm:p-8 bg-white border border-line text-text shadow-lg max-w-2xl mx-auto transition-all ${className}`}
     >
       {/* Header Bar with subtle Pip indicator */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECEAE4] pb-4 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-4 mb-6">
         <div className="flex items-center gap-2">
-          <span className="font-pixel text-[10px] uppercase tracking-wide text-[#6D6B75] border border-[#ECEAE4] bg-[#F4F2EC] px-2 py-1 rounded-full inline-block">
+          <span className="font-pixel text-[10px] uppercase tracking-wide text-muted border border-line bg-soft px-2 py-1 rounded-full inline-block">
             Sample
           </span>
           <span className="font-pixel text-[11px] text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full inline-block">
@@ -82,7 +82,7 @@ export default function ResumePaperDoc({
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={acceptAll}
-              className="font-sans text-xs font-medium text-[#2F9E77] hover:text-[#1E7356] transition flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#E3F4EC]"
+              className="font-sans text-xs font-medium text-primary hover:text-pip-ink transition flex items-center gap-1 px-2.5 py-1 rounded-full bg-pip-soft"
             >
               <Check className="w-3.5 h-3.5" />
               accept all edits
@@ -93,24 +93,24 @@ export default function ResumePaperDoc({
 
       {/* Candidate Resume Header */}
       <div className="text-center mb-6">
-        <h2 className="font-serif text-2xl font-bold tracking-tight text-[#23222B] mb-1">
+        <h2 className="font-serif text-2xl font-bold tracking-tight text-text mb-1">
           {candidate.name}
         </h2>
-        <p className="font-serif text-xs text-[#6D6B75] italic mb-1">
+        <p className="font-serif text-xs text-muted italic mb-1">
           {candidate.title}
         </p>
-        <p className="font-sans text-[11px] text-[#A8A6AE] tracking-wide break-words">
+        <p className="font-sans text-[11px] text-faint tracking-wide break-words">
           {candidate.contact}
         </p>
       </div>
 
       {/* Experience Header */}
       <div className="mb-4">
-        <div className="flex items-center justify-between border-b border-[#23222B]/20 pb-1 mb-3">
-          <span className="font-serif font-bold text-xs uppercase tracking-widest text-[#23222B]">
+        <div className="flex items-center justify-between border-b border-text/20 pb-1 mb-3">
+          <span className="font-serif font-bold text-xs uppercase tracking-widest text-text">
             Professional Experience
           </span>
-          <span className="font-pixel text-[10px] text-[#A8A6AE]">
+          <span className="font-pixel text-[10px] text-faint">
             tracked changes active
           </span>
         </div>
@@ -120,13 +120,13 @@ export default function ResumePaperDoc({
           {edits.map((item) => (
             <div
               key={item.id}
-              className="group relative pl-3 border-l-2 border-[#ECEAE4] hover:border-pip transition"
+              className="group relative pl-3 border-l-2 border-line hover:border-pip transition"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="font-serif font-semibold text-xs text-[#23222B]">
-                  {item.role} — <span className="font-normal italic text-[#6D6B75]">{item.company}</span>
+                <span className="font-serif font-semibold text-xs text-text">
+                  {item.role} — <span className="font-normal italic text-muted">{item.company}</span>
                 </span>
-                <span className="font-sans text-[10px] text-[#A8A6AE]">
+                <span className="font-sans text-[10px] text-faint">
                   {item.period}
                 </span>
               </div>
@@ -163,14 +163,14 @@ export default function ResumePaperDoc({
               {/* Interactive Accept / Revert Chip */}
               {interactive && (
                 <div className="mt-2 flex items-center justify-between text-[11px] font-sans">
-                  <span className="font-pixel text-[10px] text-[#6D6B75]">
+                  <span className="font-pixel text-[10px] text-muted">
                     source footnote [{item.id}]: {item.sourceFootnote}
                   </span>
                   <button
                     onClick={() => toggleAccept(item.id)}
                     className={`px-2.5 py-0.5 rounded-full font-medium transition flex items-center gap-1 ${
                       item.accepted
-                        ? "bg-[#F4F2EC] text-[#6D6B75] hover:bg-[#ECEAE4]"
+                        ? "bg-soft text-muted hover:bg-line"
                         : "bg-pip text-white hover:bg-pip-ink"
                     }`}
                   >
@@ -192,11 +192,11 @@ export default function ResumePaperDoc({
       </div>
 
       {/* Verified Footnotes Section */}
-      <div className="mt-6 pt-3 border-t border-[#ECEAE4] bg-[#FBFAF7] p-3 rounded-lg">
-        <span className="font-pixel text-[10px] uppercase text-[#6D6B75] tracking-wider block mb-1">
+      <div className="mt-6 pt-3 border-t border-line bg-bg p-3 rounded-lg">
+        <span className="font-pixel text-[10px] uppercase text-muted tracking-wider block mb-1">
           pip verified footnotes (zero hallucinations)
         </span>
-        <ul className="space-y-1 text-[11px] font-sans text-[#6D6B75]">
+        <ul className="space-y-1 text-[11px] font-sans text-muted">
           {edits.map((item) => (
             <li key={item.id} className="flex items-center gap-1.5">
               <span className="font-pixel text-pip-ink font-bold">[{item.id}]</span>

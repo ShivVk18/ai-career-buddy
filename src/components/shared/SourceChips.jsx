@@ -34,9 +34,9 @@ export default function SourceChips({ sources, legacy = false, heading, classNam
         <span
           key={`${s.id ?? "src"}-${i}`}
           title={s.excerpt || s.label}
-          className="inline-flex max-w-full items-center gap-1.5 px-2 py-1 border border-accent/30 bg-accent/5 rounded-sm text-[10px] font-medium tracking-wide text-foreground cursor-help"
+          className="inline-flex max-w-full items-center gap-1.5 px-2 py-1 border border-primary/30 bg-primary/5 rounded-sm text-[10px] font-medium tracking-wide text-foreground cursor-help"
         >
-          <Link2 className="h-3 w-3 text-accent shrink-0" />
+          <Link2 className="h-3 w-3 text-primary-ink shrink-0" />
           <span className="truncate">{s.label}</span>
         </span>
       ))}
@@ -104,7 +104,7 @@ export function ParagraphSources({ content, sources }) {
   const wrap = (children) => (
     <div className="border border-border bg-background rounded-sm p-8 shadow-2xl space-y-4">
       <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground uppercase flex items-center gap-4">
-        <Link2 className="h-4 w-4 text-accent" />
+        <Link2 className="h-4 w-4 text-primary-ink" />
         Sources
       </h3>
       {children}

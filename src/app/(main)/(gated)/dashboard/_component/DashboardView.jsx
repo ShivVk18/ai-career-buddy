@@ -65,7 +65,7 @@ function DashboardSkeleton() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6" aria-busy="true" aria-label="Loading your home">
       <div className="panel-cozy overflow-hidden border border-line bg-panel">
-        <Skeleton className="h-44 sm:h-56 w-full rounded-none" />
+        <Skeleton className="h-32 sm:h-40 w-full rounded-none" />
         <div className="p-4 sm:p-6 border-t border-line">
           <Skeleton className="h-12 w-full max-w-3xl rounded-full" />
         </div>
@@ -267,12 +267,12 @@ function DashboardContent({ data, needs, router }) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* ─── AscendAI Signature: Greeting Card with Time of Day = Progress Scene ─── */}
-      <div className="panel-cozy overflow-hidden border border-line bg-panel relative shadow-sm">
+      <div className="panel-cozy overflow-hidden border border-line bg-panel relative shadow-card">
         {/* Background Pixel Scene */}
-        <div className="h-44 sm:h-56 w-full relative">
+        <div className="h-32 sm:h-40 w-full relative">
           <PixelScene variant={sceneVariant} seed={505} />
           {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-panel via-panel/30 to-transparent" />
 
           {/* Time of Day Progress Badge */}
           <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 max-w-[calc(100%-1.5rem)]">
@@ -316,7 +316,7 @@ function DashboardContent({ data, needs, router }) {
                   }
                 }}
                 placeholder={pasteUrl ? "paste the job text here…" : "paste a job link, or ask pip anything"}
-                className="w-full resize-none bg-bg text-text placeholder:text-faint text-sm px-4 py-3 rounded-2xl border border-line focus:border-pip focus:bg-panel outline-none focus-visible:ring-2 focus-visible:ring-pip/40 transition max-h-40 disabled:opacity-70"
+                className="w-full resize-none bg-bg text-text placeholder:text-faint text-sm px-4 py-3 rounded-2xl border border-line focus:border-primary focus:bg-panel outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:shadow-[0_0_0_4px_var(--glow)] transition max-h-40 disabled:opacity-70"
               />
             </div>
             <button
@@ -329,7 +329,7 @@ function DashboardContent({ data, needs, router }) {
             </button>
           </form>
           {intakeMsg && (
-            <p role="alert" className="mt-3 max-w-3xl rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-2.5 text-xs text-text">
+            <p role="alert" className="mt-3 max-w-3xl rounded-xl border border-danger/40 bg-danger/10 px-4 py-2.5 text-xs text-text">
               {intakeMsg}
               {pasteUrl && (
                 <span className="mt-1 flex items-center gap-3 text-muted">
@@ -371,7 +371,7 @@ function DashboardContent({ data, needs, router }) {
                 className={`panel-cozy p-3.5 text-left transition-all relative flex flex-col justify-between min-w-0 overflow-hidden ${
                   isSelected
                     ? "border-pip ring-1 ring-pip bg-panel shadow-sm"
-                    : "border-line bg-panel hover:border-[#DDD9CF]"
+                    : "border-line bg-panel hover:border-line"
                 }`}
               >
                 <div className="min-w-0">
@@ -408,7 +408,7 @@ function DashboardContent({ data, needs, router }) {
                   needs you
                   <span
                     aria-label={`${needsCount} waiting`}
-                    className="font-pixel text-xs text-white bg-pip px-2 py-0.5 rounded-full min-w-6 text-center"
+                    className="font-pixel text-xs text-lime-foreground bg-lime px-2 py-0.5 rounded-full min-w-6 text-center"
                   >
                     {needsCount}
                   </span>

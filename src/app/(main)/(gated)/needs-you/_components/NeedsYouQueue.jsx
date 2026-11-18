@@ -148,7 +148,7 @@ export default function NeedsYouQueue({ focus }) {
     return (
       <div className={wrap}>
         {header}
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-3 text-xs text-text">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-xs text-text">
           <span className="min-w-0 flex-1">{error}</span>
           <button type="button" onClick={load} className="btn-pill-secondary inline-flex min-h-10 items-center gap-1.5 px-4 text-xs">
             <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
@@ -193,7 +193,7 @@ export default function NeedsYouQueue({ focus }) {
           const Icon = t.icon;
           const open = openId === item.id;
           return (
-            <li key={item.id} id={`ny-${item.id}`} className={`rounded-2xl border bg-panel transition ${open ? "border-pip" : "border-line"}`}>
+            <li key={item.id} id={`ny-${item.id}`} className={`rounded-2xl border bg-panel shadow-card transition ${open ? "border-primary shadow-[0_0_0_4px_var(--glow)]" : "border-line hover:border-primary/40"}`}>
               <button
                 type="button"
                 aria-expanded={open}

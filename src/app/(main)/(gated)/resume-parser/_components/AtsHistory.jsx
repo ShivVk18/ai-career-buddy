@@ -32,7 +32,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
 
   return (
     <div className="max-w-4xl mx-auto mt-16">
-      <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-8 flex items-center gap-3">
+      <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
         <span className="w-4 h-[1px] bg-divider"></span>
         Score History
       </h3>
@@ -47,7 +47,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
         {rows?.map((r) => {
           const prev = r.previousScoreId ? byId.get(r.previousScoreId) : null;
           return (
-            <li key={r.id} className="border border-border bg-background rounded-sm p-5 flex flex-wrap items-center justify-between gap-4">
+            <li key={r.id} className="border border-border bg-panel rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
               <div className="min-w-0 space-y-1">
                 <p className="text-sm font-bold text-foreground truncate">
                   {[r.jobTitle, r.companyName].filter(Boolean).join(" at ") || "Untitled scan"}
@@ -59,7 +59,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
                   {r.requirementsTotal > 0 && ` / ${r.requirementsMatched}/${r.requirementsTotal} requirements`}
                 </p>
                 {r.previousScoreId && (
-                  <p className="text-xs text-accent">
+                  <p className="text-xs text-primary-ink">
                     After fix:{' '}
                     {prev ? (
                       <>ATS {prev.atsScore} <ArrowRight className="inline w-3 h-3" /> {r.atsScore}, match {prev.matchPercentage}% <ArrowRight className="inline w-3 h-3" /> {r.matchPercentage}%</>

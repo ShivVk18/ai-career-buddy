@@ -2,56 +2,53 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
-const outDir = "/Users/shivanshsaxena/.gemini/antigravity/brain/b5dc1f24-47ca-4e39-ac09-9beddeb6111b/screenshots";
-if (!fs.existsSync(outDir)) {
-  fs.mkdirSync(outDir, { recursive: true });
-}
+// Usage: BASE_URL=http://localhost:3000 [JOB_ID=<id>] node scripts/capture_screenshots.js
+// Only run it with the dev server up. Signed-in pages need a browser session; without one they capture the
+// sign-in redirect. It never reads .env.
+const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+const outDir = process.env.SCREENSHOT_DIR || path.join(process.cwd(), "screenshots");
+fs.mkdirSync(outDir, { recursive: true });
 
-const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const chromePath = process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const pages = [
   { name: "01_landing", path: "/" },
-  { name: "02_dashboard", path: "/dashboard" },
-  { name: "03_chat", path: "/chat" },
-  { name: "04_tool_resume", path: "/resume" },
-  { name: "05_tool_interview", path: "/interview" },
-  { name: "06_tool_cover_letter", path: "/cover-letter" },
-  { name: "07_tool_cold_email", path: "/cold-email" },
-  { name: "08_tool_roadmap", path: "/roadmap" },
-  { name: "09_tool_ats", path: "/resume-parser" },
+  { name: "02_home", path: "/dashboard" },
+  ...(process.env.JOB_ID ? [{ name: "03_job", path: `/jobs/${process.env.JOB_ID}` }] : []),
+  { name: "04_needs_you", path: "/needs-you" },
+  { name: "05_applications", path: "/applications" },
+  { name: "06_onboarding", path: "/onboarding" },
 ];
 
 const viewports = [
-  { label: "1440px", width: 1440, height: 900 },
-  { label: "390px", width: 390, height: 844 },
+  { label: "1440", width: 1440, height: 900 },
+  { label: "390", width: 390, height: 844 },
 ];
 
-async function capture() {
-  console.log("Starting screenshot capture of 9 pages at 1440px and 390px...");
+// preferredColorScheme: 0 = light, 1 = dark (next-themes follows the system setting)
+const themes = [
+  { label: "light", scheme: 0 },
+  { label: "dark", scheme: 1 },
+];
 
+function capture() {
+  console.log(`Capturing ${pages.length} pages x ${themes.length} themes x ${viewports.length} viewports from ${baseUrl}...`);
   for (const page of pages) {
-    for (const vp of viewports) {
-      const filename = `${page.name}_${vp.label}.png`;
-      const outPath = path.join(outDir, filename);
-      const url = `http://localhost:3001${page.path}`;
-
-      console.log(`Capturing ${filename} (${url} @ ${vp.width}x${vp.height})...`);
-      try {
-        const cmd = `"${chromePath}" --headless --hide-scrollbars --screenshot="${outPath}" --window-size=${vp.width},${vp.height} --virtual-time-budget=2000 "${url}"`;
-        execSync(cmd, { stdio: "ignore" });
-        if (fs.existsSync(outPath)) {
-          const stats = fs.statSync(outPath);
-          console.log(`✓ Saved ${filename} (${stats.size} bytes)`);
-        } else {
-          console.error(`✗ File not created: ${filename}`);
+    for (const theme of themes) {
+      for (const vp of viewports) {
+        const filename = `${page.name}_${theme.label}_${vp.label}.png`;
+        const outPath = path.join(outDir, filename);
+        try {
+          const cmd = `"${chromePath}" --headless --hide-scrollbars --blink-settings=preferredColorScheme=${theme.scheme} --screenshot="${outPath}" --window-size=${vp.width},${vp.height} --virtual-time-budget=3000 "${baseUrl}${page.path}"`;
+          execSync(cmd, { stdio: "ignore" });
+          console.log(fs.existsSync(outPath) ? `saved ${filename}` : `missing ${filename}`);
+        } catch (err) {
+          console.error(`error capturing ${filename}:`, err.message);
         }
-      } catch (err) {
-        console.error(`Error capturing ${filename}:`, err.message);
       }
     }
   }
-
-  console.log("Screenshot capture complete!");
+  console.log("Screenshot capture complete.");
 }
 
 capture();

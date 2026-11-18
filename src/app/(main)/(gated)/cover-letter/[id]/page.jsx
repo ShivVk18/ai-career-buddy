@@ -34,12 +34,12 @@ export default async function EditCoverLetterPage({ params }) {
 
           <div className="space-y-6">
             <div className="flex items-center gap-6">
-              <div className="p-5 rounded-sm border border-divider bg-divider/10 transition-editorial shadow-sm">
-                <FileText className="h-8 w-8 text-accent" />
+              <div className="p-5 rounded-xl border border-divider bg-divider/10 transition-editorial shadow-card">
+                <FileText className="h-8 w-8 text-primary-ink" />
               </div>
               <div>
-                <span className="text-[10px] font-bold tracking-[0.3em] text-accent uppercase mb-2 block">Cover Letter Detail</span>
-                <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground uppercase tracking-tight leading-none">
+                <span className="text-[10px] font-bold tracking-[0.3em] text-primary-ink uppercase mb-2 block">Cover Letter Detail</span>
+                <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
                   {coverLetter?.jobTitle} <span className="text-muted-foreground font-light">at</span> {coverLetter?.companyName}
                 </h1>
                 <p className="text-muted-foreground text-sm md:text-lg mt-3 font-light">
