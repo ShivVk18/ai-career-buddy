@@ -118,3 +118,15 @@ New nit/should-fix (none blocking):
 | nit | `src/actions/Applications.js:176` | Undo of an interview move leaves `prepSessionId` linked (harmless; reused on next date). Board date toast has no Practice action when no session exists. | Accept, or create prep when the board saves a date. |
 | nit | `ResumeParserForm.jsx:127` | PDF is kept only in memory for the session; no "use my saved resume". | Later. |
 | nit | `src/lib/jobs/fetch.js:167` | Doc comment for `httpsRequest` is now split by the `pinnedLookup` block. | Move the comment. |
+
+## Final fixes (57dbec1 + frontend commit, afac29c..HEAD)
+
+Summary: lint 0 errors/0 warnings, build pass, npm test 213/213, selfcheck-matching pass, prisma validate pass. No must-fix.
+
+Verified: migration SQL (Resume.deletedAt, CareerPath.deletedAt, CareerPath index) matches schema.prisma, edited in place and unapplied. Every db.resume / db.careerPath reader filters deletedAt: null (loadOwner, getResume, duplicate, ColdEmail, CoverLetter, Pipeline, Onboarding, ResumeParser, strength, Dashboard, chatContext, roadmap reads/updates); Account deletion and prune intentionally unfiltered; prune deletes resumeVersion before resume, owner-scoped, 7-day cutoff. saveResume and saveProfileChips reset all fields of a reused deleted row. restoreDeletedResume is owner-scoped, 7-day limit, CONFLICT when a live resume exists. ATS useSavedResume reads the owner's live resume, NO_RESUME precedes any AI call, PDF path unchanged. Board prep helper runs inside withAiAction, status/date saved before prep, prep failures caught, undo unaffected.
+
+| Severity | File:line | Problem | Fix |
+|---|---|---|---|
+| should-fix | src/app/(main)/(gated)/resume/_components/ResumeBuilder.jsx (handleDeleteResume; resumeDeleted state) | deleteWithUndo only calls show() on rollback or Undo, so after a committed delete resumeDeleted stays true: Save and autosave stay disabled and the old form content is still shown until a full reload, so a user starting a new resume cannot save. | After the undo window (or on done("deleted")) reset the form and set resumeDeleted false (or key the builder on initialResume so router.refresh remounts it). |
+| nit | src/actions/Resume.js:~460 | The "Deleted resume" snapshot version stays in the version list of a live replacement resume (documented, restorable=kind version). | Fine; optionally label or hide. |
+| nit | src/app/layout.js | Newsreader/Pixelify use variable weights (wider range than 400-600/400-700); visual impact negligible. Font stacks keep the original names as fallbacks. | None. |
