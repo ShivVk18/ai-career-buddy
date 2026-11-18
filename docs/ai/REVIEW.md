@@ -130,3 +130,12 @@ Verified: migration SQL (Resume.deletedAt, CareerPath.deletedAt, CareerPath inde
 | should-fix | src/app/(main)/(gated)/resume/_components/ResumeBuilder.jsx (handleDeleteResume; resumeDeleted state) | deleteWithUndo only calls show() on rollback or Undo, so after a committed delete resumeDeleted stays true: Save and autosave stay disabled and the old form content is still shown until a full reload, so a user starting a new resume cannot save. | After the undo window (or on done("deleted")) reset the form and set resumeDeleted false (or key the builder on initialResume so router.refresh remounts it). |
 | nit | src/actions/Resume.js:~460 | The "Deleted resume" snapshot version stays in the version list of a live replacement resume (documented, restorable=kind version). | Fine; optionally label or hide. |
 | nit | src/app/layout.js | Newsreader/Pixelify use variable weights (wider range than 400-600/400-700); visual impact negligible. Font stacks keep the original names as fallbacks. | None. |
+
+## Redesign (f0cbe59..HEAD)
+Pass. Lint, build and npm test (213/213) all pass. Must-fix: none.
+- Features: no handler/action import removed from restyled files (only page.js dropped ResumePaperDoc, moved to SampleDemo). Legacy landingPage components have no importers.
+- Landing: sample labelled "made-up names and numbers"; "50 AI actions a day" matches DEFAULT_DAILY_LIMIT.
+- Contrast: lime only as background with lime-foreground; primary-ink #A5B4FC in dark; danger/success pass AA in both themes (computed approx 4.8+ light, 7+ dark).
+- Motion: all aceternity components, MovingBorder and confetti (motion-reduce:hidden plus global reduced-motion rule) respect reduced motion; no new dependency.
+- Theme: defaultTheme="system", enableSystem, suppressHydrationWarning on html.
+- Nits: "50" is the default and AI_DAILY_LIMIT is configurable, so landing copy could drift; text-accent only appears as shadcn focus:/hover: pairs with accent-foreground (fine).
