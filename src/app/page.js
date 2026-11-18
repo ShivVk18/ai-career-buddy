@@ -1,628 +1,237 @@
-"use client";
-
-import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import PixelScene from "@/components/pixel/PixelScene";
-import PipStatus from "@/components/pixel/PipStatus";
-import ResumePaperDoc from "@/components/shared/ResumePaperDoc";
 import {
-  Sparkles,
   ArrowRight,
   Check,
-  ChevronDown,
-  Layers,
+  ClipboardPaste,
+  Bot,
+  ThumbsUp,
+  Send,
+  ScrollText,
+  ClipboardCheck,
+  Sparkles,
   FileText,
   Mail,
   BrainCircuit,
-  ClipboardCheck,
-  ExternalLink,
+  ShieldCheck,
+  Trash2,
+  Link2,
+  ChevronDown,
 } from "lucide-react";
+import LandingNav from "@/components/landingPage/LandingNav";
+import SampleDemo from "@/components/landingPage/SampleDemo";
+import { Spotlight } from "@/components/ui/aceternity/spotlight";
+import { BackgroundGrid } from "@/components/ui/aceternity/background-grid";
+import { TextGenerateEffect } from "@/components/ui/aceternity/text-generate-effect";
+import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
+import { BentoGrid, BentoGridItem } from "@/components/ui/aceternity/bento-grid";
+import { GlowCard } from "@/components/ui/aceternity/glow-card";
+
+const STEPS = [
+  { icon: ClipboardPaste, title: "paste a job", desc: "A link or the description text. Pip pulls out the requirements." },
+  { icon: Bot, title: "bots work", desc: "Match, resume edits, cover letter and prep run for that job, step by step." },
+  { icon: ThumbsUp, title: "you approve", desc: "Review tracked changes with sources. Accept, edit or reject each one." },
+  { icon: Send, title: "you apply", desc: "You send it yourself. Nothing leaves the app without you." },
+];
+
+const TOOLS = [
+  { name: "resume builder", href: "/resume", icon: ScrollText, span: "md:col-span-2", desc: "A paper document with match highlights, struck weak lines, and source chips pointing back to your resume, profile and the job description." },
+  { name: "ats scanner", href: "/resume-parser", icon: ClipboardCheck, desc: "A score per role, with sourced fixes you can accept for a real re-score." },
+  { name: "interview prep", href: "/interview", icon: Sparkles, desc: "One question at a time, scored against a rubric with evidence quotes and timers." },
+  { name: "cover letter", href: "/cover-letter", icon: FileText, desc: "Pick a tone, get clichés flagged as you edit, and aim for 250 to 350 words." },
+  { name: "cold email", href: "/cold-email", icon: Mail, desc: "A 100 to 140 word note with matched projects, opened in your own mail app." },
+  { name: "career roadmap", href: "/roadmap", icon: BrainCircuit, span: "md:col-span-3", desc: "Phase-by-phase steps tied to the gaps in your own ATS results, with progress you can undo." },
+];
+
+const TRUST = [
+  { icon: Link2, title: "every line has a source", desc: "Edits show where they came from: your resume, your profile or the job description, so you can check each one." },
+  { icon: ShieldCheck, title: "it never sends for you", desc: "Cold emails open in your mail app. You submit applications yourself. Pip drafts, you decide." },
+  { icon: Trash2, title: "your data, your call", desc: "Delete all your data, or your whole account, from settings at any time." },
+];
+
+const FAQS = [
+  { q: "why not just use a general ai chat?", a: "General chat tools will happily invent metrics and fill your resume with clichés. Pip works from what you provide, strikes weak lines, asks for measurable evidence, and adds a source to each change so you can defend every word in an interview." },
+  { q: "are the six tools connected?", a: "Yes. Gaps found in your ATS results feed your roadmap, which ranks gaps by frequency and shows which gaps each step closes. Interview practice can use a job description you paste in. Each tool works from your profile and what you give it." },
+  { q: "can i download my resume as a pdf?", a: "Yes. The paper document editor exports a clean, ATS-friendly PDF with no watermark." },
+  { q: "what does the dashboard sky mean?", a: "The pixel sky mirrors your real job search. It starts at dawn, moves toward noon as you apply, turns to sunset while you interview, and shows stars when an offer comes in." },
+];
+
+function Pip({ name = "coffee", size = 24, className = "" }) {
+  return (
+    <Image src={`/pip/pip-${name}.svg`} alt="" width={size} height={size} style={{ imageRendering: "pixelated" }} unoptimized className={className} />
+  );
+}
+
+function SectionHead({ id, eyebrow, title, sub }) {
+  return (
+    <div id={id} className="mx-auto mb-10 max-w-2xl scroll-mt-24 text-center">
+      <span className="mb-3 inline-block rounded-full bg-pip-soft px-3 py-1 text-xs font-medium text-pip-ink">{eyebrow}</span>
+      <h2 className="text-3xl font-bold tracking-tight text-text sm:text-4xl">{title}</h2>
+      {sub && <p className="mt-3 text-sm text-muted sm:text-base">{sub}</p>}
+    </div>
+  );
+}
 
 export default function LandingPage() {
-  const [activeJob, setActiveJob] = useState("northwind");
-  const [openFaq, setOpenFaq] = useState(null);
-
-  const jobsData = {
-    northwind: {
-      company: "Northwind Pay",
-      role: "Frontend Engineer II",
-      have: ["React 19 & Next.js 15", "Web Vitals & Performance", "TypeScript"],
-      partial: ["Payment SDK Integration"],
-      gap: ["Playwright E2E testing"],
-      matchRate: 92,
-    },
-    brightfork: {
-      company: "Brightfork",
-      role: "Senior UI Engineer",
-      have: ["Design Systems", "Web Vitals", "Component Architecture"],
-      partial: ["Micro-frontends"],
-      gap: ["Apollo GraphQL Federation"],
-      matchRate: 86,
-    },
-    lumenly: {
-      company: "Lumenly",
-      role: "Frontend Developer",
-      have: ["Next.js App Router", "TypeScript", "Fluid UI Animation"],
-      partial: ["Canvas / WebGL"],
-      gap: ["Financial Security Standards"],
-      matchRate: 94,
-    },
-  };
-
-  const selectedJob = jobsData[activeJob];
-
-  const toolsData = [
-    {
-      name: "resume builder",
-      outfit: "wizard",
-      scene: "morning",
-      oldText: "generic resume stuffed with buzzwords and unverified claims",
-      newText: "paper doc with match highlights, struck lines, and source chips from your resume, profile and job description",
-      href: "/resume",
-    },
-    {
-      name: "interview prep",
-      outfit: "headphones",
-      scene: "peaks",
-      oldText: "scary mock interviews with robotic generic multiple-choice quizzes",
-      newText: "one question at a time with rubric scoring, evidence quotes, and timers",
-      href: "/interview",
-    },
-    {
-      name: "cover letter",
-      outfit: "wizard",
-      scene: "pink",
-      oldText: "fluffy corporate letters that start with 'i am thrilled to apply'",
-      newText: "pick a tone (stiff, confident or eager), clichés flagged as you edit, and a 250-350 word target",
-      href: "/cover-letter",
-    },
-    {
-      name: "cold email",
-      outfit: "rocket",
-      scene: "sea",
-      oldText: "templated spam messages sent to 50 recruiters that get ignored",
-      newText: "concise 100-140 word outreach with matched projects highlighted and mailto links",
-      href: "/cold-email",
-    },
-    {
-      name: "career roadmap",
-      outfit: "detective",
-      scene: "meadow",
-      oldText: "overwhelming 2-year roadmaps with random youtube playlist links",
-      newText: "phase-by-phase steps with progress you can undo, tied to the gaps in your own ats results",
-      href: "/roadmap",
-    },
-    {
-      name: "ats scanner",
-      outfit: "thinking",
-      scene: "lemon",
-      oldText: "cryptic percentage scores that leave you guessing what failed",
-      newText: "big pixel font score per role with sourced fixes you accept for a real re-score",
-      href: "/resume-parser",
-    },
-  ];
-
-  const faqs = [
-    {
-      q: "why is pip better than generic ai chat tools?",
-      a: "general chat tools hallucinate metrics and vomit out corporate clichés ('dynamic problem solver'). pip treats your experience like an audit: it strikes weak lines, insists on measurable evidence, and adds source footnotes from your real projects so you can defend every word in interviews.",
-    },
-    {
-      q: "how does 'time of day = progress' work?",
-      a: "the pixel sky behind your dashboard isn't tied to your clock — it mirrors your real job search pipeline. when you just start, it's dawn. as you apply, it shifts to noon. when you're interviewing, it turns to a warm sunset. when an offer comes in, stars light up the night.",
-    },
-    {
-      q: "are the 6 tools really connected to one pip?",
-      a: "yes. gaps found in your ats results feed your roadmap, which ranks gaps by frequency and shows which gaps each step closes. interview practice can also use a job description you paste in. each tool works from your profile and what you give it.",
-    },
-    {
-      q: "can i download my resume as a real pdf?",
-      a: "yes. the paper document editor exports clean, formatted, ats-friendly pdfs without watermarks or weird table layouts.",
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-[#FBFAF7] text-[#23222B] selection:bg-pip-soft selection:text-pip-ink font-sans">
-      {/* ─── Navigation ─── */}
-      <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-pip-soft flex items-center justify-center p-1 pip-hop">
-            <Image
-              src="/pip/pip-coffee.svg"
-              alt="pip"
-              width={26}
-              height={26}
-              style={{ imageRendering: "pixelated" }}
-              unoptimized
-            />
-          </div>
-          <span className="font-semibold text-base tracking-tight text-text">
-            ascendai
-          </span>
-          <span className="font-pixel text-[11px] text-pip-ink bg-pip-soft px-2 py-0.5 rounded-full">
-            with pip
-          </span>
-        </Link>
+    <div className="min-h-screen bg-bg font-sans text-text selection:bg-lime selection:text-lime-foreground">
+      <LandingNav />
 
-        <div className="hidden md:flex items-center gap-6 text-xs text-muted font-medium">
-          <a href="#tools" className="hover:text-text transition">six tools</a>
-          <a href="#remembers" className="hover:text-text transition">pip remembers</a>
-          <a href="#how" className="hover:text-text transition">how it works</a>
-          <a href="#faq" className="hover:text-text transition">questions</a>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="text-xs font-medium text-text hover:text-pip transition px-3 py-1.5"
-          >
-            sign in
-          </Link>
-          <Link
-            href="/dashboard"
-            className="btn-pill-primary text-xs py-2 px-4 shadow-sm flex items-center gap-1.5"
-          >
-            <span>open app</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </nav>
-
-      {/* ─── Hero Section with Morning Scene ─── */}
-      <section className="relative pt-6 pb-20 px-4 sm:px-6 overflow-hidden">
-        {/* Pixel Scene Card Backdrop */}
-        <div className="max-w-6xl mx-auto rounded-[24px] overflow-hidden border border-[#ECEAE4] bg-white shadow-sm relative">
-          {/* Top Canvas Banner: Morning Scene */}
-          <div className="h-56 sm:h-72 w-full relative">
-            <PixelScene variant="morning" seed={101} />
-            {/* Soft gradient fade into white panel */}
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
-
-            {/* Floating Pip Greeting Badge */}
-            <div className="absolute bottom-4 left-4 sm:left-10 z-10 max-w-[calc(100%-2rem)]">
-              <PipStatus
-                step="detective"
-                text="reading the job description & your verified achievements…"
-                size="md"
-              />
-            </div>
-          </div>
-
-          {/* Hero Typography & CTA */}
-          <div className="px-4 sm:px-12 pt-4 pb-12 text-center max-w-3xl mx-auto">
-            <h1 className="text-2xl sm:text-5xl md:text-6xl font-bold tracking-tight text-text lowercase mb-4 leading-tight break-words">
-              meet pip. it gets you hired as yourself.
-            </h1>
-            <p className="text-sm sm:text-base text-muted max-w-2xl mx-auto leading-relaxed mb-8">
-              your cozy ai career coach. pip highlights matches, strikes weak lines, and writes measurable bullet points with verified source footnotes.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a
-                href="#demo"
-                className="btn-pill-primary text-sm py-2.5 px-6 shadow-sm flex items-center gap-2"
-              >
-                <span>see a sample</span>
-                <ArrowRight className="w-4 h-4" />
-              </a>
-              <Link
-                href="/dashboard"
-                className="btn-pill-secondary text-sm py-2.5 px-6"
-              >
-                enter dashboard
-              </Link>
-            </div>
-          </div>
-
-          {/* ─── Live Demo Panel ─── */}
-          <div id="demo" className="border-t border-[#ECEAE4] bg-[#FBFAF7] p-4 sm:p-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div>
-                  <span className="font-pixel text-[11px] text-pip-ink uppercase tracking-wider block mb-1">
-                    sample demo (not your data)
-                  </span>
-                  <span className="text-sm font-semibold text-text">
-                    pick a sample job to see how pip edits (all names and numbers are made up):
-                  </span>
-                </div>
-
-                {/* Job Selector Pills */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {Object.keys(jobsData).map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => setActiveJob(key)}
-                      className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
-                        activeJob === key
-                          ? "bg-text text-white"
-                          : "bg-white text-muted border border-[#ECEAE4] hover:bg-[#F4F2EC]"
-                      }`}
-                    >
-                      {jobsData[key].company} ({jobsData[key].matchRate}%)
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Grid: Resume Paper Doc + Have/Partial/Gap Breakdown */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Paper Resume Edit (Signature 1) */}
-                <div className="lg:col-span-8">
-                  <ResumePaperDoc company={selectedJob.company} />
-                </div>
-
-                {/* Have / Partial / Gap Checklist */}
-                <div className="lg:col-span-4 space-y-4">
-                  <div className="panel-cozy p-5 bg-white border border-[#ECEAE4]">
-                    <div className="flex items-center justify-between mb-4 border-b border-[#ECEAE4] pb-2">
-                      <span className="font-pixel text-xs text-muted uppercase">
-                        role breakdown
-                      </span>
-                      <span className="font-pixel text-lg font-bold text-pip">
-                        {selectedJob.matchRate}% match
-                      </span>
-                    </div>
-
-                    {/* Have list */}
-                    <div className="mb-4">
-                      <span className="font-pixel text-[11px] text-pip-ink bg-pip-soft px-2 py-0.5 rounded block w-fit mb-2">
-                        ✓ strong matches ({selectedJob.have.length})
-                      </span>
-                      <ul className="space-y-1 text-xs text-text">
-                        {selectedJob.have.map((item, i) => (
-                          <li key={i} className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-pip" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Partial list */}
-                    <div className="mb-4">
-                      <span className="font-pixel text-[11px] text-[#8B6B45] bg-[#FFE48A]/40 px-2 py-0.5 rounded block w-fit mb-2">
-                        ~ partial overlaps ({selectedJob.partial.length})
-                      </span>
-                      <ul className="space-y-1 text-xs text-muted">
-                        {selectedJob.partial.map((item, i) => (
-                          <li key={i} className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-pastel-lemon" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Gap list */}
-                    <div>
-                      <span className="font-pixel text-[11px] text-[#A45564] bg-[#F6B9CB]/40 px-2 py-0.5 rounded block w-fit mb-2">
-                        ✕ current gaps ({selectedJob.gap.length})
-                      </span>
-                      <ul className="space-y-1 text-xs text-[#A45564]">
-                        {selectedJob.gap.map((item, i) => (
-                          <li key={i} className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-pastel-pink" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Pip Status helper */}
-                  <PipStatus
-                    step="thinking"
-                    text={`pip is actively matching your verified experience against ${selectedJob.company} requirements`}
-                    size="sm"
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── One-line Intro ─── */}
-      <section className="py-12 border-y border-[#ECEAE4] bg-[#F4F2EC]/40 text-center px-4">
-        <p className="text-base sm:text-lg text-text font-serif italic max-w-2xl mx-auto">
-          &quot;no generic bullet points. no automated hallucinations. just your real work, sharpened for the role you actually want.&quot;
-        </p>
-      </section>
-
-      {/* ─── Six Tools. One Pip Who Knows You. ─── */}
-      <section id="tools" className="py-20 px-4 sm:px-6 max-w-6xl mx-auto">
-        <div className="text-center max-w-xl mx-auto mb-14">
-          <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-3">
-            connected toolkit
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-text lowercase mb-3">
-            six tools. one pip who knows you.
-          </h2>
-          <p className="text-sm text-muted">
-            every tool shares the same memory of your projects, gaps, and interviews.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {toolsData.map((tool, idx) => (
-            <Link
-              key={idx}
-              href={tool.href}
-              className="panel-cozy overflow-hidden group hover:border-pip transition-all hover:shadow-md flex flex-col bg-white"
-            >
-              {/* Mini Pixel Scene Canvas Header */}
-              <div className="h-28 w-full relative">
-                <PixelScene variant={tool.scene} seed={200 + idx * 17} />
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
-
-                {/* Pip in specific outfit */}
-                <div className="absolute bottom-2 left-3 z-10 w-8 h-8 p-1 rounded-full bg-white/95 border border-[#ECEAE4] shadow-xs pip-hop">
-                  <Image
-                    src={`/pip/pip-${tool.outfit}.svg`}
-                    alt={tool.outfit}
-                    width={26}
-                    height={26}
-                    style={{ imageRendering: "pixelated" }}
-                    unoptimized
-                  />
-                </div>
-              </div>
-
-              {/* Tool Card Content */}
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-semibold text-base text-text lowercase mb-2 flex items-center justify-between">
-                    <span>{tool.name}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-muted group-hover:text-pip group-hover:translate-x-1 transition" />
-                  </h3>
-
-                  {/* Old version struck through */}
-                  <div className="text-xs text-muted mb-2">
-                    <span className="strike-weak block mb-1">{tool.oldText}</span>
-                  </div>
-
-                  {/* New one-liner */}
-                  <p className="text-xs text-pip-ink font-medium leading-relaxed">
-                    → {tool.newText}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Pip Remembers (Meadow Scene + 3 Panels) ─── */}
-      <section id="remembers" className="py-20 px-4 sm:px-6 bg-[#FBFAF7]">
-        <div className="max-w-6xl mx-auto rounded-[24px] overflow-hidden border border-[#ECEAE4] bg-white shadow-sm">
-          {/* Meadow scene banner */}
-          <div className="h-48 sm:h-64 w-full relative">
-            <PixelScene variant="meadow" seed={777} />
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/10 to-transparent" />
-            <div className="absolute bottom-4 left-6 sm:left-10 z-10">
-              <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-3 py-1 rounded-full uppercase tracking-wider block mb-1">
-                shared memory
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-text lowercase">
-                pip remembers.
-              </h2>
-            </div>
-          </div>
-
-          {/* 3 Memory Panels */}
-          <div className="p-6 sm:p-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Panel 1: Profile Sources */}
-            <div className="panel-soft p-5 bg-[#FBFAF7] border border-[#ECEAE4]">
-              <span className="font-pixel text-[11px] text-pip-ink uppercase tracking-wider block mb-2">
-                1. profile sources
-              </span>
-              <h3 className="text-sm font-semibold text-text mb-2">
-                verified project evidence
-              </h3>
-              <p className="text-xs text-muted leading-relaxed mb-3">
-                pip works from your resume, profile and pasted job descriptions, so bullet points stay grounded in what you actually provided.
-              </p>
-              <div className="p-2.5 rounded bg-white border border-[#ECEAE4] text-[11px] font-pixel text-pip-ink">
-                sample: led a shared UI kit rollout
-                <br />sample: cut checkout load time (made-up figures)
-              </div>
-            </div>
-
-            {/* Panel 2: Interview Weak Spots */}
-            <div className="panel-soft p-5 bg-[#FBFAF7] border border-[#ECEAE4]">
-              <span className="font-pixel text-[11px] text-[#A45564] uppercase tracking-wider block mb-2">
-                2. interview weak spots
-              </span>
-              <h3 className="text-sm font-semibold text-text mb-2">
-                real answer coaching
-              </h3>
-              <p className="text-xs text-muted leading-relaxed mb-3">
-                practice answers are scored against a rubric, and your weak areas are tracked so you know what to revisit.
-              </p>
-              <div className="p-2.5 rounded bg-white border border-[#ECEAE4] text-[11px] font-pixel text-[#A45564]">
-                sample: flagged INP input delay explanation
-                <br />sample: practice scheduler.yield() pattern
-              </div>
-            </div>
-
-            {/* Panel 3: Gaps This Week */}
-            <div className="panel-soft p-5 bg-[#FBFAF7] border border-[#ECEAE4]">
-              <span className="font-pixel text-[11px] text-[#8B6B45] uppercase tracking-wider block mb-2">
-                3. roadmap gaps
-              </span>
-              <h3 className="text-sm font-semibold text-text mb-2">
-                phase-based plan
-              </h3>
-              <p className="text-xs text-muted leading-relaxed mb-3">
-                gaps from your ats scans are ranked by frequency in your roadmap, and each step shows which gaps it closes.
-              </p>
-              <div className="p-2.5 rounded bg-white border border-[#ECEAE4] text-[11px] font-pixel text-[#8B6B45]">
-                sample: playwright testing appears in 5 scans
-                <br />sample: WebSocket sync appears in 3 scans
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 4 Steps ─── */}
-      <section id="how" className="py-20 px-4 sm:px-6 max-w-5xl mx-auto text-center">
-        <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-3">
-          how it works
-        </span>
-        <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-text lowercase mb-12">
-          four steps to getting hired as yourself.
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-          {[
-            {
-              step: "01",
-              title: "paste a job description",
-              desc: "copy the job description from any site and paste it in. pip pulls out the hard requirements to match against.",
-            },
-            {
-              step: "02",
-              title: "pip matches your work",
-              desc: "pip audits your profile, highlights authentic matches, and strikes lines that fail modern ats screening.",
-            },
-            {
-              step: "03",
-              title: "accept edits & practice",
-              desc: "review tracked bullet edits on a clean paper doc, then practice answering technical questions with live rubric scores.",
-            },
-            {
-              step: "04",
-              title: "track pipeline to offer",
-              desc: "send targeted cold emails and watch your dashboard sky progress from dawn to night with stars when the offer arrives.",
-            },
-          ].map((item, idx) => (
-            <div key={idx} className="panel-cozy p-6 bg-white border border-[#ECEAE4]">
-              <span className="font-pixel text-xl font-bold text-pip block mb-3">
-                {item.step}
-              </span>
-              <h3 className="font-semibold text-sm text-text lowercase mb-2">
-                {item.title}
-              </h3>
-              <p className="text-xs text-muted leading-relaxed">
-                {item.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Questions (FAQ) ─── */}
-      <section id="faq" className="py-20 px-4 sm:px-6 max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-3">
-            clear answers
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-text lowercase">
-            frequently asked questions.
-          </h2>
-        </div>
-
-        <div className="space-y-3">
-          {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className="panel-cozy bg-white border border-[#ECEAE4] overflow-hidden"
-            >
-              <button
-                onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                className="w-full p-5 text-left flex items-center justify-between gap-4 font-medium text-sm text-text hover:text-pip transition"
-              >
-                <span>{faq.q}</span>
-                <ChevronDown
-                  className={`w-4 h-4 text-muted transition-transform shrink-0 ${
-                    openFaq === idx ? "rotate-180 text-pip" : ""
-                  }`}
-                />
-              </button>
-              {openFaq === idx && (
-                <div className="px-5 pb-5 pt-1 text-xs text-muted leading-relaxed border-t border-[#ECEAE4]/60">
-                  {faq.a}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Dusk Closing Scene "Meet Pip" ─── */}
-      <section className="py-20 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto rounded-[24px] overflow-hidden border border-[#ECEAE4] shadow-md relative bg-[#1C162E] text-white">
-          <div className="h-72 sm:h-80 w-full relative">
-            <PixelScene variant="dusk" seed={888} />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1C162E] via-[#1C162E]/40 to-transparent" />
-
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
-              <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm p-1.5 border border-white/20 mb-3 pip-hop">
-                <Image
-                  src="/pip/pip-coffee.svg"
-                  alt="pip"
-                  width={40}
-                  height={40}
-                  style={{ imageRendering: "pixelated" }}
-                  unoptimized
-                />
-              </div>
-
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight lowercase mb-3" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
-                meet pip.
-              </h2>
-              <p className="text-xs sm:text-sm text-white/80 max-w-md mx-auto mb-6" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.6)" }}>
-                ready to land your next tech role as yourself? no hype words, no generic templates.
-              </p>
-
-              <Link
-                href="/dashboard"
-                className="btn-pill-pip text-sm py-2.5 px-7 shadow-lg"
-              >
-                start free with pip
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Footer ─── */}
-      <footer className="border-t border-[#ECEAE4] bg-white py-12 px-4 sm:px-6 text-xs text-muted">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-pip-soft flex items-center justify-center p-0.5">
-              <Image
-                src="/pip/pip-coffee.svg"
-                alt="pip"
-                width={18}
-                height={18}
-                style={{ imageRendering: "pixelated" }}
-                unoptimized
-              />
-            </div>
-            <span className="font-semibold text-text">ascendai</span>
-            <span>•</span>
-            <span className="font-pixel text-[11px] text-pip-ink">
-              pip by stick it up (mit)
+      <main>
+        {/* Hero */}
+        <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
+          <BackgroundGrid />
+          <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" />
+          <div className="relative z-10 mx-auto max-w-3xl text-center">
+            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-card">
+              <Pip name="coffee" size={18} /> pip, your ai career assistant
             </span>
+            <h1 className="mb-5 text-4xl font-bold leading-[1.05] tracking-tight text-text sm:text-6xl">
+              <TextGenerateEffect words="nothing invented. every line cites a source." />
+            </h1>
+            <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+              Paste a job and Pip tailors your resume, cover letter and interview prep from what you actually provide. You review every change before anything is used.
+            </p>
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <HoverBorderGradient as={Link} href="/dashboard" containerClassName="w-full sm:w-auto">
+                start free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </HoverBorderGradient>
+              <a href="#sample" className="btn-pill-secondary min-h-11 w-full text-sm sm:w-auto">see a sample</a>
+            </div>
+            <p className="mt-4 text-xs text-muted">free to start - up to 50 AI actions a day</p>
           </div>
+        </section>
 
-          <div className="flex flex-wrap items-center gap-6">
-            <Link href="/resume" className="hover:text-text transition">resume builder</Link>
-            <Link href="/interview" className="hover:text-text transition">interview prep</Link>
-            <Link href="/cover-letter" className="hover:text-text transition">cover letter</Link>
-            <Link href="/cold-email" className="hover:text-text transition">cold email</Link>
-            <Link href="/roadmap" className="hover:text-text transition">career roadmap</Link>
-            <Link href="/resume-parser" className="hover:text-text transition">ats scanner</Link>
-          </div>
+        {/* How it works */}
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <SectionHead id="how" eyebrow="how it works" title="from job link to application, in four steps" />
+          <ol className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((s, i) => (
+              <li key={s.title}>
+                <GlowCard className="h-full p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pip-soft text-primary-ink">
+                      <s.icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="font-pixel text-sm text-muted">0{i + 1}</span>
+                  </div>
+                  <h3 className="mb-1 text-base font-semibold text-text">{s.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted">{s.desc}</p>
+                </GlowCard>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-          <div>
-            <span>built with care for tech job seekers</span>
+        {/* Tools bento */}
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <SectionHead id="tools" eyebrow="six tools, one memory" title="everything for one job, in one place" sub="Each tool works from your profile and what you give it, and they share what they find." />
+          <BentoGrid>
+            {TOOLS.map((t) => (
+              <BentoGridItem
+                key={t.name}
+                as={Link}
+                href={t.href}
+                className={t.span}
+                icon={<t.icon className="h-5 w-5 text-primary-ink" aria-hidden="true" />}
+                title={t.name}
+                description={t.desc}
+              >
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-ink">
+                  open <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/glow:translate-x-0.5" aria-hidden="true" />
+                </span>
+              </BentoGridItem>
+            ))}
+          </BentoGrid>
+        </section>
+
+        {/* Sample preview */}
+        <section className="px-4 py-16 sm:px-6">
+          <SectionHead id="sample" eyebrow="product preview" title="what a tailored resume looks like" sub="This is a sample with made-up names and numbers, shown to explain the format." />
+          <SampleDemo />
+        </section>
+
+        {/* Trust */}
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <SectionHead id="trust" eyebrow="trust" title="built so you stay in control" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {TRUST.map((t) => (
+              <GlowCard key={t.title} className="p-6">
+                <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-lime text-lime-foreground">
+                  <t.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h3 className="mb-1 text-base font-semibold text-text">{t.title}</h3>
+                <p className="text-sm leading-relaxed text-muted">{t.desc}</p>
+              </GlowCard>
+            ))}
           </div>
+        </section>
+
+        {/* Pricing */}
+        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+          <SectionHead id="pricing" eyebrow="pricing" title="free while we build" />
+          <GlowCard className="p-6 sm:p-8">
+            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-xl font-semibold text-text">free</h3>
+              <span className="text-sm text-muted">paid plans are planned, not available yet</span>
+            </div>
+            <ul className="mb-6 grid grid-cols-1 gap-3 text-sm text-text sm:grid-cols-2">
+              {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"].map((f) => (
+                <li key={f} className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}
+                </li>
+              ))}
+            </ul>
+            <Link href="/dashboard" className="btn-pill-primary min-h-11 text-sm">start free</Link>
+          </GlowCard>
+        </section>
+
+        {/* FAQ */}
+        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+          <SectionHead id="faq" eyebrow="faq" title="questions, answered" />
+          <div className="space-y-3">
+            {FAQS.map((f) => (
+              <details key={f.q} className="group rounded-2xl border border-line bg-panel shadow-card">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 text-sm font-medium text-text [&::-webkit-details-marker]:hidden">
+                  {f.q}
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <p className="px-5 pb-5 text-sm leading-relaxed text-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* Closing CTA */}
+        <section className="px-4 pb-20 sm:px-6">
+          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-line bg-panel px-6 py-14 text-center shadow-card">
+            <BackgroundGrid />
+            <div className="relative z-10">
+              <Pip name="rocket" size={40} className="mx-auto mb-4" />
+              <h2 className="mb-3 text-3xl font-bold tracking-tight text-text sm:text-4xl">ready for your next role?</h2>
+              <p className="mx-auto mb-6 max-w-md text-sm text-muted">No hype words and no generic templates. Just your work, sharpened for the job.</p>
+              <Link href="/dashboard" className="btn-pill-primary min-h-11 px-7 text-sm">start free with pip</Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-line bg-panel px-4 py-10 text-xs text-muted sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
+          <div className="flex items-center gap-2.5">
+            <Pip name="coffee" size={20} />
+            <span className="font-semibold text-text">ascendai</span>
+            <span aria-hidden="true">-</span>
+            <span>pip by stick it up (mit)</span>
+          </div>
+          <nav aria-label="Tools" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <Link href="/resume" className="hover:text-text">resume builder</Link>
+            <Link href="/interview" className="hover:text-text">interview prep</Link>
+            <Link href="/cover-letter" className="hover:text-text">cover letter</Link>
+            <Link href="/cold-email" className="hover:text-text">cold email</Link>
+            <Link href="/roadmap" className="hover:text-text">career roadmap</Link>
+            <Link href="/resume-parser" className="hover:text-text">ats scanner</Link>
+          </nav>
         </div>
       </footer>
     </div>

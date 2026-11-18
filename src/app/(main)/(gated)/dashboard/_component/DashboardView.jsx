@@ -64,7 +64,7 @@ function Skeleton({ className = "" }) {
 function DashboardSkeleton() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6" aria-busy="true" aria-label="Loading your home">
-      <div className="panel-cozy overflow-hidden border border-line bg-white">
+      <div className="panel-cozy overflow-hidden border border-line bg-panel">
         <Skeleton className="h-44 sm:h-56 w-full rounded-none" />
         <div className="p-4 sm:p-6 border-t border-line">
           <Skeleton className="h-12 w-full max-w-3xl rounded-full" />
@@ -106,7 +106,7 @@ export default function DashboardView() {
   if (state.status === "error") {
     return (
       <div className="p-4 sm:p-8 max-w-xl mx-auto">
-        <div role="alert" className="panel-cozy border border-line bg-white p-8 text-center space-y-4">
+        <div role="alert" className="panel-cozy border border-line bg-panel p-8 text-center space-y-4">
           <Image src="/pip/pip-coffee.svg" alt="" width={96} height={96} className="mx-auto" style={{ imageRendering: "pixelated" }} unoptimized />
           <h1 className="text-lg font-semibold text-text">We couldn't load your home</h1>
           <p className="text-sm text-muted">Your data is safe. Check your connection and try again.</p>
@@ -267,7 +267,7 @@ function DashboardContent({ data, needs, router }) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* ─── AscendAI Signature: Greeting Card with Time of Day = Progress Scene ─── */}
-      <div className="panel-cozy overflow-hidden border border-[#ECEAE4] bg-white relative shadow-sm">
+      <div className="panel-cozy overflow-hidden border border-line bg-panel relative shadow-sm">
         {/* Background Pixel Scene */}
         <div className="h-44 sm:h-56 w-full relative">
           <PixelScene variant={sceneVariant} seed={505} />
@@ -276,7 +276,7 @@ function DashboardContent({ data, needs, router }) {
 
           {/* Time of Day Progress Badge */}
           <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 max-w-[calc(100%-1.5rem)]">
-            <span className="font-pixel text-[10px] sm:text-[11px] bg-white/90 backdrop-blur-sm text-text border border-[#ECEAE4] px-2.5 sm:px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 truncate">
+            <span className="font-pixel text-[10px] sm:text-[11px] bg-panel/90 backdrop-blur-sm text-text border border-line px-2.5 sm:px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 truncate">
               <span className="w-2 h-2 rounded-full bg-pip shrink-0 animate-ping" />
               <span className="truncate">pipeline: {progressStatusText}</span>
             </span>
@@ -293,7 +293,7 @@ function DashboardContent({ data, needs, router }) {
         </div>
 
         {/* Input bar sitting directly on the card */}
-        <div className="p-4 sm:p-6 bg-white border-t border-[#ECEAE4]">
+        <div className="p-4 sm:p-6 bg-panel border-t border-line">
           <form
             onSubmit={handleQuickSubmit}
             className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5 max-w-3xl"
@@ -316,7 +316,7 @@ function DashboardContent({ data, needs, router }) {
                   }
                 }}
                 placeholder={pasteUrl ? "paste the job text here…" : "paste a job link, or ask pip anything"}
-                className="w-full resize-none bg-[#FBFAF7] text-text placeholder:text-[#A8A6AE] text-sm px-4 py-3 rounded-2xl border border-[#ECEAE4] focus:border-pip focus:bg-white outline-none focus-visible:ring-2 focus-visible:ring-pip/40 transition max-h-40 disabled:opacity-70"
+                className="w-full resize-none bg-bg text-text placeholder:text-faint text-sm px-4 py-3 rounded-2xl border border-line focus:border-pip focus:bg-panel outline-none focus-visible:ring-2 focus-visible:ring-pip/40 transition max-h-40 disabled:opacity-70"
               />
             </div>
             <button
@@ -370,13 +370,13 @@ function DashboardContent({ data, needs, router }) {
                 onClick={() => setSelectedToolId(t.id)}
                 className={`panel-cozy p-3.5 text-left transition-all relative flex flex-col justify-between min-w-0 overflow-hidden ${
                   isSelected
-                    ? "border-pip ring-1 ring-pip bg-white shadow-sm"
-                    : "border-[#ECEAE4] bg-white hover:border-[#DDD9CF]"
+                    ? "border-pip ring-1 ring-pip bg-panel shadow-sm"
+                    : "border-line bg-panel hover:border-[#DDD9CF]"
                 }`}
               >
                 <div className="min-w-0">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#FBFAF7] border border-[#ECEAE4] flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-bg border border-line flex items-center justify-center shrink-0">
                       <Icon className="w-3.5 h-3.5 text-pip" />
                     </div>
                     <span className="font-pixel text-[9px] text-pip-ink bg-pip-soft px-1.5 py-0.2 rounded truncate">
@@ -401,8 +401,8 @@ function DashboardContent({ data, needs, router }) {
         {/* Left Column (8 cols): Applications & This Week */}
         <div className="lg:col-span-8 space-y-6">
           {/* Needs you inbox */}
-          <div id="needs-you" className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
-            <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
+          <div id="needs-you" className="panel-cozy p-5 sm:p-6 bg-panel border border-line">
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <div>
                 <h2 className="font-bold text-base text-text lowercase flex items-center gap-2">
                   needs you
@@ -417,7 +417,7 @@ function DashboardContent({ data, needs, router }) {
               </div>
             </div>
             {needsItems.length === 0 ? (
-              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+              <div className="p-5 rounded-xl border border-dashed border-line bg-bg/40 text-center">
                 <Inbox className="w-5 h-5 text-muted mx-auto mb-2" aria-hidden="true" />
                 <p className="text-sm text-text mb-1">
                   {needs ? "You're all caught up." : needsCount ? `${needsCount} waiting for you.` : "Nothing waiting."}
@@ -430,7 +430,7 @@ function DashboardContent({ data, needs, router }) {
                   <li key={it.id}>
                     <Link
                       href={it.href}
-                      className="p-3.5 min-h-12 rounded-xl border border-[#ECEAE4] hover:border-pip/50 active:bg-[#F4F2EC] transition bg-[#FBFAF7]/40 flex items-center justify-between gap-3 min-w-0"
+                      className="p-3.5 min-h-12 rounded-xl border border-line hover:border-pip/50 active:bg-soft transition bg-bg/40 flex items-center justify-between gap-3 min-w-0"
                     >
                       <div className="min-w-0 flex-1">
                         <span className="font-semibold text-sm text-text block truncate">{it.title}</span>
@@ -449,8 +449,8 @@ function DashboardContent({ data, needs, router }) {
           </div>
 
           {/* Applications */}
-          <div id="applications" className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
-            <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
+          <div id="applications" className="panel-cozy p-5 sm:p-6 bg-panel border border-line">
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <div>
                 <h2 className="font-bold text-base text-text lowercase">applications</h2>
                 <span className="text-xs text-muted">each one has a single next step</span>
@@ -461,7 +461,7 @@ function DashboardContent({ data, needs, router }) {
             </div>
 
             {applications.length === 0 ? (
-              <div className="p-6 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center space-y-3">
+              <div className="p-6 rounded-xl border border-dashed border-line bg-bg/40 text-center space-y-3">
                 <PipStatus step="detective" text="no jobs yet. paste your first job above and i'll get to work." className="mx-auto" />
                 <div>
                   <button
@@ -478,7 +478,7 @@ function DashboardContent({ data, needs, router }) {
                 {applications.map((a) => (
                   <li
                     key={a.id}
-                    className="p-3.5 rounded-xl border border-[#ECEAE4] hover:border-pip/50 transition bg-[#FBFAF7]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0"
+                    className="p-3.5 rounded-xl border border-line hover:border-pip/50 transition bg-bg/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0"
                   >
                     <Link href={`/jobs/${a.job.id}`} className="min-w-0 flex-1 rounded focus-visible:ring-2 focus-visible:ring-pip/50">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -509,7 +509,7 @@ function DashboardContent({ data, needs, router }) {
                 {targets.map((t) => (
                   <div
                     key={t.key}
-                    className="p-3.5 rounded-xl border border-[#ECEAE4] hover:border-pip/50 transition bg-[#FBFAF7]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0"
+                    className="p-3.5 rounded-xl border border-line hover:border-pip/50 transition bg-bg/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -554,8 +554,8 @@ function DashboardContent({ data, needs, router }) {
           </div>
 
           {/* Follow-ups due */}
-          <div className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
-            <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
+          <div className="panel-cozy p-5 sm:p-6 bg-panel border border-line">
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <div>
                 <h2 className="font-bold text-base text-text lowercase">follow-ups due</h2>
                 <span className="text-xs text-muted">reminders you set on your cold emails</span>
@@ -565,7 +565,7 @@ function DashboardContent({ data, needs, router }) {
               </span>
             </div>
             {dueFollowUps.length === 0 ? (
-              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+              <div className="p-5 rounded-xl border border-dashed border-line bg-bg/40 text-center">
                 <p className="text-sm text-text mb-1">No follow-ups due.</p>
                 <p className="text-xs text-muted">
                   Set a follow-up date on a cold email and it will show up here when it is due.
@@ -577,7 +577,7 @@ function DashboardContent({ data, needs, router }) {
                   <Link
                     key={f.id}
                     href={f.href}
-                    className="p-3.5 rounded-xl border border-[#ECEAE4] hover:border-pip/50 transition bg-[#FBFAF7]/40 flex items-center justify-between gap-3 min-w-0"
+                    className="p-3.5 rounded-xl border border-line hover:border-pip/50 transition bg-bg/40 flex items-center justify-between gap-3 min-w-0"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -597,8 +597,8 @@ function DashboardContent({ data, needs, router }) {
           </div>
 
           {/* This Week List */}
-          <div className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
-            <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
+          <div className="panel-cozy p-5 sm:p-6 bg-panel border border-line">
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <div>
                 <h2 className="font-bold text-base text-text lowercase">
                   this week with pip
@@ -616,7 +616,7 @@ function DashboardContent({ data, needs, router }) {
             </div>
 
             {nextTasks.length === 0 ? (
-              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+              <div className="p-5 rounded-xl border border-dashed border-line bg-bg/40 text-center">
                 <p className="text-sm text-text mb-1">
                   {counts.roadmaps ? "All roadmap steps are done." : "No roadmap steps yet."}
                 </p>
@@ -635,7 +635,7 @@ function DashboardContent({ data, needs, router }) {
                   <Link
                     key={`${task.roadmapId}-${task.stepId}`}
                     href={task.href}
-                    className="p-3 rounded-xl border border-[#ECEAE4] hover:bg-[#FBFAF7] transition flex items-center justify-between gap-3"
+                    className="p-3 rounded-xl border border-line hover:bg-bg transition flex items-center justify-between gap-3"
                   >
                     <span className="text-xs text-text font-medium">{task.title}</span>
                     {task.roadmapTitle && (
@@ -652,8 +652,8 @@ function DashboardContent({ data, needs, router }) {
 
         {/* Right Column (4 cols): Selected Tool Panel */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="panel-cozy p-5 bg-white border border-[#ECEAE4]">
-            <div className="flex items-center justify-between mb-3 border-b border-[#ECEAE4] pb-2.5">
+          <div className="panel-cozy p-5 bg-panel border border-line">
+            <div className="flex items-center justify-between mb-3 border-b border-line pb-2.5">
               <span className="font-pixel text-xs text-muted uppercase">
                 selected tool preview
               </span>
@@ -676,7 +676,7 @@ function DashboardContent({ data, needs, router }) {
               </div>
             </div>
 
-            <p className="text-xs text-[#6D6B75] leading-relaxed mb-4">
+            <p className="text-xs text-muted leading-relaxed mb-4">
               {selectedTool.preview}
             </p>
 
@@ -690,7 +690,7 @@ function DashboardContent({ data, needs, router }) {
           </div>
 
           {/* Quick Chat with Pip Widget */}
-          <div className="panel-cozy p-5 bg-[#FBFAF7] border border-[#ECEAE4]">
+          <div className="panel-cozy p-5 bg-bg border border-line">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-8 h-8 rounded-full bg-pip-soft p-1 pip-hop">
                 <Image

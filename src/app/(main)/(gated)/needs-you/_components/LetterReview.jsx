@@ -160,7 +160,7 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
               type="button"
               disabled={!!working}
               onClick={() => doSwitch(sw)}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs text-text outline-none transition hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95 disabled:opacity-60"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-panel px-4 text-xs text-text outline-none transition hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95 disabled:opacity-60"
             >
               {working === sw.key && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
               {sw.label}
@@ -186,7 +186,7 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
         rows={Math.min(Math.max(text.split("\n").length + 2, 8), 24)}
         maxLength={10000}
         aria-label={`Edit this ${label}`}
-        className="w-full resize-y rounded-xl border border-line bg-white p-4 font-serif text-[13px] leading-relaxed text-text outline-none focus-visible:border-pip focus-visible:ring-2 focus-visible:ring-pip/40"
+        className="w-full resize-y rounded-xl border border-line bg-panel p-4 font-serif text-[13px] leading-relaxed text-text outline-none focus-visible:border-pip focus-visible:ring-2 focus-visible:ring-pip/40"
       />
       <div className="flex flex-wrap items-center gap-3">
         <button

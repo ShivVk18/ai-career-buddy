@@ -48,7 +48,7 @@ function StrengthRing({ percent }) {
   return (
     <div className="relative h-36 w-36" role="img" aria-label={`Profile strength ${pct} percent`}>
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="#ECEAE4" strokeWidth="10" />
+        <circle cx="60" cy="60" r={r} fill="none" stroke="var(--line)" strokeWidth="10" />
         <circle
           cx="60"
           cy="60"
@@ -341,7 +341,7 @@ export default function OnboardingFlow({ editing = false }) {
               handleFile(e.dataTransfer.files?.[0]);
             }}
             className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-[0.99] ${
-              dragging ? "border-pip bg-pip-soft" : "border-line bg-white hover:border-pip"
+              dragging ? "border-pip bg-pip-soft" : "border-line bg-panel hover:border-pip"
             }`}
           >
             <FileUp className="h-8 w-8 text-pip" aria-hidden="true" />
@@ -470,7 +470,7 @@ export default function OnboardingFlow({ editing = false }) {
                   aria-pressed={targetRole === r}
                   onClick={() => setTargetRole(r)}
                   className={`h-9 max-w-full truncate rounded-full border px-4 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95 ${
-                    targetRole === r ? "border-pip bg-pip text-white" : "border-line bg-white text-text hover:border-pip"
+                    targetRole === r ? "border-pip bg-pip text-white" : "border-line bg-panel text-text hover:border-pip"
                   }`}
                 >
                   {r}
@@ -496,7 +496,7 @@ export default function OnboardingFlow({ editing = false }) {
                   aria-pressed={stage === s.value}
                   onClick={() => setStage(s.value)}
                   className={`h-9 rounded-full border px-4 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95 ${
-                    stage === s.value ? "border-pip bg-pip text-white" : "border-line bg-white text-text hover:border-pip"
+                    stage === s.value ? "border-pip bg-pip text-white" : "border-line bg-panel text-text hover:border-pip"
                   }`}
                 >
                   {s.label}

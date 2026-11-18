@@ -35,7 +35,7 @@ function ChipInput({ initial = "", placeholder, maxLength = 200, onCommit, onCan
       }}
       onBlur={() => finish(onCommit, draft.trim())}
       className={cn(
-        "h-8 min-w-[8rem] max-w-full rounded-full border border-pip bg-white px-3 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/40",
+        "h-8 min-w-[8rem] max-w-full rounded-full border border-pip bg-panel px-3 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/40",
         className
       )}
       style={{ width: `${Math.min(Math.max(draft.length + 3, 10), 36)}ch` }}
@@ -96,7 +96,7 @@ export function EditableChip({
         className={cn(
           "inline-flex h-8 max-w-full items-center rounded-full border text-xs transition",
           empty
-            ? "border-dashed border-line bg-white text-muted hover:border-pip"
+            ? "border-dashed border-line bg-panel text-muted hover:border-pip"
             : "border-line bg-pip-soft/60 text-text hover:border-pip",
           onRemove && !empty ? "pr-1" : ""
         )}
@@ -116,7 +116,7 @@ export function EditableChip({
             type="button"
             onClick={onRemove}
             aria-label={`Remove ${label}`}
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted outline-none hover:bg-white hover:text-text focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-90"
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted outline-none hover:bg-panel hover:text-text focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-90"
           >
             <X className="h-3 w-3" aria-hidden="true" />
           </button>
@@ -125,7 +125,7 @@ export function EditableChip({
       {excerpts.length > 0 && (
         <span
           role="tooltip"
-          className="pointer-events-none invisible absolute left-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-lg border border-line bg-white p-2 text-[11px] leading-snug text-muted shadow-md group-hover:visible group-focus-within:visible"
+          className="pointer-events-none invisible absolute left-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-lg border border-line bg-panel p-2 text-[11px] leading-snug text-muted shadow-md group-hover:visible group-focus-within:visible"
         >
           <span className="mb-0.5 block font-pixel text-[10px] uppercase tracking-wider text-pip-ink">source</span>
           {excerpts.slice(0, 2).map((e, i) => (
@@ -184,7 +184,7 @@ export default function EditableChips({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex h-8 items-center gap-1 rounded-full border border-dashed border-line bg-white px-3 text-xs text-muted outline-none transition hover:border-pip hover:text-text focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
+            className="inline-flex h-8 items-center gap-1 rounded-full border border-dashed border-line bg-panel px-3 text-xs text-muted outline-none transition hover:border-pip hover:text-text focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
           >
             <Plus className="h-3 w-3" aria-hidden="true" />
             {addLabel}

@@ -214,7 +214,7 @@ export default function JobView({ id, notice }) {
     const gone = state.code === "NOT_FOUND";
     return (
       <div className="p-4 sm:p-8 max-w-xl mx-auto">
-        <div role="alert" className="panel-cozy border border-line bg-white p-8 text-center space-y-4">
+        <div role="alert" className="panel-cozy border border-line bg-panel p-8 text-center space-y-4">
           <Image src="/pip/pip-coffee.svg" alt="" width={96} height={96} className="mx-auto" style={{ imageRendering: "pixelated" }} unoptimized />
           <h1 className="text-lg font-semibold text-text">{gone ? "We couldn't find that job" : "We couldn't load this job"}</h1>
           <p className="text-sm text-muted">{gone ? "It may have been deleted." : state.error}</p>
@@ -235,7 +235,7 @@ export default function JobView({ id, notice }) {
 
   const missing = FIELDS.some((f) => !job[f.key]);
   const action =
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-white px-4 text-xs font-medium text-text outline-none transition hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95";
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-panel px-4 text-xs font-medium text-text outline-none transition hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
@@ -243,7 +243,7 @@ export default function JobView({ id, notice }) {
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> home
       </Link>
 
-      <section aria-label="Job details" className="panel-cozy border border-line bg-white p-5 sm:p-6 space-y-4">
+      <section aria-label="Job details" className="panel-cozy border border-line bg-panel p-5 sm:p-6 space-y-4">
         <h1 className="text-lg font-semibold text-text">{job.title || job.company ? [job.title, job.company].filter(Boolean).join(" at ") : "New job"}</h1>
         <div className="flex flex-wrap items-center gap-2">
           {FIELDS.map((f) => (

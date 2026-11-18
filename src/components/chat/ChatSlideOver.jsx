@@ -171,9 +171,9 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const content = (
-    <div className="flex flex-col h-full bg-[#FBFAF7] text-[#23222B]">
+    <div className="flex flex-col h-full bg-bg text-text">
       {/* Header */}
-      <div className="px-5 py-4 bg-white border-b border-[#ECEAE4] flex items-center justify-between shrink-0">
+      <div className="px-5 py-4 bg-panel border-b border-line flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-pip-soft flex items-center justify-center p-1 pip-hop">
             <Image
@@ -198,7 +198,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
         {!embedded && (
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[#6D6B75] hover:bg-[#F4F2EC] transition"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:bg-soft transition"
             aria-label="close chat"
           >
             <X className="w-4 h-4" />
@@ -228,8 +228,8 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
 
       {/* Suggested prompts when few messages */}
       {messages.length <= 2 && (
-        <div className="px-4 py-2 border-t border-[#ECEAE4] bg-white/50">
-          <span className="font-pixel text-[10px] uppercase text-[#6D6B75] block mb-2 tracking-wider">
+        <div className="px-4 py-2 border-t border-line bg-panel/50">
+          <span className="font-pixel text-[10px] uppercase text-muted block mb-2 tracking-wider">
             suggested prompts:
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -237,7 +237,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
               <button
                 key={i}
                 onClick={() => handleSend(promptText)}
-                className="text-[11px] font-sans px-2.5 py-1 rounded-full bg-white border border-[#ECEAE4] text-text hover:border-pip hover:text-pip transition text-left"
+                className="text-[11px] font-sans px-2.5 py-1 rounded-full bg-panel border border-line text-text hover:border-pip hover:text-pip transition text-left"
               >
                 {promptText}
               </button>
@@ -247,7 +247,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
       )}
 
       {/* Input Footer */}
-      <div className="p-3 sm:p-4 bg-white border-t border-[#ECEAE4] shrink-0">
+      <div className="p-3 sm:p-4 bg-panel border-t border-line shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -261,7 +261,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
             onChange={(e) => setInput(e.target.value)}
             placeholder="ask pip about your scores, roadmap or documents…"
             disabled={isWorking}
-            className="flex-1 min-w-0 bg-[#F4F2EC] text-text placeholder:text-[#A8A6AE] text-xs sm:text-sm px-4 py-2.5 rounded-full border border-transparent focus:border-pip focus:bg-white outline-none transition"
+            className="flex-1 min-w-0 bg-soft text-text placeholder:text-faint text-xs sm:text-sm px-4 py-2.5 rounded-full border border-transparent focus:border-pip focus:bg-panel outline-none transition"
           />
           <button
             type="submit"
@@ -283,8 +283,8 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/20 backdrop-blur-[2px]">
-      <div className="w-full max-w-md h-full shadow-2xl transition-transform animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md h-full shadow-pop transition-transform animate-in slide-in-from-right duration-200">
         {content}
       </div>
     </div>

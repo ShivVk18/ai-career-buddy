@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import ChatSlideOver from "../chat/ChatSlideOver";
 import CommandMenu from "./CommandMenu";
+import ThemeToggle from "@/components/ThemeToggle";
+import { getNeedsYou } from "@/actions/Applications";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -34,11 +36,25 @@ export default function AppSidebar() {
   const [chatOpen, setChatOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [needsCount, setNeedsCount] = useState(0);
+
+  // Needs-you badge: best effort, silent on failure.
+  useEffect(() => {
+    let alive = true;
+    getNeedsYou()
+      .then((res) => {
+        if (alive && res && !res.error) setNeedsCount((res.items || []).length);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
 
   const mainNav = [
     { label: "home", href: "/dashboard", icon: Home },
     { label: "applications", href: "/applications", icon: Briefcase },
-    { label: "needs you", href: "/needs-you", icon: Inbox },
+    { label: "needs you", href: "/needs-you", icon: Inbox, count: true },
     { label: "chat with pip", href: "/chat", icon: MessageSquare, badge: "ai" },
     { label: "profile", href: "/onboarding?edit=1", icon: User },
     { label: "settings", href: "/settings", icon: Settings },
@@ -53,181 +69,157 @@ export default function AppSidebar() {
     { label: "career roadmap", href: "/roadmap", icon: BrainCircuit },
   ];
 
+  const navLink = (item, active) =>
+    `group relative flex min-h-10 items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${
+      active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted hover:bg-soft hover:text-text"
+    }`;
+
+  const Badge = ({ item, active }) => {
+    if (item.count && needsCount > 0)
+      return (
+        <span
+          aria-label={`${needsCount} waiting`}
+          className={`rounded-full px-1.5 text-[11px] font-semibold leading-5 ${active ? "bg-lime text-lime-foreground" : "bg-primary text-primary-foreground"}`}
+        >
+          {needsCount}
+        </span>
+      );
+    if (item.badge)
+      return <span className="rounded-full bg-lime px-1.5 text-[10px] font-semibold uppercase leading-5 text-lime-foreground">{item.badge}</span>;
+    return active ? <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-lime" /> : null;
+  };
+
+  const tab = (href, label, Icon, active) => (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex min-w-12 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] ${active ? "font-semibold text-primary-ink" : "text-muted"}`}
+    >
+      <Icon className="h-5 w-5" aria-hidden="true" />
+      <span>{label}</span>
+      <span aria-hidden="true" className={`h-1 w-1 rounded-full ${active ? "bg-lime" : "bg-transparent"}`} />
+    </Link>
+  );
+
   return (
     <>
-      {/* Desktop Left Sidebar (hidden on mobile < 768px) */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-[#ECEAE4] h-screen sticky top-0 shrink-0 select-none z-30">
-        {/* Brand Header */}
-        <div className="h-16 px-5 border-b border-[#ECEAE4] flex items-center justify-between">
+      {/* Desktop sidebar (hidden under 768px) */}
+      <aside className="sticky top-0 z-30 hidden h-screen w-64 shrink-0 select-none flex-col border-r border-line bg-panel md:flex">
+        <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-pip-soft flex items-center justify-center p-1 pip-hop">
-              <Image
-                src="/pip/pip-coffee.svg"
-                alt="pip"
-                width={26}
-                height={26}
-                style={{ imageRendering: "pixelated" }}
-                unoptimized
-              />
-            </div>
-            <div>
-              <span className="font-semibold text-sm tracking-tight text-text block leading-none">
-                ascendai
-              </span>
-              <span className="font-pixel text-[10px] text-pip-ink">
-                with pip
-              </span>
-            </div>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-pip-soft p-1">
+              <Image src="/pip/pip-coffee.svg" alt="pip" width={26} height={26} style={{ imageRendering: "pixelated" }} unoptimized />
+            </span>
+            <span className="text-sm font-semibold tracking-tight text-text">ascendai</span>
           </Link>
-
-          <button
-            onClick={() => setCmdOpen(true)}
-            className="w-8 h-8 rounded-full bg-[#FBFAF7] border border-[#ECEAE4] hover:border-pip flex items-center justify-center text-text hover:text-pip transition shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
-            title="search and jump (Ctrl/Cmd + K)"
-            aria-label="Open command menu"
-          >
-            <Search className="w-4 h-4 text-muted" />
-          </button>
           <button
             onClick={() => setChatOpen(true)}
-            className="w-8 h-8 rounded-full bg-[#FBFAF7] border border-[#ECEAE4] hover:border-pip flex items-center justify-center text-text hover:text-pip transition shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-bg text-primary-ink transition hover:border-primary"
             title="quick chat with pip"
+            aria-label="Open chat with pip"
           >
-            <Sparkles className="w-4 h-4 text-pip" />
+            <Sparkles className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Navigation list */}
-        <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">
-          {/* Main Links */}
+        <div className="px-3.5 pt-4">
+          <button
+            onClick={() => setCmdOpen(true)}
+            className="flex min-h-10 w-full items-center gap-2 rounded-xl border border-line bg-bg px-3 text-sm text-muted transition hover:border-primary/50"
+            title="search and jump (Ctrl/Cmd + K)"
+            aria-label="Open command menu"
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+            <span className="flex-1 text-left">search</span>
+            <kbd className="rounded border border-line px-1.5 font-pixel text-[10px]">ctrl k</kbd>
+          </button>
+        </div>
+
+        <nav aria-label="Primary" className="flex-1 space-y-6 overflow-y-auto px-3.5 py-4">
           <div className="space-y-1">
-            <span className="font-pixel text-[10px] uppercase text-muted tracking-wider px-2.5 block mb-1">
-              overview
-            </span>
+            <span className="mb-1 block px-3 text-[11px] font-medium uppercase tracking-wider text-faint">overview</span>
             {mainNav.map((item) => {
               const active = pathname === item.href.split("?")[0];
               const Icon = item.icon;
               return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
-                    active
-                      ? "bg-pip-soft text-pip-ink font-semibold"
-                      : "text-[#6D6B75] hover:text-[#23222B] hover:bg-[#F4F2EC]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${active ? "text-pip" : "text-[#A8A6AE]"}`} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="font-pixel text-[9px] bg-pip text-white px-1.5 py-0.2 rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
+                <Link key={item.label} href={item.href} aria-current={active ? "page" : undefined} className={navLink(item, active)}>
+                  <span className="flex items-center gap-2.5">
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {item.label}
+                  </span>
+                  <Badge item={item} active={active} />
                 </Link>
               );
             })}
           </div>
 
-          {/* Tools Group (All 6, real routes) */}
           <div className="space-y-1">
-            <span className="font-pixel text-[10px] uppercase text-muted tracking-wider px-2.5 block mb-1">
-              tools (six tools. one pip.)
-            </span>
+            <span className="mb-1 block px-3 text-[11px] font-medium uppercase tracking-wider text-faint">tools</span>
             {tools.map((t) => {
               const active = pathname === t.href || pathname.startsWith(t.href + "/");
               const Icon = t.icon;
               return (
-                <Link
-                  key={t.label}
-                  href={t.href}
-                  className={`flex items-center px-3 py-2 rounded-xl text-xs font-medium transition group ${
-                    active
-                      ? "bg-pip-soft text-pip-ink font-semibold"
-                      : "text-[#6D6B75] hover:text-[#23222B] hover:bg-[#F4F2EC]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${active ? "text-pip" : "text-[#A8A6AE] group-hover:text-text"}`} />
-                    <span>{t.label}</span>
-                  </div>
+                <Link key={t.label} href={t.href} aria-current={active ? "page" : undefined} className={navLink(t, active)}>
+                  <span className="flex items-center gap-2.5">
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {t.label}
+                  </span>
+                  <Badge item={t} active={active} />
                 </Link>
               );
             })}
           </div>
-        </div>
+        </nav>
 
-        {/* Footer / User card */}
-        <div className="p-3.5 border-t border-[#ECEAE4] bg-[#FBFAF7]/60">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-[#E3F4EC] border border-pip/30 flex items-center justify-center text-xs font-semibold text-pip-ink shrink-0">
+        <div className="border-t border-line p-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pip-soft text-xs font-semibold text-pip-ink">
                 {user?.firstName?.[0] || "A"}
-              </div>
-              <div className="overflow-hidden">
-                <span className="text-xs font-medium text-text truncate block leading-tight">
-                  {user?.fullName || "your account"}
-                </span>
-              </div>
+              </span>
+              <span className="block truncate text-xs font-medium text-text">{user?.fullName || "your account"}</span>
             </div>
-
-            <button
-              onClick={() => signOut()}
-              className="p-1.5 text-muted hover:text-text hover:bg-[#ECEAE4] rounded-lg transition"
-              title="sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <ThemeToggle className="!h-8 !w-8" />
+              <button onClick={() => signOut()} className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-soft hover:text-text" title="sign out" aria-label="Sign out">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Mobile Top Header */}
-      <header className="md:hidden h-14 bg-white border-b border-[#ECEAE4] px-4 flex items-center justify-between sticky top-0 z-40">
+      {/* Mobile top header */}
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-panel/90 px-4 backdrop-blur-md md:hidden">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-pip-soft flex items-center justify-center p-0.5">
-            <Image
-              src="/pip/pip-coffee.svg"
-              alt="pip"
-              width={22}
-              height={22}
-              style={{ imageRendering: "pixelated" }}
-              unoptimized
-            />
-          </div>
-          <span className="font-semibold text-sm text-text">ascendai</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-pip-soft p-0.5">
+            <Image src="/pip/pip-coffee.svg" alt="pip" width={22} height={22} style={{ imageRendering: "pixelated" }} unoptimized />
+          </span>
+          <span className="text-sm font-semibold text-text">ascendai</span>
         </Link>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setChatOpen(true)}
-            className="btn-pill-pip text-xs py-1 px-3 flex items-center gap-1"
-          >
-            <Sparkles className="w-3 h-3" /> ask pip
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setCmdOpen(true)} aria-label="Open command menu" className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-soft">
+            <Search className="h-4 w-4" />
           </button>
+          <ThemeToggle />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1.5 text-muted hover:text-text rounded-lg"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-soft"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </header>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-14 bg-white border-b border-[#ECEAE4] shadow-lg p-4 z-40 space-y-3">
+        <div className="fixed inset-x-0 top-14 z-40 max-h-[calc(100vh-7.5rem)] space-y-3 overflow-y-auto border-b border-line bg-panel p-4 shadow-pop md:hidden">
           <div className="grid grid-cols-2 gap-2">
             {tools.map((t) => (
-              <Link
-                key={t.label}
-                href={t.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl border border-[#ECEAE4] text-xs font-medium hover:border-pip text-text flex items-center gap-2"
-              >
-                <t.icon className="w-4 h-4 text-pip" />
+              <Link key={t.label} href={t.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center gap-2 rounded-xl border border-line p-2.5 text-xs font-medium text-text hover:border-primary">
+                <t.icon className="h-4 w-4 text-primary-ink" aria-hidden="true" />
                 <span>{t.label}</span>
               </Link>
             ))}
@@ -238,83 +230,35 @@ export default function AppSidebar() {
               { label: "needs you", href: "/needs-you", icon: Inbox },
               { label: "settings", href: "/settings", icon: Settings },
             ].map((t) => (
-              <Link
-                key={t.label}
-                href={t.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2.5 min-h-11 rounded-xl border border-[#ECEAE4] text-xs font-medium hover:border-pip text-text flex items-center gap-2"
-              >
-                <t.icon className="w-4 h-4 text-pip" />
-                <span>{t.label}</span>
+              <Link key={t.label} href={t.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center gap-2 rounded-xl border border-line p-2.5 text-xs font-medium text-text hover:border-primary">
+                <t.icon className="h-4 w-4 text-primary-ink" aria-hidden="true" />
+                <span>{t.label}{t.label === "needs you" && needsCount > 0 ? ` (${needsCount})` : ""}</span>
               </Link>
             ))}
           </div>
-          <div className="pt-2 border-t border-[#ECEAE4] flex justify-between items-center text-xs text-muted">
+          <div className="flex items-center justify-between border-t border-line pt-2 text-xs text-muted">
             <span>logged in as {user?.firstName || "candidate"}</span>
-            <button onClick={() => signOut()} className="text-pip font-medium">sign out</button>
+            <button onClick={() => signOut()} className="min-h-11 font-medium text-primary-ink">sign out</button>
           </div>
         </div>
       )}
 
-      {/* Mobile Bottom Tab Bar (under 768px) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 h-16 bg-white/95 backdrop-blur-md border-t border-[#ECEAE4] flex items-center justify-around z-40 px-2">
-        <Link
-          href="/dashboard"
-          className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
-            pathname === "/dashboard" ? "text-pip font-semibold" : "text-muted"
-          }`}
-        >
-          <Home className="w-4 h-4" />
-          <span>home</span>
-        </Link>
-        <Link
-          href="/applications"
-          className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
-            pathname.startsWith("/applications") ? "text-pip font-semibold" : "text-muted"
-          }`}
-        >
-          <Briefcase className="w-4 h-4" />
-          <span>jobs</span>
-        </Link>
-        <Link
-          href="/resume"
-          className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
-            pathname.includes("/resume") ? "text-pip font-semibold" : "text-muted"
-          }`}
-        >
-          <ScrollText className="w-4 h-4" />
-          <span>resume</span>
-        </Link>
-        <button
-          onClick={() => setChatOpen(true)}
-          className="flex flex-col items-center gap-1 text-[10px] font-sans text-pip font-medium -mt-3"
-        >
-          <div className="w-10 h-10 rounded-full bg-pip text-white flex items-center justify-center shadow-md">
-            <Sparkles className="w-5 h-5 text-pastel-lemon" />
-          </div>
+      {/* Mobile bottom tab bar */}
+      <nav aria-label="Primary" className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-line bg-panel/95 px-2 backdrop-blur-md md:hidden">
+        {tab("/dashboard", "home", Home, pathname === "/dashboard")}
+        {tab("/applications", "jobs", Briefcase, pathname.startsWith("/applications"))}
+        {tab("/resume", "resume", ScrollText, pathname.includes("/resume"))}
+        <button onClick={() => setChatOpen(true)} className="-mt-5 flex flex-col items-center gap-1 text-[11px] font-medium text-primary-ink" aria-label="Open chat with pip">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_-6px_var(--glow)] ring-4 ring-panel">
+            <Sparkles className="h-5 w-5" aria-hidden="true" />
+          </span>
           <span>pip</span>
         </button>
-        <Link
-          href="/interview"
-          className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
-            pathname.includes("/interview") ? "text-pip font-semibold" : "text-muted"
-          }`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>interview</span>
-        </Link>
-        <Link
-          href="/onboarding?edit=1"
-          className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
-            pathname === "/onboarding" ? "text-pip font-semibold" : "text-muted"
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>profile</span>
-        </Link>
+        {tab("/interview", "interview", Sparkles, pathname.includes("/interview"))}
+        {tab("/onboarding?edit=1", "profile", User, pathname === "/onboarding")}
       </nav>
 
-      {/* Slide-over Pip Chat from any page */}
+      {/* Slide-over Pip chat from any page */}
       <ChatSlideOver isOpen={chatOpen} onClose={() => setChatOpen(false)} />
 
       {/* Cmd/Ctrl+K from anywhere in the app */}

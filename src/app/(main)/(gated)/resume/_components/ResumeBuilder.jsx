@@ -668,7 +668,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                       }`}
                     >
                       {/* Live Template Thumbnail */}
-                      <div className="relative h-52 bg-white overflow-hidden">
+                      <div className="relative h-52 bg-panel overflow-hidden">
                         <div
                           className="scale-[0.28] origin-top-left w-[357%] h-[357%] pointer-events-none"
                         >
@@ -1034,7 +1034,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       {/* Hidden container for PDF generation (used when preview is closed) */}
       {!showPreview && (
         <div className="absolute top-[200vh] left-[-9999px] pointer-events-none">
-          <div id="resume-print-container" className="bg-white w-[210mm] min-h-[297mm] flex flex-col [&>div]:flex-1">
+          <div id="resume-print-container" className="bg-panel w-[210mm] min-h-[297mm] flex flex-col [&>div]:flex-1">
             {renderTemplate()}
           </div>
         </div>
@@ -1060,8 +1060,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
           </div>
           <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center bg-divider/10">
             {/* Wrapper to handle scaling nicely without cutting off content in some browsers */}
-            <div className="h-fit w-fit origin-top scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100 transition-transform duration-300 shadow-2xl ring-1 ring-black/5 bg-white">
-              <div id="resume-print-container" className="bg-white w-[210mm] min-h-[297mm] flex flex-col [&>div]:flex-1">
+            <div className="h-fit w-fit origin-top scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100 transition-transform duration-300 shadow-2xl ring-1 ring-black/5 bg-panel">
+              <div id="resume-print-container" className="bg-panel w-[210mm] min-h-[297mm] flex flex-col [&>div]:flex-1">
                 {renderTemplate()}
               </div>
             </div>

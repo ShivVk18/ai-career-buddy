@@ -4,7 +4,7 @@ import PipStatus from "@/components/pixel/PipStatus";
 /** Empty state: Pip with a line of text and exactly one action (a link via href, or a button via onClick). */
 export default function EmptyState({ step = "detective", text, actionLabel, href, onClick }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line bg-white/60 p-6 text-center space-y-4">
+    <div className="rounded-2xl border border-dashed border-line bg-panel/60 p-6 text-center space-y-4">
       <PipStatus step={step} text={text} className="mx-auto" />
       {actionLabel &&
         (href ? (

@@ -95,11 +95,11 @@ export default function StatusActions({ application, onChange }) {
   const status = application.status;
   const btn =
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-xs font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95 disabled:opacity-60";
-  const idle = "border-line bg-white text-text hover:border-pip";
+  const idle = "border-line bg-panel text-text hover:border-pip";
   const on = "border-pip bg-pip-soft text-pip-ink";
 
   return (
-    <section aria-label="Application status" className="panel-cozy border border-line bg-white p-5 sm:p-6 space-y-4">
+    <section aria-label="Application status" className="panel-cozy border border-line bg-panel p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-bold text-base text-text lowercase">where are you with this one?</h2>
         <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full">{LABEL[status] || status}</span>
@@ -199,7 +199,7 @@ export default function StatusActions({ application, onChange }) {
             onKeyDown={(e) => {
               if (e.key === "Escape") setPickDate(false);
             }}
-            className="h-11 rounded-xl border border-line bg-white px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
+            className="h-11 rounded-xl border border-line bg-panel px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
           />
         </div>
       )}

@@ -29,7 +29,7 @@ function SourcePopover({ proposal }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none invisible absolute left-0 top-full z-20 mt-1 w-72 max-w-[85vw] rounded-lg border border-line bg-white p-2.5 text-[11px] leading-snug text-muted shadow-md group-hover:visible group-focus-within:visible"
+      className="pointer-events-none invisible absolute left-0 top-full z-20 mt-1 w-72 max-w-[85vw] rounded-lg border border-line bg-panel p-2.5 text-[11px] leading-snug text-muted shadow-md group-hover:visible group-focus-within:visible"
     >
       {proposal.reason && <span className="mb-1 block italic">{proposal.reason}</span>}
       <span className="mb-0.5 block font-pixel text-[10px] uppercase tracking-wider text-pip-ink">source</span>
@@ -79,7 +79,7 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
               }
             }}
             aria-label="Edit this line"
-            className="w-full rounded-lg border border-pip bg-white p-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-pip/40"
+            className="w-full rounded-lg border border-pip bg-panel p-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-pip/40"
           />
         ) : (
           <>
@@ -109,7 +109,7 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
       )}
       <div className="mt-1.5 flex flex-wrap gap-2">
         {decision === "accepted" || decision === "rejected" ? (
-          <button type="button" onClick={() => onDecide(proposal.proposalId, undefined)} className={`${btn} border-line bg-white text-muted hover:border-pip`}>
+          <button type="button" onClick={() => onDecide(proposal.proposalId, undefined)} className={`${btn} border-line bg-panel text-muted hover:border-pip`}>
             <RotateCcw className="h-3 w-3" aria-hidden="true" /> {decision === "accepted" ? "accepted, change my mind" : "rejected, change my mind"}
           </button>
         ) : (
@@ -117,7 +117,7 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
             <button type="button" onClick={() => onDecide(proposal.proposalId, "accepted")} className={`${btn} border-pip bg-pip text-white hover:bg-pip-ink`}>
               <Check className="h-3 w-3" aria-hidden="true" /> Accept
             </button>
-            <button type="button" onClick={() => onDecide(proposal.proposalId, "rejected")} className={`${btn} border-line bg-white text-text hover:border-[#B4483A]`}>
+            <button type="button" onClick={() => onDecide(proposal.proposalId, "rejected")} className={`${btn} border-line bg-panel text-text hover:border-[#B4483A]`}>
               <X className="h-3 w-3" aria-hidden="true" /> Reject
             </button>
           </>
@@ -143,7 +143,7 @@ export default function TrackedChanges({ proposals, decisions, onDecide, resume 
   }, [proposals, resume]);
 
   return (
-    <div className="paper-doc rounded-xl border border-line bg-white p-4 text-text shadow-sm sm:p-8">
+    <div className="paper-doc rounded-xl border border-line bg-panel p-4 text-text shadow-sm sm:p-8">
       <div className="mb-4 flex items-center justify-between border-b border-text/20 pb-1">
         <span className="font-serif text-xs font-bold uppercase tracking-widest">Your resume</span>
         <span className="font-pixel text-[10px] text-muted">tracked changes</span>

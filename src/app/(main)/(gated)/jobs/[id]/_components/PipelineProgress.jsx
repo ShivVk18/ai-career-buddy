@@ -49,7 +49,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
   const total = pipeline.steps.length;
 
   return (
-    <section aria-label="Pipeline progress" className="panel-cozy border border-line bg-white p-5 sm:p-6 space-y-4">
+    <section aria-label="Pipeline progress" className="panel-cozy border border-line bg-panel p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-bold text-base text-text lowercase">pip is on it</h2>
         <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full" aria-live="polite">
@@ -76,7 +76,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
             <li
               key={s.step}
               className={`flex items-start gap-3 rounded-xl border p-3 ${
-                active ? "border-pip bg-pip-soft/50" : failed ? "border-[#E8C9C0] bg-[#FDF3F0]" : "border-line bg-[#FBFAF7]/40"
+                active ? "border-pip bg-pip-soft/50" : failed ? "border-[#E8C9C0] bg-[#FDF3F0]" : "border-line bg-bg/40"
               }`}
             >
               <div className={`relative h-10 w-10 shrink-0 ${active ? "pip-hop" : s.status === "pending" ? "opacity-40 grayscale" : ""}`}>
@@ -120,7 +120,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
                   <button
                     type="button"
                     onClick={onRetry}
-                    className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs text-text hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
+                    className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-panel px-3 text-xs text-text hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
                   >
                     <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
                   </button>
@@ -129,7 +129,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
               {link && (
                 <Link
                   href={link.href}
-                  className="shrink-0 inline-flex min-h-9 items-center gap-1 rounded-full bg-white border border-line px-3 text-xs text-text hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
+                  className="shrink-0 inline-flex min-h-9 items-center gap-1 rounded-full bg-panel border border-line px-3 text-xs text-text hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95"
                 >
                   {link.label} <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
@@ -142,7 +142,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
       {callError && !driving && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-3 text-xs text-text">
           <span className="min-w-0 flex-1">{callError}</span>
-          <button type="button" onClick={onRetry} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 hover:border-pip active:scale-95">
+          <button type="button" onClick={onRetry} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-panel px-3 hover:border-pip active:scale-95">
             <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
           </button>
         </div>

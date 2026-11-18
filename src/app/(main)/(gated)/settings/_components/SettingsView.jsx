@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeSelect } from "@/components/ThemeToggle";
 import { deleteAllMyData, deleteAccount } from "@/actions/Account";
 
 const DANGER = {
@@ -118,7 +119,12 @@ export default function SettingsView() {
         <h1 className="text-xl font-bold text-text lowercase">settings</h1>
         <p className="text-xs text-muted">you own your data. these are the only two things in the app that ask you to confirm.</p>
       </div>
-      <section aria-labelledby="danger" className="space-y-4 rounded-2xl border border-[#E8C9C0] bg-white p-5 sm:p-6">
+      <section aria-labelledby="appearance" className="space-y-3 rounded-2xl border border-line bg-panel p-5 shadow-card sm:p-6">
+        <h2 id="appearance" className="text-sm font-semibold text-text">appearance</h2>
+        <p className="text-xs text-muted">follows your device by default. pick one to override it.</p>
+        <ThemeSelect />
+      </section>
+      <section aria-labelledby="danger" className="space-y-4 rounded-2xl border border-danger/40 bg-panel p-5 sm:p-6">
         <h2 id="danger" className="flex items-center gap-2 text-sm font-semibold text-text">
           <ShieldAlert className="h-4 w-4 text-destructive" aria-hidden="true" /> danger zone
         </h2>

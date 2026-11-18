@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { GlowCard } from "@/components/ui/aceternity/glow-card";
 
 // Cards are built on the server from the signed-in user's own records.
 // Shapes: docs/ai/API-CONTRACT.md section 3. Unknown types render nothing.
@@ -33,8 +34,8 @@ function formatDate(iso) {
 
 function Shell({ label, date, children, href, linkText }) {
   return (
-    <div className="panel-cozy p-4 sm:p-5 bg-white border border-[#ECEAE4] my-2 text-left w-full max-w-xl">
-      <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-2.5 mb-3 gap-2">
+    <GlowCard className="p-4 sm:p-5 my-2 text-left w-full max-w-xl">
+      <div className="flex items-center justify-between border-b border-line pb-2.5 mb-3 gap-2">
         <span className="font-pixel text-[11px] bg-pip-soft text-pip-ink px-2.5 py-0.5 rounded-full font-medium">
           {label}
         </span>
@@ -42,13 +43,13 @@ function Shell({ label, date, children, href, linkText }) {
       </div>
       {children}
       {href && (
-        <div className="mt-3 pt-2 border-t border-[#ECEAE4] flex justify-end text-xs">
+        <div className="mt-3 pt-2 border-t border-line flex justify-end text-xs">
           <Link href={href} className="text-pip hover:underline flex items-center gap-1 font-medium">
             {linkText} <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       )}
-    </div>
+    </GlowCard>
   );
 }
 
@@ -68,7 +69,7 @@ function ATSScoreCard({ data }) {
           <span className="text-sm font-normal text-muted">/100</span>
         </span>
       </div>
-      {data.summary && <p className="mt-2 text-xs text-[#6D6B75] leading-relaxed">{data.summary}</p>}
+      {data.summary && <p className="mt-2 text-xs text-muted leading-relaxed">{data.summary}</p>}
     </Shell>
   );
 }
@@ -93,7 +94,7 @@ function RoadmapCard({ data }) {
         {data.currentRole} → {data.targetRole}
       </span>
       <div className="mt-2">
-        <div className="h-1.5 rounded-full bg-[#ECEAE4] overflow-hidden">
+        <div className="h-1.5 rounded-full bg-line overflow-hidden">
           <div className="h-full bg-pip" style={{ width: `${progress}%` }} />
         </div>
         <span className="text-[11px] text-muted block mt-1">
@@ -104,7 +105,7 @@ function RoadmapCard({ data }) {
         <div className="mt-2 space-y-1">
           <span className="font-pixel text-[10px] uppercase text-muted block">next steps</span>
           {next.map((st) => (
-            <div key={st.id} className="text-xs text-text p-2 rounded-lg bg-[#FBFAF7] border border-[#ECEAE4]">
+            <div key={st.id} className="text-xs text-text p-2 rounded-lg bg-bg border border-line">
               {st.title}
             </div>
           ))}
@@ -125,7 +126,7 @@ function AssessmentCard({ data }) {
         </span>
       </div>
       {data.improvementTip && (
-        <p className="mt-2 text-xs text-[#6D6B75] leading-relaxed">{data.improvementTip}</p>
+        <p className="mt-2 text-xs text-muted leading-relaxed">{data.improvementTip}</p>
       )}
     </Shell>
   );

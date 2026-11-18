@@ -94,7 +94,7 @@ export default function PipStatus({
 
   return (
     <div
-      className={`panel-cozy px-3 sm:px-3.5 py-2 sm:py-2.5 inline-flex items-center gap-2.5 sm:gap-3 bg-white/95 backdrop-blur-sm border border-line max-w-full shadow-xs ${className}`}
+      className={`panel-cozy px-3 sm:px-3.5 py-2 sm:py-2.5 inline-flex items-center gap-2.5 sm:gap-3 bg-panel/95 backdrop-blur-sm border border-line max-w-full shadow-xs ${className}`}
     >
       <div className={`relative ${sizeClasses[size]} shrink-0 pip-hop`}>
         <Image

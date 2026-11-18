@@ -1,7 +1,7 @@
 import "./globals.css";
 import { Geist, Newsreader, Pixelify_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/Theme-Provider";
 
 const geist = Geist({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], display: "swap", variable: "--nf-sans" });
@@ -21,27 +21,15 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider afterSignOutUrl="/">
       <html lang="en" suppressHydrationWarning className={`${geist.variable} ${newsreader.variable} ${pixelify.variable}`}>
-        <body className="bg-bg text-text font-sans antialiased selection:bg-pip-soft selection:text-pip-ink min-h-screen">
+        <body className="bg-bg text-text font-sans antialiased selection:bg-lime selection:text-lime-foreground min-h-screen">
           <ThemeProvider
             attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
-            disableTransitionOnChange={false}
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
           >
             {children}
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                style: {
-                  borderRadius: "14px",
-                  background: "#FFFFFF",
-                  border: "1px solid #ECEAE4",
-                  color: "#23222B",
-                  fontSize: "13px",
-                  boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
-                },
-              }}
-            />
+            <Toaster position="top-center" />
           </ThemeProvider>
         </body>
       </html>

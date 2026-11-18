@@ -183,7 +183,7 @@ export default function NeedsYouQueue({ focus }) {
     <div className={wrap}>
       {header}
       {missingFocus && (
-        <p role="status" className="rounded-xl border border-line bg-white px-4 py-2 text-xs text-muted">
+        <p role="status" className="rounded-xl border border-line bg-panel px-4 py-2 text-xs text-muted">
           That item was already handled or has expired. Here&apos;s what&apos;s left.
         </p>
       )}
@@ -193,7 +193,7 @@ export default function NeedsYouQueue({ focus }) {
           const Icon = t.icon;
           const open = openId === item.id;
           return (
-            <li key={item.id} id={`ny-${item.id}`} className={`rounded-2xl border bg-white transition ${open ? "border-pip" : "border-line"}`}>
+            <li key={item.id} id={`ny-${item.id}`} className={`rounded-2xl border bg-panel transition ${open ? "border-pip" : "border-line"}`}>
               <button
                 type="button"
                 aria-expanded={open}

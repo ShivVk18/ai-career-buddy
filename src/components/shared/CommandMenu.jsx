@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   Briefcase,
   BrainCircuit,
@@ -28,6 +29,7 @@ const STATIC_ITEMS = [
   { id: "apps", group: "go to", label: "applications", href: "/applications", icon: Briefcase },
   { id: "needs", group: "go to", label: "needs you", href: "/needs-you", icon: Inbox },
   { id: "settings", group: "go to", label: "settings", href: "/settings", icon: Settings },
+  { id: "theme", group: "go to", label: "toggle light / dark theme", action: "theme", icon: Sparkles },
   { id: "chat", group: "go to", label: "open chat with pip", action: "chat", icon: MessageSquare },
 ];
 
@@ -37,6 +39,7 @@ const STATIC_ITEMS = [
  */
 export default function CommandMenu({ open, onOpenChange: setOpen, onOpenChat }) {
   const router = useRouter();
+  const { resolvedTheme, setTheme } = useTheme();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [jobs, setJobs] = useState(null); // null = not loaded, [] = none
@@ -100,9 +103,10 @@ export default function CommandMenu({ open, onOpenChange: setOpen, onOpenChat })
     (item) => {
       setOpen(false);
       if (item.action === "chat") onOpenChat?.();
+      else if (item.action === "theme") setTheme(resolvedTheme === "dark" ? "light" : "dark");
       else if (item.href) router.push(item.href);
     },
-    [router, onOpenChat, setOpen]
+    [router, onOpenChat, setOpen, resolvedTheme, setTheme]
   );
 
   useEffect(() => {
@@ -126,10 +130,10 @@ export default function CommandMenu({ open, onOpenChange: setOpen, onOpenChat })
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed left-1/2 top-[12vh] z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-line bg-white shadow-xl outline-none"
+          className="fixed left-1/2 top-[12vh] z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-line bg-panel shadow-pop outline-none"
         >
           <DialogPrimitive.Title className="sr-only">Command menu</DialogPrimitive.Title>
           <div className="flex items-center gap-2 border-b border-line px-4">

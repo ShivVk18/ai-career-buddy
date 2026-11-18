@@ -411,7 +411,7 @@ export default function PixelScene({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full overflow-hidden select-none ${showBorder ? "border border-[#ECEAE4]" : ""} ${className}`}
+      className={`relative w-full h-full overflow-hidden select-none ${showBorder ? "border border-line" : ""} ${className}`}
       style={style}
       aria-hidden="true"
     >

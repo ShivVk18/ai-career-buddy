@@ -1,67 +1,133 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@theme inline {
-  --color-bg: #FBFAF7;
-  --color-panel: #FFFFFF;
-  --color-line: #ECEAE4;
-  --color-soft: #F4F2EC;
-  --color-text: #23222B;
-  --color-muted: #6D6B75;
-  --color-faint: #A8A6AE;
+@custom-variant dark (&:is(.dark *));
 
-  --color-pip: #2F9E77;
-  --color-pip-soft: #E3F4EC;
-  --color-pip-ink: #1E7356;
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-soft: var(--soft);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-pip: var(--pip);
+  --color-pip-soft: var(--pip-soft);
+  --color-pip-ink: var(--pip-ink);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-lime: var(--lime);
+  --color-lime-foreground: var(--lime-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-glow: var(--glow);
 
   --color-pastel-pink: #F6B9CB;
   --color-pastel-lemon: #FFE48A;
   --color-pastel-lavender: #BCAEF2;
   --color-pastel-sky: #A9DAF7;
 
-  /* Radix UI & Shadcn bridge */
+  /* Radix UI & shadcn bridge */
   --color-background: var(--bg);
   --color-foreground: var(--text);
-  --color-primary: var(--text);
-  --color-primary-foreground: #FFFFFF;
+  --color-card: var(--panel);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--text);
   --color-secondary: var(--soft);
   --color-secondary-foreground: var(--text);
+  --color-accent: var(--soft);
+  --color-accent-foreground: var(--text);
+  --color-muted-foreground: var(--muted);
+  --color-destructive: var(--danger-fill);
+  --color-destructive-foreground: #FFFFFF;
   --color-border: var(--line);
-  --color-ring: var(--pip);
+  --color-input: var(--line);
+  --color-ring: var(--ring);
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
 
   --font-sans: var(--nf-sans), "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-pixel: var(--nf-pixel), "Pixelify Sans", monospace;
   --font-doc: var(--nf-doc), "Newsreader", Georgia, serif;
 }
 
+/* Tokens: see docs/ai/DESIGN.md. Lime is a fill/glow only, never text on light. */
+:root {
+  --bg: #F8FAFC;
+  --panel: #FFFFFF;
+  --line: #E4E4EC;
+  --soft: #F1F2F8;
+  --text: #14141F;
+  --muted: #5A5A6E;
+  --faint: #6E6E82;
+
+  --primary: #4F46E5;
+  --primary-ink: #4F46E5;
+  --primary-hover: #4338CA;
+  --primary-foreground: #FFFFFF;
+  --lime: #A3E635;
+  --lime-foreground: #0A0A0F;
+  --success: #15803D;
+  --warning: #B45309;
+  --danger: #DC2626;
+  --danger-fill: #DC2626;
+  --ring: #4F46E5;
+  --glow: rgba(79, 70, 229, 0.16);
+
+  /* "pip" tokens now alias the brand indigo so older screens inherit the system */
+  --pip: #4F46E5;
+  --pip-soft: #ECEBFD;
+  --pip-ink: #3730A3;
+
+  --shadow-card: 0 1px 2px rgba(20, 20, 31, 0.04), 0 6px 20px -8px rgba(20, 20, 31, 0.08);
+  --shadow-pop: 0 12px 40px -12px rgba(20, 20, 31, 0.22);
+  --grid-line: rgba(20, 20, 31, 0.06);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0A0A0F;
+  --panel: #111118;
+  --line: #26262F;
+  --soft: #1A1A24;
+  --text: #F4F4F8;
+  --muted: #A3A3B5;
+  --faint: #8C8CA0;
+
+  --primary: #5B52EC;
+  --primary-ink: #A5B4FC;
+  --primary-hover: #6E66F0;
+  --primary-foreground: #FFFFFF;
+  --success: #4ADE80;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --danger-fill: #DC2626;
+  --ring: #A5B4FC;
+  --glow: rgba(163, 230, 53, 0.14);
+
+  --pip: #5B52EC;
+  --pip-soft: #1E1B4B;
+  --pip-ink: #C7D2FE;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -10px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 16px 48px -12px rgba(0, 0, 0, 0.8);
+  --grid-line: rgba(255, 255, 255, 0.06);
+}
+
 @layer base {
-  :root {
-    --bg: #FBFAF7;
-    --panel: #FFFFFF;
-    --line: #ECEAE4;
-    --soft: #F4F2EC;
-    --text: #23222B;
-    --muted: #6D6B75;
-    --faint: #A8A6AE;
-
-    --pip: #2F9E77;
-    --pip-soft: #E3F4EC;
-    --pip-ink: #1E7356;
-
-    --pastel-pink: #F6B9CB;
-    --pastel-lemon: #FFE48A;
-    --pastel-lavender: #BCAEF2;
-    --pastel-sky: #A9DAF7;
-
-    --background: #FBFAF7;
-    --foreground: #23222B;
-    --card: #FFFFFF;
-    --card-foreground: #23222B;
-    --border: #ECEAE4;
-    --input: #ECEAE4;
-    --ring: #2F9E77;
-  }
-
   * {
     border-color: var(--line);
     box-sizing: border-box;
@@ -82,12 +148,12 @@
   /* lowercase headings & friendly tone */
   h1, h2, h3, h4, h5, h6 {
     text-transform: lowercase;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
   }
 
-  /* Focus ring styling in pip green */
+  /* Visible focus ring everywhere */
   *:focus-visible {
-    outline: 2px solid var(--pip);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
@@ -97,7 +163,7 @@
   background-color: var(--panel);
   border: 1px solid var(--line);
   border-radius: 18px;
-  box-shadow: 0 4px 20px -2px rgba(35, 34, 43, 0.04), 0 2px 6px -1px rgba(35, 34, 43, 0.02);
+  box-shadow: var(--shadow-card);
 }
 
 .panel-soft {
@@ -108,58 +174,47 @@
 
 .paper-doc {
   background-color: #FFFFFF;
-  border: 1px solid #ECEAE4;
+  border: 1px solid #E4E4EC;
   box-shadow: 0 10px 30px -4px rgba(35, 34, 43, 0.06), 0 4px 10px -2px rgba(35, 34, 43, 0.03);
   font-family: var(--font-doc), "Newsreader", Georgia, serif;
+  /* the paper stays paper in dark mode */
+  --text: #14141F;
+  --muted: #5A5A6E;
+  --faint: #6E6E82;
+  --line: #E4E4EC;
+  --soft: #F1F2F8;
+  --panel: #FFFFFF;
+  color: #14141F;
 }
 
-.btn-pill-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background-color: #23222B;
-  color: #FFFFFF;
-  font-weight: 500;
-  transition: all 0.15s ease;
-  padding: 0.5rem 1.25rem;
-}
-.btn-pill-primary:hover {
-  background-color: #383644;
-  transform: translateY(-1px);
-}
-
-.btn-pill-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background-color: #FFFFFF;
-  color: #23222B;
-  border: 1px solid #ECEAE4;
-  font-weight: 500;
-  transition: all 0.15s ease;
-  padding: 0.5rem 1.25rem;
-}
-.btn-pill-secondary:hover {
-  background-color: #F4F2EC;
-  border-color: #DDD9CF;
-  transform: translateY(-1px);
-}
-
+.btn-pill-primary,
+.btn-pill-secondary,
 .btn-pill-pip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background-color: #2F9E77;
-  color: #FFFFFF;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
   padding: 0.5rem 1.25rem;
 }
+.btn-pill-primary,
+.btn-pill-pip {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-pill-primary:hover,
 .btn-pill-pip:hover {
-  background-color: #1E7356;
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+.btn-pill-secondary {
+  background-color: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.btn-pill-secondary:hover {
+  background-color: var(--soft);
   transform: translateY(-1px);
 }
 
@@ -198,27 +253,27 @@
 }
 
 .highlight-match {
-  background-image: linear-gradient(to right, rgba(47, 158, 119, 0.18), rgba(47, 158, 119, 0.18));
+  background-image: linear-gradient(to right, rgba(163, 230, 53, 0.4), rgba(163, 230, 53, 0.4));
   background-repeat: no-repeat;
   background-size: 100% 100%;
   padding: 0 4px;
   border-radius: 3px;
-  color: #1E7356;
+  color: var(--text);
   font-weight: 500;
 }
 
 .strike-weak {
   text-decoration: line-through;
-  color: #A8A6AE;
-  background-color: rgba(236, 234, 228, 0.6);
+  color: var(--faint);
+  background-color: var(--soft);
   padding: 0 3px;
   border-radius: 2px;
 }
 
 .measurable-line {
-  color: #23222B;
-  background-color: #E3F4EC;
-  border-left: 2px solid #2F9E77;
+  color: var(--text);
+  background-color: var(--pip-soft);
+  border-left: 2px solid var(--primary);
   padding-left: 6px;
   padding-right: 4px;
   border-radius: 2px;
@@ -228,9 +283,9 @@
 .footnote-chip {
   font-family: var(--font-pixel), monospace;
   font-size: 9px;
-  background-color: #E3F4EC;
-  color: #1E7356;
-  border: 1px solid #BCE5D3;
+  background-color: var(--pip-soft);
+  color: var(--pip-ink);
+  border: 1px solid var(--line);
   padding: 1px 4px;
   border-radius: 4px;
   margin-left: 3px;
@@ -246,4 +301,32 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Aceternity-style kit helpers (src/components/ui/aceternity) */
+@keyframes spotlightIn {
+  from { opacity: 0; transform: translate(-72px, -62px) scale(0.5); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+.animate-spotlight { animation: spotlightIn 1.6s ease 0.4s 1 forwards; }
+
+@keyframes borderSpin {
+  to { transform: rotate(360deg); }
+}
+.animate-border-spin { animation: borderSpin 6s linear infinite; }
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.bg-dots {
+  background-image: radial-gradient(var(--grid-line) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+@keyframes wordIn {
+  from { opacity: 0; filter: blur(6px); transform: translateY(4px); }
+  to { opacity: 1; filter: blur(0); transform: none; }
 }

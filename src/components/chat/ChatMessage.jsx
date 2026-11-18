@@ -19,7 +19,7 @@ export default function ChatMessage({ message }) {
   if (isUser) {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-lg bg-[#23222B] text-white px-4 py-3 rounded-2xl rounded-tr-sm text-xs sm:text-sm font-sans leading-relaxed shadow-sm">
+        <div className="max-w-lg bg-primary text-primary-foreground px-4 py-3 rounded-2xl rounded-tr-sm text-xs sm:text-sm font-sans leading-relaxed shadow-sm">
           {message.content}
         </div>
       </div>
@@ -32,7 +32,7 @@ export default function ChatMessage({ message }) {
   return (
     <div className="flex items-start gap-3 mb-5 max-w-2xl min-w-0">
       {/* Pip Avatar with current step outfit */}
-      <div className="w-9 h-9 rounded-full bg-white border border-[#ECEAE4] p-1 shrink-0 shadow-sm pip-hop">
+      <div className="w-9 h-9 rounded-full bg-panel border border-line p-1 shrink-0 shadow-sm pip-hop">
         <Image
           src={outfitSrc}
           alt={`pip ${outfitKey}`}
@@ -46,7 +46,7 @@ export default function ChatMessage({ message }) {
 
       {/* Soft Panel Content */}
       <div className="flex-1 min-w-0 space-y-2">
-        <div className="panel-cozy p-3.5 sm:p-4 bg-white border border-[#ECEAE4] text-xs sm:text-sm leading-relaxed text-[#23222B] break-words">
+        <div className="panel-cozy p-3.5 sm:p-4 bg-panel border border-line text-xs sm:text-sm leading-relaxed text-text break-words">
           <span className="whitespace-pre-wrap">{message.content}</span>
         </div>
 

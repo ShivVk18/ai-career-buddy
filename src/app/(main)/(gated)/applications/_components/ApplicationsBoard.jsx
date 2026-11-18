@@ -38,7 +38,7 @@ function DatePrompt({ onPick, onSkip, busy }) {
         disabled={busy}
         onChange={(e) => e.target.value && onPick(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && onSkip()}
-        className="h-10 rounded-lg border border-line bg-white px-2 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
+        className="h-10 rounded-lg border border-line bg-panel px-2 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
       />
       <button type="button" onClick={onSkip} className="min-h-10 px-2 text-[11px] text-muted underline outline-none focus-visible:ring-2 focus-visible:ring-pip/50">
         Skip
@@ -57,7 +57,7 @@ function Card({ app, onMove, onDragStart, onDragEnd, dragging, askDate, onPickDa
         onDragStart(app.id);
       }}
       onDragEnd={onDragEnd}
-      className={`rounded-xl border border-line bg-white p-3 shadow-2xs transition ${
+      className={`rounded-xl border border-line bg-panel p-3 shadow-2xs transition ${
         dragging ? "opacity-40" : "hover:border-pip/60"
       }`}
     >
