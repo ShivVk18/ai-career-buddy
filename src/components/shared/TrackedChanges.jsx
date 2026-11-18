@@ -4,9 +4,8 @@ import { useMemo, useState } from "react";
 import { Check, RotateCcw, X } from "lucide-react";
 import { ensureEntryIds } from "@/lib/entryIds";
 
-// Editing a proposed line is wired in the UI but switched off: saveTailoredVersion accepts ids only, so an
-// edited line could not be saved. Flip this when the backend takes edited text (see API-CONTRACT, Requests from frontend).
-export const EDIT_LINES_SUPPORTED = false;
+// saveTailoredVersion takes `edits: { [proposalId]: text }` for accepted lines (API-CONTRACT, resolved requests).
+export const EDIT_LINES_SUPPORTED = true;
 
 const norm = (t) => String(t ?? "").replace(/^\s*(?:[-*•]\s*)?/, "").replace(/\s+/g, " ").trim();
 
@@ -54,7 +53,7 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
   const commit = () => {
     setEditing(false);
     const v = draft.trim();
-    if (v && v !== shown) onEdit?.(proposal.proposalId, v);
+    if (v && v !== shown) onEdit?.(proposal.proposalId, v.replace(/\s+/g, " "));
   };
 
   return (
@@ -103,7 +102,11 @@ function TrackedLine({ proposal, decision, onDecide, edited, onEdit }) {
           </>
         )}
       </div>
-      <SourcePopover proposal={proposal} />
+      {edited ? (
+        <span className="mt-0.5 block text-[11px] italic text-muted">edited by you</span>
+      ) : (
+        <SourcePopover proposal={proposal} />
+      )}
       <div className="mt-1.5 flex flex-wrap gap-2">
         {decision === "accepted" || decision === "rejected" ? (
           <button type="button" onClick={() => onDecide(proposal.proposalId, undefined)} className={`${btn} border-line bg-white text-muted hover:border-pip`}>

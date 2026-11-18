@@ -9,6 +9,11 @@ import { generationErrorMessage } from "@/components/shared/generationError";
 import { getResume, saveTailoredVersion } from "@/actions/Resume";
 import { loadTailorDraft } from "./tailorDraftSource";
 
+const SKIP_REASONS = {
+  RESUME_CHANGED: "that line changed in your resume",
+  FAILED_CHECK: "it failed the safety check",
+};
+
 /**
  * Tailor draft as tracked changes (D36, D63). Accepting saves a resume VERSION via saveTailoredVersion;
  * the main resume is never touched. onDone() is called once the draft is saved or dismissed.
@@ -17,6 +22,7 @@ export default function TailorReview({ item, onDismiss, onSaved }) {
   const [state, setState] = useState({ status: "loading" });
   const [resume, setResume] = useState(null);
   const [decisions, setDecisions] = useState({});
+  const [edits, setEdits] = useState({});
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -24,7 +30,14 @@ export default function TailorReview({ item, onDismiss, onSaved }) {
     try {
       const [draft, doc] = await Promise.all([loadTailorDraft(item.refId), getResume().catch(() => null)]);
       setResume(doc);
-      if (!draft || draft.error) setState({ status: "error", error: generationErrorMessage(draft, "We couldn't open this draft."), code: draft?.code });
+      if (!draft || draft.error) setState({
+          status: "error",
+          error:
+            draft?.code === "STALE" || draft?.code === "NOT_FOUND"
+              ? "This draft has expired or was already saved. Tailor again from the resume page to get fresh suggestions."
+              : generationErrorMessage(draft, "We couldn't open this draft."),
+          code: draft?.code,
+        });
       else setState({ status: "ready", draft });
     } catch {
       setState({ status: "error", error: "We couldn't open this draft." });
@@ -42,13 +55,23 @@ export default function TailorReview({ item, onDismiss, onSaved }) {
 
   const save = async (ids) => {
     setSaving(true);
+    const sendEdits = Object.fromEntries(Object.entries(edits).filter(([id]) => ids.includes(id)));
     try {
-      const res = await saveTailoredVersion({ draftId: state.draft.draftId, acceptedProposalIds: ids });
+      const res = await saveTailoredVersion({
+        draftId: state.draft.draftId,
+        acceptedProposalIds: ids,
+        ...(Object.keys(sendEdits).length ? { edits: sendEdits } : {}),
+      });
       if (!res || res.error) {
         toast.error(generationErrorMessage(res, "We couldn't save the version."));
         return;
       }
+      const skipped = Array.isArray(res.skipped) ? res.skipped : [];
       toast.success("Saved as a version. Your main resume is unchanged.");
+      if (skipped.length) {
+        const why = [...new Set(skipped.map((s) => SKIP_REASONS[s.reason] || s.reason))].join("; ");
+        toast.message(`${skipped.length} edit${skipped.length === 1 ? " was" : "s were"} skipped: ${why}.`, { duration: 10000 });
+      }
       onSaved?.(res);
     } catch {
       toast.error("We couldn't save the version. Please try again.");
@@ -71,7 +94,7 @@ export default function TailorReview({ item, onDismiss, onSaved }) {
       <div role="alert" className="space-y-3 rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] p-4 text-xs text-text">
         <p>{state.error}</p>
         <div className="flex flex-wrap gap-2">
-          {state.code !== "UNSUPPORTED" && (
+          {state.code !== "UNSUPPORTED" && state.code !== "STALE" && state.code !== "NOT_FOUND" && (
             <button type="button" onClick={load} className="btn-pill-secondary min-h-10 px-4 text-xs">
               Retry
             </button>
@@ -95,6 +118,8 @@ export default function TailorReview({ item, onDismiss, onSaved }) {
         decisions={decisions}
         onDecide={(id, v) => setDecisions((d) => ({ ...d, [id]: v }))}
         resume={resume}
+        edits={edits}
+        onEdit={(id, text) => setEdits((e) => ({ ...e, [id]: text }))}
       />
       <div className="flex flex-wrap items-center gap-2">
         <button

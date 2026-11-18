@@ -22,6 +22,7 @@ const ResumeParserComponent = () => {
     resumePdf: null
   });
 
+  const [jobId, setJobId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -63,7 +64,8 @@ const ResumeParserComponent = () => {
         jobTitle: formData.jobTitle,
         jobDescription: formData.jobDescription,
         resumeBase64: base64Resume,
-        resumeType: formData.resumePdf.type
+        resumeType: formData.resumePdf.type,
+        ...(jobId ? { jobId } : {}),
       });
 
       if (!response || !response.success) {
@@ -186,9 +188,11 @@ const ResumeParserComponent = () => {
             <div className="mb-8">
             <JobStart
               hasErrors={(!!error && !formData.jobDescription.trim()) || !!notice}
-              onPick={({ company, title, jdText }) =>
-                setFormData((prev) => ({ ...prev, companyName: company, jobTitle: title, jobDescription: jdText }))
-              }
+              onPick={({ jobId: id, company, title, jdText }) => {
+                setJobId(id);
+                setFormData((prev) => ({ ...prev, companyName: company, jobTitle: title, jobDescription: jdText }));
+              }}
+              onClear={() => setJobId(null)}
             >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div className="space-y-3">

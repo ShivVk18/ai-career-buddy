@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, ChevronDown, FileText, Inbox, Loader2, Mail, MessageSquareReply, ScrollText, ClipboardCheck, RotateCw } from "lucide-react";
 import { toast } from "sonner";
-import { getNeedsYou, approveNeedsYou, createFollowUpDraft, createInterviewPrep } from "@/actions/Applications";
+import { getNeedsYou, approveNeedsYou, unapproveNeedsYou, createFollowUpDraft, createInterviewPrep } from "@/actions/Applications";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import EmptyState from "@/components/shared/EmptyState";
 import LetterReview from "./LetterReview";
@@ -97,7 +97,36 @@ export default function NeedsYouQueue({ focus }) {
     return res;
   }, []);
 
-  const approve = (item) => removeOptimistic(item, () => approveNeedsYou(item.applicationId, TYPES[item.type].step), "Approved. Nothing was sent.");
+  // Put an approved item back where it was (optimistic); take it out again if the server says no.
+  const restore = useCallback(async (item, index) => {
+    setItems((cur) => {
+      const next = (cur || []).filter((i) => i.id !== item.id);
+      next.splice(Math.min(Math.max(index, 0), next.length), 0, item);
+      return next;
+    });
+    let res;
+    try {
+      res = await unapproveNeedsYou(item.applicationId, TYPES[item.type].step);
+    } catch {
+      res = { error: "We couldn't reach the server.", code: "FAILED" };
+    }
+    if (!res || res.error) {
+      setItems((cur) => (cur || []).filter((i) => i.id !== item.id));
+      toast.error("Couldn't undo that. Try again.");
+    }
+  }, []);
+
+  const approve = async (item) => {
+    const index = itemsRef.current.findIndex((i) => i.id === item.id);
+    const res = await removeOptimistic(item, () => approveNeedsYou(item.applicationId, TYPES[item.type].step));
+    if (res) {
+      toast.success("Approved. Nothing was sent.", {
+        duration: 5000,
+        action: { label: "Undo", onClick: () => restore(item, index) },
+      });
+    }
+    return res;
+  };
 
   const header = (
     <div className="flex items-end justify-between gap-3">

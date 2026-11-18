@@ -98,6 +98,8 @@ export default function OnboardingFlow({ editing = false }) {
       originalRef.current = { chips: loaded, industry: ind };
       setChips(loaded);
       setIndustry(ind);
+      if (res.targetRole) setTargetRole(res.targetRole);
+      if (res.jobSearchStage) setStage(res.jobSearchStage);
       setStep("chips");
     } catch {
       setError("We couldn't load your profile. Please try again.");

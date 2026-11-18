@@ -141,7 +141,10 @@ export default function ApplicationsBoard() {
       load(true); // refresh each card's next action
       if (isUndo) return;
       const prev = res.previousStatus || before.status;
-      toast.success(`${name} moved to ${LABEL[status].toLowerCase()}`, {
+      const added = status === "CLOSED" ? res.tasksAdded || 0 : 0;
+      const gaps = added ? `. ${added} gap${added === 1 ? "" : "s"} added to your roadmap` : "";
+      toast.success(`${name} moved to ${LABEL[status].toLowerCase()}${gaps}`, {
+        description: added ? "Undo moves it back; the roadmap tasks stay." : undefined,
         duration: 5000,
         action: { label: "Undo", onClick: () => move(id, prev, { isUndo: true }) },
       });

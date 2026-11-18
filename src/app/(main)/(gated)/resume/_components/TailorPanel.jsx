@@ -25,6 +25,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
   const [error, setError] = useState("");
   const [draft, setDraft] = useState(null);
   const [decisions, setDecisions] = useState({}); // proposalId -> "accepted" | "struck"
+  const [edits, setEdits] = useState({}); // proposalId -> user-edited text
   const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
@@ -56,6 +57,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
       }
       setDraft(res);
       setDecisions({});
+      setEdits({});
       setLabel(
         [res.jobTitle, res.companyName].filter(Boolean).join(" at ") || "Tailored resume"
       );
@@ -74,11 +76,13 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
   const handleSave = async (ids = accepted.map((p) => p.proposalId)) => {
     setSaving(true);
     setError("");
+    const sendEdits = Object.fromEntries(Object.entries(edits).filter(([id]) => ids.includes(id)));
     try {
       const res = await saveTailoredVersion({
         draftId: draft.draftId,
         acceptedProposalIds: ids,
         label: label.trim() || undefined,
+        ...(Object.keys(sendEdits).length ? { edits: sendEdits } : {}),
       });
       if (!res || res.error) {
         setError(generationErrorMessage(res));
@@ -146,7 +150,11 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
       {draft && (
         <div className="space-y-6">
           <MatchResult match={draft.matchBefore} title="Match before" />
-          <TrackedChanges proposals={draft.proposals} decisions={decisions} onDecide={decide} resume={getResumeLike?.()} />
+          <TrackedChanges proposals={draft.proposals} decisions={decisions} onDecide={decide}
+            resume={getResumeLike?.()}
+            edits={edits}
+            onEdit={(id, text) => setEdits((e) => ({ ...e, [id]: text }))}
+          />
           <div className="space-y-3 border-t border-divider pt-6">
             <Input placeholder="Version label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
             <div className="flex items-center gap-4 flex-wrap">
