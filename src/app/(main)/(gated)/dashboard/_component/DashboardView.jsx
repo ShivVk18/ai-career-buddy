@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import PixelScene from "@/components/pixel/PixelScene";
 import PipStatus from "@/components/pixel/PipStatus";
@@ -15,9 +16,15 @@ import {
   ArrowRight,
   Send,
   ChevronRight,
+  Loader2,
+  Inbox,
+  RotateCw,
 } from "lucide-react";
-import { toast } from "sonner";
 import ChatSlideOver from "@/components/chat/ChatSlideOver";
+import { getDashboardData } from "@/actions/Dashboard";
+import { getNeedsYou } from "@/actions/Applications";
+import { intakeJob } from "@/actions/Jobs";
+import { generationErrorMessage } from "@/components/shared/generationError";
 
 const EMPTY_DATA = {
   firstName: null,
@@ -34,16 +41,101 @@ const EMPTY_DATA = {
   totalTargets: 0,
   nextTasks: [],
   dueFollowUps: [],
+  applications: [],
+  needsYouCount: 0,
+  hasOffer: false,
 };
 
-export default function DashboardView({ data }) {
+const STATUS_LABEL = {
+  SAVED: "saved",
+  APPLIED: "applied",
+  INTERVIEWING: "interviewing",
+  OFFER: "offer",
+  CLOSED: "closed",
+};
+
+// Errors that mean "we could not read the page, paste the text instead" (keep the url).
+const PASTE_CODES = new Set(["PASTE_NEEDED", "URL_BLOCKED", "FETCH_FAILED", "NOT_A_JOB"]);
+
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse rounded-lg bg-soft ${className}`} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6" aria-busy="true" aria-label="Loading your home">
+      <div className="panel-cozy overflow-hidden border border-line bg-white">
+        <Skeleton className="h-44 sm:h-56 w-full rounded-none" />
+        <div className="p-4 sm:p-6 border-t border-line">
+          <Skeleton className="h-12 w-full max-w-3xl rounded-full" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-56 w-full" />
+        </div>
+        <div className="lg:col-span-4">
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardView() {
+  const router = useRouter();
+  const [state, setState] = useState({ status: "loading", data: null, needs: null });
+  const load = useCallback(async () => {
+    setState((s) => ({ ...s, status: "loading" }));
+    try {
+      const [data, needs] = await Promise.all([
+        getDashboardData(),
+        getNeedsYou().catch(() => ({ error: "failed" })),
+      ]);
+      setState({ status: "ready", data, needs: needs && !needs.error ? needs : null });
+    } catch {
+      setState({ status: "error", data: null, needs: null });
+    }
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (state.status === "loading" && !state.data) return <DashboardSkeleton />;
+  if (state.status === "error") {
+    return (
+      <div className="p-4 sm:p-8 max-w-xl mx-auto">
+        <div role="alert" className="panel-cozy border border-line bg-white p-8 text-center space-y-4">
+          <Image src="/pip/pip-coffee.svg" alt="" width={96} height={96} className="mx-auto" style={{ imageRendering: "pixelated" }} unoptimized />
+          <h1 className="text-lg font-semibold text-text">We couldn't load your home</h1>
+          <p className="text-sm text-muted">Your data is safe. Check your connection and try again.</p>
+          <button type="button" onClick={load} className="btn-pill-primary min-h-11 px-6 text-sm inline-flex items-center gap-2">
+            <RotateCw className="w-4 h-4" aria-hidden="true" /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <DashboardContent data={state.data} needs={state.needs} router={router} />;
+}
+
+function DashboardContent({ data, needs, router }) {
   const d = data || EMPTY_DATA;
   const counts = d.counts || EMPTY_DATA.counts;
   const targets = d.targets || [];
   const nextTasks = d.nextTasks || [];
   const dueFollowUps = d.dueFollowUps || [];
+  const applications = d.applications || [];
+  const needsItems = needs?.items || [];
+  const needsCount = needs?.count ?? d.needsYouCount ?? 0;
+  const hasOffer = !!d.hasOffer;
   const [selectedToolId, setSelectedToolId] = useState("resume");
   const [quickInput, setQuickInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [intakeMsg, setIntakeMsg] = useState(null);
+  const [pasteUrl, setPasteUrl] = useState(null);
+  const inputRef = useRef(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [pendingMessage, setPendingMessage] = useState(null);
 
@@ -66,6 +158,12 @@ export default function DashboardView({ data }) {
     sceneVariant = "noon";
     progressStatusText = `noon • ${targets.length} target${targets.length === 1 ? "" : "s"} in progress`;
     pipOutfit = "thinking";
+  }
+
+  if (hasOffer) {
+    sceneVariant = "dusk";
+    progressStatusText = "night • you have an offer. take a breath, you earned it";
+    pipOutfit = "coffee";
   }
 
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -131,14 +229,39 @@ export default function DashboardView({ data }) {
 
   const selectedTool = toolCards.find((t) => t.id === selectedToolId) || toolCards[0];
 
-  const handleQuickSubmit = (e) => {
-    e.preventDefault();
+  const handleQuickSubmit = async (e) => {
+    e?.preventDefault();
     const text = quickInput.trim();
-    if (text) {
-      setPendingMessage(text);
-      setQuickInput("");
+    if (busy) return;
+    if (!text) {
+      setChatOpen(true);
+      return;
     }
-    setChatOpen(true);
+    setBusy(true);
+    setIntakeMsg(null);
+    try {
+      const res = await intakeJob({ input: text, ...(pasteUrl ? { url: pasteUrl, asJob: true } : {}) });
+      if (res?.kind === "question") {
+        setPendingMessage(res.text || text);
+        setQuickInput("");
+        setPasteUrl(null);
+        setChatOpen(true);
+      } else if (res?.kind === "job") {
+        const q = res.notice ? `?notice=${encodeURIComponent(res.notice)}` : "";
+        router.push(`/jobs/${res.job.id}${q}`);
+        return; // stay busy while navigating
+      } else if (res && PASTE_CODES.has(res.code)) {
+        if (res.url) setPasteUrl(res.url);
+        setQuickInput(res.url && !pasteUrl ? "" : quickInput);
+        setIntakeMsg(res.error || "We couldn't read that page. Paste the job text here instead.");
+        setTimeout(() => inputRef.current?.focus(), 0);
+      } else {
+        setIntakeMsg(generationErrorMessage(res, "We couldn't do that. Please try again."));
+      }
+    } catch {
+      setIntakeMsg("We couldn't reach the server. Please try again.");
+    }
+    setBusy(false);
   };
 
   return (
@@ -173,25 +296,58 @@ export default function DashboardView({ data }) {
         <div className="p-4 sm:p-6 bg-white border-t border-[#ECEAE4]">
           <form
             onSubmit={handleQuickSubmit}
-            className="flex flex-col sm:flex-row items-center gap-2.5 max-w-3xl"
+            className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5 max-w-3xl"
           >
             <div className="relative w-full flex-1">
-              <input
-                type="text"
+              <label htmlFor="pip-input" className="sr-only">
+                Paste a job link, or ask pip anything
+              </label>
+              <textarea
+                id="pip-input"
+                ref={inputRef}
+                rows={pasteUrl ? 4 : 1}
                 value={quickInput}
+                disabled={busy}
                 onChange={(e) => setQuickInput(e.target.value)}
-                placeholder="ask pip about your scores, roadmap or documents…"
-                className="w-full bg-[#FBFAF7] text-text placeholder:text-[#A8A6AE] text-xs sm:text-sm px-4 py-3 rounded-full border border-[#ECEAE4] focus:border-pip focus:bg-white outline-none transition"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleQuickSubmit();
+                  }
+                }}
+                placeholder={pasteUrl ? "paste the job text here…" : "paste a job link, or ask pip anything"}
+                className="w-full resize-none bg-[#FBFAF7] text-text placeholder:text-[#A8A6AE] text-sm px-4 py-3 rounded-2xl border border-[#ECEAE4] focus:border-pip focus:bg-white outline-none focus-visible:ring-2 focus-visible:ring-pip/40 transition max-h-40 disabled:opacity-70"
               />
             </div>
             <button
               type="submit"
-              className="btn-pill-primary text-xs sm:text-sm py-3 px-6 w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5"
+              disabled={busy}
+              className="btn-pill-primary text-sm min-h-11 px-6 sm:w-auto shrink-0 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-70"
             >
-              <span>ask pip</span>
-              <Send className="w-3.5 h-3.5" />
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-3.5 h-3.5" aria-hidden="true" />}
+              <span>{busy ? "working…" : pasteUrl ? "add this job" : "go"}</span>
             </button>
           </form>
+          {intakeMsg && (
+            <p role="alert" className="mt-3 max-w-3xl rounded-xl border border-[#E8C9C0] bg-[#FDF3F0] px-4 py-2.5 text-xs text-text">
+              {intakeMsg}
+              {pasteUrl && (
+                <span className="mt-1 flex items-center gap-3 text-muted">
+                  <span className="truncate min-w-0">link kept: {pasteUrl}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPasteUrl(null);
+                      setIntakeMsg(null);
+                    }}
+                    className="shrink-0 underline min-h-8 rounded focus-visible:ring-2 focus-visible:ring-pip/50"
+                  >
+                    start over
+                  </button>
+                </span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 
@@ -244,35 +400,111 @@ export default function DashboardView({ data }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Applications & This Week */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Applications List */}
+          {/* Needs you inbox */}
+          <div id="needs-you" className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
+            <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
+              <div>
+                <h2 className="font-bold text-base text-text lowercase flex items-center gap-2">
+                  needs you
+                  <span
+                    aria-label={`${needsCount} waiting`}
+                    className="font-pixel text-xs text-white bg-pip px-2 py-0.5 rounded-full min-w-6 text-center"
+                  >
+                    {needsCount}
+                  </span>
+                </h2>
+                <span className="text-xs text-muted">things pip drafted that wait for your ok. nothing is sent.</span>
+              </div>
+            </div>
+            {needsItems.length === 0 ? (
+              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
+                <Inbox className="w-5 h-5 text-muted mx-auto mb-2" aria-hidden="true" />
+                <p className="text-sm text-text mb-1">
+                  {needs ? "You're all caught up." : needsCount ? `${needsCount} waiting for you.` : "Nothing waiting."}
+                </p>
+                <p className="text-xs text-muted">Paste a job above and pip will draft the rest for you to review.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2.5">
+                {needsItems.slice(0, 5).map((it) => (
+                  <li key={it.id}>
+                    <Link
+                      href={it.href}
+                      className="p-3.5 min-h-12 rounded-xl border border-[#ECEAE4] hover:border-pip/50 active:bg-[#F4F2EC] transition bg-[#FBFAF7]/40 flex items-center justify-between gap-3 min-w-0"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="font-semibold text-sm text-text block truncate">{it.title}</span>
+                        <span className="text-[11px] text-muted block truncate">
+                          {[it.company, it.jobTitle].filter(Boolean).join(" • ") || "review"}
+                          {it.dueAt ? ` • due ${new Date(it.dueAt).toLocaleDateString(undefined, { timeZone: "UTC" })}` : ""}
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+                {needsCount > 5 && <li className="text-[11px] text-muted px-1">and {needsCount - 5} more</li>}
+              </ul>
+            )}
+          </div>
+
+          {/* Applications */}
           <div id="applications" className="panel-cozy p-5 sm:p-6 bg-white border border-[#ECEAE4]">
             <div className="flex items-center justify-between border-b border-[#ECEAE4] pb-3 mb-4">
               <div>
-                <h2 className="font-bold text-base text-text lowercase">
-                  targets & pipeline
-                </h2>
-                <span className="text-xs text-muted">
-                  companies and roles from your own documents
-                </span>
+                <h2 className="font-bold text-base text-text lowercase">applications</h2>
+                <span className="text-xs text-muted">each one has a single next step</span>
               </div>
               <span className="font-pixel text-xs text-pip-ink bg-pip-soft px-2.5 py-1 rounded-full">
-                {d.totalTargets ?? targets.length} {(d.totalTargets ?? targets.length) === 1 ? "target" : "targets"}
+                {applications.length} {applications.length === 1 ? "job" : "jobs"}
               </span>
             </div>
 
-            {targets.length === 0 ? (
-              <div className="p-5 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center">
-                <p className="text-sm text-text mb-1">No targets yet.</p>
-                <p className="text-xs text-muted mb-3">
-                  Targets appear here when you run an ATS check or write a cover letter or cold email for a company and role.
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Link href="/resume-parser" className="btn-pill-secondary text-xs py-1 px-3">run an ats check</Link>
-                  <Link href="/cover-letter" className="btn-pill-secondary text-xs py-1 px-3">write a cover letter</Link>
-                  <Link href="/cold-email" className="btn-pill-secondary text-xs py-1 px-3">draft a cold email</Link>
+            {applications.length === 0 ? (
+              <div className="p-6 rounded-xl border border-dashed border-[#ECEAE4] bg-[#FBFAF7]/40 text-center space-y-3">
+                <PipStatus step="detective" text="no jobs yet. paste your first job above and i'll get to work." className="mx-auto" />
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.focus()}
+                    className="btn-pill-primary text-xs min-h-10 px-4"
+                  >
+                    paste your first job
+                  </button>
                 </div>
               </div>
             ) : (
+              <ul className="space-y-3">
+                {applications.map((a) => (
+                  <li
+                    key={a.id}
+                    className="p-3.5 rounded-xl border border-[#ECEAE4] hover:border-pip/50 transition bg-[#FBFAF7]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0"
+                  >
+                    <Link href={`/jobs/${a.job.id}`} className="min-w-0 flex-1 rounded focus-visible:ring-2 focus-visible:ring-pip/50">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm text-text">{a.job.company || "company not set"}</span>
+                        <span className="text-xs text-muted truncate">• {a.job.title || "title not set"}</span>
+                      </div>
+                      <span className="font-pixel text-[10px] text-pip-ink bg-pip-soft px-2 py-0.5 rounded">
+                        {STATUS_LABEL[a.status] || a.status.toLowerCase()}
+                      </span>
+                    </Link>
+                    {a.nextAction && (
+                      <Link href={a.nextAction.href} className="btn-pill-secondary text-xs min-h-10 py-2 px-4 shrink-0 inline-flex items-center justify-center">
+                        {a.nextAction.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {targets.length > 0 && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs text-muted hover:text-text min-h-10 flex items-center rounded focus-visible:ring-2 focus-visible:ring-pip/50">
+                  other targets from your documents ({d.totalTargets ?? targets.length})
+                </summary>
+                <div className="mt-3">
               <div className="space-y-3">
                 {targets.map((t) => (
                   <div
@@ -316,6 +548,8 @@ export default function DashboardView({ data }) {
                   </p>
                 )}
               </div>
+                </div>
+              </details>
             )}
           </div>
 

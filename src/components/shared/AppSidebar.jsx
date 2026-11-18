@@ -34,7 +34,7 @@ export default function AppSidebar() {
     { label: "home", href: "/dashboard", icon: Home },
     { label: "applications", href: "/dashboard#applications", icon: Briefcase },
     { label: "chat with pip", href: "/chat", icon: MessageSquare, badge: "ai" },
-    { label: "profile", href: "/onboarding", icon: User },
+    { label: "profile", href: "/onboarding?edit=1", icon: User },
   ];
 
   const tools = [
@@ -90,7 +90,7 @@ export default function AppSidebar() {
               overview
             </span>
             {mainNav.map((item) => {
-              const active = pathname === item.href;
+              const active = pathname === item.href.split("?")[0];
               const Icon = item.icon;
               return (
                 <Link
@@ -263,7 +263,7 @@ export default function AppSidebar() {
           <span>interview</span>
         </Link>
         <Link
-          href="/onboarding"
+          href="/onboarding?edit=1"
           className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
             pathname === "/onboarding" ? "text-pip font-semibold" : "text-muted"
           }`}
