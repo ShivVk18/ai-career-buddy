@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import LandingNav from "@/components/landingPage/LandingNav";
 import SampleDemo from "@/components/landingPage/SampleDemo";
-import HeroWindow, { HeroGlow, ToolChips } from "@/components/landingPage/HeroWindow";
+import HeroWindow from "@/components/landingPage/HeroWindow";
 import Reveal from "@/components/landingPage/Reveal";
+import { WhyRow, Bento, BotHub, Pricing } from "@/components/landingPage/Sections";
 
 const STEPS = [
   { icon: ClipboardPaste, title: "paste a job", desc: "A link or the description text. Pip pulls out the requirements." },
@@ -74,38 +75,41 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-clip bg-bg font-sans text-text selection:bg-lime selection:text-lime-foreground">
       <main>
-        {/* Hero frame */}
-        <div className="p-2 sm:p-4 lg:px-6">
-          <section className="relative overflow-hidden rounded-3xl border border-line bg-panel shadow-sm">
-            <HeroGlow />
-            <LandingNav />
-            <div className="relative z-10 px-4 pb-16 pt-14 text-center sm:px-6 sm:pt-20 lg:pt-24">
-              <p className="mx-auto mb-6 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-xs font-medium text-primary-ink sm:text-sm">
+        {/* Hero */}
+        <section className="hero-sky relative overflow-hidden pb-16 text-white sm:pb-24">
+          <LandingNav />
+          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-4 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:gap-6">
+            <div className="text-center lg:text-left">
+              <p className="glass mb-6 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium sm:text-sm">
                 AI career copilot · every line cites a source
               </p>
-              <h1 className="mx-auto max-w-3xl text-balance text-[clamp(2.5rem,8vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.04em] text-text">
-                Land your next job, without the busywork
+              <h1 className="text-balance text-[clamp(2.5rem,7vw,4.5rem)] font-semibold leading-[1.04] tracking-[-0.03em]">
+                Land your next job, <em className="font-doc font-normal italic">without the busywork</em>
               </h1>
-              <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-                Paste a job and Pip tailors your resume, letter and prep from what you provide.
-                <br className="hidden sm:block" /> You approve every change before anything is sent.
+              <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg lg:mx-0">
+                Paste a job and Pip tailors your resume, letter and prep from what you provide. You approve every change before anything is sent.
               </p>
-              <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link href="/dashboard" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-primary dark:hover:bg-primary-hover sm:w-auto">
+              <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                <Link href="/dashboard" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-sky-solid transition hover:bg-white/90 sm:w-auto">
                   Get started free <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <a href="#how" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-panel px-6 text-sm font-medium text-text transition hover:bg-soft sm:w-auto">
+                <a href="#how" className="glass inline-flex min-h-12 w-full items-center justify-center rounded-full px-6 text-sm font-medium text-white transition hover:bg-white/20 sm:w-auto">
                   See how it works
                 </a>
               </div>
-              <p className="mt-4 text-xs text-muted">Free to start, up to 50 AI actions a day</p>
-              <ToolChips />
-              <div className="mt-12">
-                <HeroWindow />
-              </div>
+              <p className="mt-4 text-xs text-white/85">Free to start, up to 50 AI actions a day</p>
             </div>
-          </section>
-        </div>
+            <HeroWindow />
+          </div>
+        </section>
+
+        {/* Why ascend */}
+        <section className="mx-auto max-w-6xl px-4 pt-20 sm:px-6 sm:pt-24">
+          <SectionHead id="why" eyebrow="Why ascend">
+            Made for one job at a time
+          </SectionHead>
+          <WhyRow />
+        </section>
 
         {/* Inputs */}
         <div className="px-4 pb-8 pt-8 text-center sm:px-6">
@@ -139,29 +143,17 @@ export default function LandingPage() {
         {/* Tools bento */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
           <SectionHead id="tools" eyebrow="Six tools, one memory">
-            Everything for the job, together
+            Everything for your job search
           </SectionHead>
-          <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-6">
-            {TOOLS.map((t, i) => (
-              <Reveal key={t.name} delay={i * 50} className={t.span}>
-                <Link
-                  href={t.href}
-                  className="group flex h-full min-h-48 flex-col justify-between rounded-2xl border border-line bg-panel p-6 transition duration-300 hover:-translate-y-0.5 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-                >
-                  <div className="flex items-start justify-between">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-primary-ink">
-                      <t.icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <ArrowRight className="h-4 w-4 -rotate-45 text-muted transition-transform group-hover:rotate-0 motion-reduce:transform-none" aria-hidden="true" />
-                  </div>
-                  <div className="mt-8">
-                    <h3 className="mb-1.5 text-lg font-semibold capitalize tracking-tight text-text">{t.name}</h3>
-                    <p className="max-w-md text-sm leading-relaxed text-muted">{t.desc}</p>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
+          <Bento />
+        </section>
+
+        {/* Bots hub */}
+        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
+          <SectionHead id="bots" eyebrow="How the bots work" sub="Pip coordinates four helpers. Each hands its result back for you to review.">
+            One assistant, four helpers
+          </SectionHead>
+          <BotHub />
         </section>
 
         {/* Sample preview */}
@@ -197,23 +189,7 @@ export default function LandingPage() {
           <SectionHead id="pricing" eyebrow="Pricing" sub="Paid plans are planned, not available yet.">
             Free, while we build
           </SectionHead>
-          <Reveal className="mx-auto max-w-md rounded-3xl border border-line bg-panel p-6 shadow-sm sm:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <p className="text-xl font-bold tracking-tight text-text">Free</p>
-              <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-lime-foreground">Available now</span>
-            </div>
-            <ul className="mb-8 space-y-3 text-sm text-text">
-              {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"].map((f) => (
-                <li key={f} className="flex items-start gap-3">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}
-                </li>
-              ))}
-            </ul>
-            <Link href="/dashboard" className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-zinc-900 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-primary dark:hover:bg-primary-hover">
-              Get started free
-            </Link>
-            <p className="mt-4 text-center text-xs text-muted">Paid plan: planned</p>
-          </Reveal>
+          <Pricing />
         </section>
 
         {/* FAQ */}
