@@ -11,4 +11,4 @@ read only the section you need. Current work lives in docs/ai/PLAN.md.
 
 Rules: Clerk auth + zod validation on every API route; userId scopes every query;
 never read or edit .env; never auto-send or auto-apply; new Prisma migrations only.
-Design: design/ascendai-pixel.html is the only visual reference; never copy other sites.
+Design: see docs/ai/DESIGN.md (D64-D67): premium minimal, indigo + lime, Pip kept; Aceternity-style components adapted; never copy other sites.

@@ -125,3 +125,12 @@ Earlier decisions in BUILD_PLAN.md and AI-PROVIDERS.md still stand unless overri
 | D61 | Deleting data | Settings gets "Delete all my data" (keeps the account) and "Delete account" (also deletes the Clerk user), each behind a typed confirmation. |
 | D62 | Chat stays read-only (keeps D19) | The home input sends job text or a URL to the job-creation step and questions to chat. Chat itself never creates records. |
 | D63 | Accept all (keeps D36) | Per-line accept and "Accept all" on tracked changes save a resume **version**. The main resume changes only on "Restore". |
+
+## Redesign (2026-11-18)
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D64 | Visual identity (replaces the "pixel html is the only reference" rule) | **Evolve to premium and minimal, keeping Pip.** The UI is clean and modern, using Aceternity UI–style components (adapted copies, MIT, kept in `src/components/ui/aceternity/`) as the component reference. Pip stays the mascot. Pixel art appears only in small touches: empty states, Pip status and the onboarding moment. We never copy another site's layout or content. `design/ascendai-pixel.html` is kept for history only. |
+| D65 | Palette | **Electric indigo + lime.** Neutrals: bg #F8FAFC / #0A0A0F, cards white / #111118. Primary indigo #4F46E5 (hover a shade darker). Accent lime #A3E635, used as fills, highlights and glows with dark text on top, never as text on white (contrast). Success #22C55E, plus warning and danger tokens. All of these are CSS tokens, and text meets WCAG AA. |
+| D66 | Scope | Design system (tokens, type, primitives, Aceternity kit), the landing page, the app shell (sidebar, header, mobile bar, ⌘K, chat), and the key pages: home, jobs, needs you, applications and onboarding. The six tools inherit the system through the shared primitives; deep polish of their internals is a later pass. No feature is removed and no copy may become dishonest (D48). |
+| D67 | Theme | Light and dark are both fully designed, following the system setting by default, with a toggle in settings and in ⌘K (next-themes). Motion respects `prefers-reduced-motion`. |
