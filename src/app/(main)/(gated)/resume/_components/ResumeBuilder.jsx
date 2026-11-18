@@ -240,6 +240,34 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   }, [formValues, autoSaveEnabled, isDirty, handleSubmit, resumeDeleted]);
 
   // Delete now, 5 s Undo (no confirm). Autosave is held off while the resume is deleted so it is not re-created.
+  const deleteTimer = useRef(null);
+  useEffect(() => () => clearTimeout(deleteTimer.current), []);
+
+  // After the Undo window passes, clear the form to a fresh empty resume so a new one can be started and saved.
+  const resetToEmpty = () => {
+    reset({
+      contactInfo: {
+        fullName: user?.fullName || "",
+        email: user?.emailAddresses?.[0]?.emailAddress || "",
+        mobile: "",
+        linkedin: "",
+        twitter: "",
+        socialLinks: [],
+      },
+      summary: "",
+      skills: "",
+      experience: [],
+      education: [],
+      projects: [],
+      template: "",
+      photo: "",
+    });
+    setSelectedTemplate("");
+    setPhotoPreview("");
+    setResumeDeleted(false);
+    router.refresh();
+  };
+
   const handleDeleteResume = () => {
     let undoId = null;
     deleteWithUndo({
@@ -252,7 +280,13 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
         return res;
       },
       restore: () => restoreDeletedResume(undoId),
-      done: () => router.refresh(),
+      done: (phase) => {
+        clearTimeout(deleteTimer.current);
+        if (phase === "deleted") {
+          deleteTimer.current = setTimeout(resetToEmpty, 5000);
+        }
+        router.refresh();
+      },
     });
   };
 
