@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronLeft, Loader2, Mic, Square, Timer, Target, ArrowRight, AlertCircle } from "lucide-react";
-import { generateOpenQuestions, scoreOpenAnswer } from "@/actions/Practice";
+import { generateOpenQuestions, scoreOpenAnswer, getOpenSession } from "@/actions/Practice";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { OPEN_QUESTION_COUNT, ANSWER_MAX_CHARS, ANSWER_MIN_CHARS } from "@/lib/interview/rubric";
 import { generationErrorMessage } from "@/components/shared/generationError";
@@ -43,8 +43,11 @@ function QuestionTimer({ limitSec, running }) {
   );
 }
 
-export default function PracticePage() {
+function PracticeInner() {
   const router = useRouter();
+  const sessionParam = useSearchParams().get("session");
+  const [loadingSession, setLoadingSession] = useState(!!sessionParam);
+  const [loadError, setLoadError] = useState(null); // { notFound, message }
   const [jd, setJd] = useState("");
   const [count, setCount] = useState(OPEN_QUESTION_COUNT.default);
   const [generating, setGenerating] = useState(false);
@@ -76,6 +79,41 @@ export default function PracticePage() {
     }
     toggleRecording();
   };
+
+  // ?session=<id>: resume a prepared session at the first unscored question.
+  useEffect(() => {
+    if (!sessionParam) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingSession(true);
+      setLoadError(null);
+      try {
+        const res = await getOpenSession(sessionParam);
+        if (cancelled) return;
+        if (res?.error || !res?.questions?.length) {
+          const nf = res?.code === "NOT_FOUND" || res?.code === "INVALID";
+          setLoadError({ notFound: nf, message: nf ? null : generationErrorMessage(res, "Couldn't load this session.") });
+          return;
+        }
+        const done = {};
+        res.questions.forEach((qq, i) => {
+          if (qq.answer) done[i] = qq.answer;
+        });
+        const first = res.questions.findIndex((qq) => !qq.answer);
+        setSession({ sessionId: res.sessionId, questions: res.questions });
+        setResults(done);
+        setIdx(first === -1 ? res.questions.length - 1 : first);
+        setText("");
+      } catch (e) {
+        if (!cancelled) setLoadError({ notFound: false, message: e?.message || "Couldn't load this session." });
+      } finally {
+        if (!cancelled) setLoadingSession(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionParam]);
 
   const handleStart = async () => {
     setSetupError(null);
@@ -164,7 +202,28 @@ export default function PracticePage() {
           Answer in your own words, typed or spoken. Scores are an AI estimate, and every quote comes from your answer.
         </p>
 
-        {!session && (
+        {sessionParam && loadingSession && (
+          <div role="status" className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading your practice session...
+          </div>
+        )}
+
+        {sessionParam && loadError && (
+          <div role="alert" className="border border-border bg-background rounded-sm p-8 space-y-4">
+            <p className="flex gap-2 text-sm text-foreground">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
+              {loadError.notFound ? "We couldn't find that practice session. It may have been removed." : loadError.message}
+            </p>
+            <Link href="/interview/practice">
+              <Button variant="outline" className="h-11">
+                Start a new practice
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        {!session && !sessionParam && (
           <div className="border border-border bg-background rounded-sm p-8 shadow-sm space-y-6">
             <div className="space-y-2">
               <label htmlFor="jd" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
@@ -317,5 +376,13 @@ export default function PracticePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PracticePage() {
+  return (
+    <Suspense fallback={null}>
+      <PracticeInner />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, GripVertical, MoreHorizontal, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { getApplications, setApplicationStatus } from "@/actions/Applications";
@@ -24,7 +25,29 @@ const COLUMNS = [
 ];
 const LABEL = Object.fromEntries(COLUMNS.map((c) => [c.status, c.label]));
 
-function Card({ app, onMove, onDragStart, onDragEnd, dragging }) {
+function DatePrompt({ onPick, onSkip, busy }) {
+  return (
+    <div role="group" aria-label="Interview date" className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-soft p-2">
+      <label htmlFor="board-interview-date" className="text-[11px] text-muted">
+        Interview date (optional)
+      </label>
+      <input
+        id="board-interview-date"
+        type="date"
+        autoFocus
+        disabled={busy}
+        onChange={(e) => e.target.value && onPick(e.target.value)}
+        onKeyDown={(e) => e.key === "Escape" && onSkip()}
+        className="h-10 rounded-lg border border-line bg-white px-2 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
+      />
+      <button type="button" onClick={onSkip} className="min-h-10 px-2 text-[11px] text-muted underline outline-none focus-visible:ring-2 focus-visible:ring-pip/50">
+        Skip
+      </button>
+    </div>
+  );
+}
+
+function Card({ app, onMove, onDragStart, onDragEnd, dragging, askDate, onPickDate, onSkipDate, dateBusy }) {
   return (
     <li
       draggable
@@ -67,6 +90,7 @@ function Card({ app, onMove, onDragStart, onDragEnd, dragging }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {askDate && app.status === "INTERVIEWING" && <DatePrompt onPick={onPickDate} onSkip={onSkipDate} busy={dateBusy} />}
       {app.nextAction && (
         <Link
           href={app.nextAction.href}
@@ -81,11 +105,14 @@ function Card({ app, onMove, onDragStart, onDragEnd, dragging }) {
 }
 
 export default function ApplicationsBoard() {
+  const router = useRouter();
   const [apps, setApps] = useState(null); // null = loading
   const [error, setError] = useState(null);
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [announce, setAnnounce] = useState("");
+  const [dateFor, setDateFor] = useState(null); // { id, prev, prevAt }: card asking for an interview date
+  const [dateBusy, setDateBusy] = useState(false);
   const appsRef = useRef([]);
   const inflight = useRef(0);
   appsRef.current = apps || [];
@@ -117,7 +144,7 @@ export default function ApplicationsBoard() {
 
   // Optimistic move: roll back on error, 5 s Undo with the previous status.
   const move = useCallback(
-    async (id, status, { isUndo = false } = {}) => {
+    async (id, status, { isUndo = false, prevAt } = {}) => {
       const current = appsRef.current.find((a) => a.id === id);
       if (!current || current.status === status) return;
       const before = current;
@@ -125,7 +152,7 @@ export default function ApplicationsBoard() {
       inflight.current += 1;
       let res;
       try {
-        res = await setApplicationStatus(id, status);
+        res = await setApplicationStatus(id, status, ...(prevAt !== undefined ? [prevAt] : []));
       } catch {
         res = { error: "We couldn't reach the server.", code: "FAILED" };
       }
@@ -139,18 +166,50 @@ export default function ApplicationsBoard() {
       const name = before.job.company || before.job.title || "Job";
       setAnnounce(`${name} moved to ${LABEL[status]}`);
       load(true); // refresh each card's next action
-      if (isUndo) return;
+      if (isUndo) {
+        setDateFor((d) => (d?.id === id ? null : d));
+        return;
+      }
       const prev = res.previousStatus || before.status;
+      const undoAt = res.previousInterviewAt;
+      if (status === "INTERVIEWING") setDateFor({ id, prev, prevAt: undoAt });
       const added = status === "CLOSED" ? res.tasksAdded || 0 : 0;
       const gaps = added ? `. ${added} gap${added === 1 ? "" : "s"} added to your roadmap` : "";
       toast.success(`${name} moved to ${LABEL[status].toLowerCase()}${gaps}`, {
         description: added ? "Undo moves it back; the roadmap tasks stay." : undefined,
         duration: 5000,
-        action: { label: "Undo", onClick: () => move(id, prev, { isUndo: true }) },
+        action: { label: "Undo", onClick: () => move(id, prev, { isUndo: true, prevAt: undoAt }) },
       });
     },
     [load]
   );
+
+  const saveDate = async (v) => {
+    if (!dateFor || dateBusy) return;
+    const { id, prev, prevAt } = dateFor;
+    setDateBusy(true);
+    let res;
+    try {
+      res = await setApplicationStatus(id, "INTERVIEWING", `${v}T00:00:00.000Z`);
+    } catch {
+      res = null;
+    }
+    setDateBusy(false);
+    if (!res || res.error) {
+      toast.error(generationErrorMessage(res, "We couldn't save the date. You can add it on the job page."));
+      return;
+    }
+    setDateFor(null);
+    patch(id, (a) => ({ ...a, ...res.application }));
+    load(true);
+    const practice = res.application?.prepSessionId;
+    toast.success("Interview date saved", {
+      duration: 5000,
+      action: practice
+        ? { label: "Practice", onClick: () => router.push(`/interview/practice?session=${practice}`) }
+        : { label: "Undo", onClick: () => move(id, prev, { isUndo: true, prevAt }) },
+    });
+  };
 
   const header = (
     <div className="flex items-end justify-between gap-3">
@@ -252,6 +311,10 @@ export default function ApplicationsBoard() {
                       app={a}
                       dragging={dragId === a.id}
                       onMove={move}
+                      askDate={dateFor?.id === a.id}
+                      dateBusy={dateBusy}
+                      onPickDate={saveDate}
+                      onSkipDate={() => setDateFor(null)}
                       onDragStart={setDragId}
                       onDragEnd={() => {
                         setDragId(null);

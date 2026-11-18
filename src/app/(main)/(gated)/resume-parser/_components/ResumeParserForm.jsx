@@ -124,7 +124,9 @@ const ResumeParserComponent = () => {
 
   const resetAll = () => {
     setResult(null);
-    setFormData({ companyName: "", jobTitle: "", jobDescription: "", resumePdf: null });
+    // Keep the chosen PDF so the next scan can reuse it without another upload.
+    setFormData((prev) => ({ companyName: "", jobTitle: "", jobDescription: "", resumePdf: prev.resumePdf }));
+    setJobId(null);
     setNotice('');
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -231,6 +233,14 @@ const ResumeParserComponent = () => {
 
             </JobStart>
             </div>
+
+            {jobId && (
+              <p className="mb-4 text-xs text-muted-foreground" role="status">
+                {formData.resumePdf
+                  ? `Uses your uploaded PDF (${formData.resumePdf.name}). Choose another file below to replace it.`
+                  : "The job is filled in. Add your resume PDF and you're ready to scan."}
+              </p>
+            )}
 
             {/* FILE UPLOAD */}
             <div

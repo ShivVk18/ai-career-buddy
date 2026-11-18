@@ -66,7 +66,12 @@ export default async function PracticeReviewPage({ params }) {
               ))}
             </div>
 
-            <div className="mt-12 text-center">
+            <div className="mt-12 flex flex-wrap justify-center gap-3">
+              {session.answered < session.total && (
+                <Link href={`/interview/practice?session=${session.sessionId}`}>
+                  <Button className="h-12 px-8">Continue practising</Button>
+                </Link>
+              )}
               <Link href="/interview/practice">
                 <Button variant="outline" className="h-12 px-8">
                   <Brain className="w-4 h-4 mr-3 text-accent" />

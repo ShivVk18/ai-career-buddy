@@ -2,9 +2,11 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { CalendarCheck, Check, PartyPopper, XCircle, Send, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { CalendarCheck, Check, PartyPopper, XCircle, Send, Loader2, Brain } from "lucide-react";
 import { toast } from "sonner";
-import { markApplied, setApplicationStatus, setInterviewDate, closeApplication } from "@/actions/Applications";
+import { markApplied, setApplicationStatus, setInterviewDate, closeApplication, createInterviewPrep } from "@/actions/Applications";
 import { generationErrorMessage } from "@/components/shared/generationError";
 
 const LABEL = { SAVED: "saved", APPLIED: "applied", INTERVIEWING: "interviewing", OFFER: "offer", CLOSED: "closed" };
@@ -17,8 +19,36 @@ export default function StatusActions({ application, onChange }) {
   const [pendingKey, setPendingKey] = useState(null);
   const [pickDate, setPickDate] = useState(false);
   const [closedInfo, setClosedInfo] = useState(null);
+  const router = useRouter();
+  const [prepBusy, setPrepBusy] = useState(false);
   const appRef = useRef(application);
   appRef.current = application;
+
+  const undo = async (prev, prevAt) => {
+    const cur = appRef.current;
+    onChange({ ...cur, status: prev, ...(prevAt !== undefined ? { interviewAt: prevAt } : {}) });
+    const u = await setApplicationStatus(cur.id, prev, prevAt).catch(() => null);
+    if (!u || u.error) {
+      onChange(cur);
+      toast.error("Couldn't undo that. Try again.");
+    } else {
+      onChange(u.application);
+      setClosedInfo(null);
+    }
+  };
+
+  const retryPrep = async () => {
+    if (prepBusy) return;
+    setPrepBusy(true);
+    const res = await createInterviewPrep(application.id).catch(() => null);
+    setPrepBusy(false);
+    if (!res || res.error) {
+      toast.error(generationErrorMessage(res, "We couldn't create your practice questions. Try again."));
+      return;
+    }
+    onChange({ ...appRef.current, prepSessionId: res.prepSessionId });
+    router.push(`/interview/practice?session=${res.prepSessionId}`);
+  };
 
   const apply = async (key, optimistic, call, message, after) => {
     if (pendingKey) return;
@@ -40,22 +70,24 @@ export default function StatusActions({ application, onChange }) {
     onChange(res.application);
     after?.(res);
     const prev = res.previousStatus;
+    const prevAt = res.previousInterviewAt; // undefined leaves the date unchanged on Undo
+    const practiceId = res.prepSessionId || res.application?.prepSessionId;
+    if (key === "interview" && practiceId) {
+      toast.success(typeof message === "function" ? message(res) : message, {
+        duration: 8000,
+        action: { label: "Practice", onClick: () => router.push(`/interview/practice?session=${practiceId}`) },
+        cancel: {
+          label: "Undo",
+          onClick: () => undo(prev, prevAt),
+        },
+      });
+      return;
+    }
     toast.success(typeof message === "function" ? message(res) : message, {
       duration: 5000,
       action: {
         label: "Undo",
-        onClick: async () => {
-          const cur = appRef.current;
-          onChange({ ...cur, status: prev });
-          const u = await setApplicationStatus(cur.id, prev).catch(() => null);
-          if (!u || u.error) {
-            onChange(cur);
-            toast.error("Couldn't undo that. Try again.");
-          } else {
-            onChange(u.application);
-            setClosedInfo(null);
-          }
-        },
+        onClick: () => undo(prev, prevAt),
       },
     });
   };
@@ -174,6 +206,23 @@ export default function StatusActions({ application, onChange }) {
 
       {status === "INTERVIEWING" && application.interviewAt && (
         <p className="text-xs text-muted">Interview on {new Date(application.interviewAt).toLocaleDateString(undefined, { timeZone: "UTC" })}.</p>
+      )}
+      {status === "INTERVIEWING" && (
+        <div>
+          {application.prepSessionId ? (
+            <Link
+              href={`/interview/practice?session=${application.prepSessionId}`}
+              className={`${btn} ${idle}`}
+            >
+              <Brain className="h-4 w-4" aria-hidden="true" /> Practice for this interview
+            </Link>
+          ) : (
+            <button type="button" onClick={retryPrep} disabled={prepBusy} className={`${btn} ${idle}`}>
+              {prepBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Brain className="h-4 w-4" aria-hidden="true" />}
+              Prepare practice questions
+            </button>
+          )}
+        </div>
       )}
       {status === "CLOSED" && closedInfo && (
         <p className="text-xs text-muted" role="status">

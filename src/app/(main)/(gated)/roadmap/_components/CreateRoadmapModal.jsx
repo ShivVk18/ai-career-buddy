@@ -26,6 +26,8 @@ const CreateRoadmapModal = ({ open, onClose }) => {
     timeline: "",
   });
   const [prefilled, setPrefilled] = useState(false);
+  const [editing, setEditing] = useState(false); // "edit details": show the full fields
+  const [chipEdit, setChipEdit] = useState(null); // field name being edited in place
   const triedPrefill = useRef(false);
   const router = useRouter();
 
@@ -70,6 +72,9 @@ const CreateRoadmapModal = ({ open, onClose }) => {
       toast.success("Your roadmap is ready! 🎉");
       setFormData({ currentRole: "", targetRole: "", industry: "", timeline: "" });
       triedPrefill.current = false; // prefill again next time it opens
+      setPrefilled(false);
+      setEditing(false);
+      setChipEdit(null);
       onClose();
       router.push(`/roadmap/${roadmap.id}`);
     } catch (error) {
@@ -83,6 +88,14 @@ const CreateRoadmapModal = ({ open, onClose }) => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  const complete = prefilled && ["currentRole", "targetRole", "industry"].every((k) => formData[k].trim());
+  const showFields = !complete || editing;
+  const CHIPS = [
+    { key: "currentRole", label: "Now" },
+    { key: "targetRole", label: "Goal" },
+    { key: "industry", label: "Industry" },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -113,6 +126,59 @@ const CreateRoadmapModal = ({ open, onClose }) => {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {prefilled && <p className="text-xs text-muted-foreground">Filled in from your profile. Change anything that isn&apos;t right.</p>}
+            {!showFields && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2" aria-label="Details from your profile">
+                  {CHIPS.map((c) =>
+                    chipEdit === c.key ? (
+                      <Input
+                        key={c.key}
+                        name={c.key}
+                        aria-label={c.label}
+                        autoFocus
+                        value={formData[c.key]}
+                        onChange={handleChange}
+                        onBlur={() => setChipEdit(null)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === "Escape") {
+                            e.preventDefault();
+                            setChipEdit(null);
+                          }
+                        }}
+                        className="h-11 w-56 rounded-full text-sm"
+                      />
+                    ) : (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => setChipEdit(c.key)}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-divider px-4 text-sm text-foreground outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent/50"
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{c.label}</span>
+                        {formData[c.key]}
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="min-h-11 px-2 text-xs text-muted-foreground underline outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/50"
+                  >
+                    edit details
+                  </button>
+                </div>
+                <Input
+                  id="timeline"
+                  name="timeline"
+                  aria-label="Timeline (optional)"
+                  placeholder="Timeline (optional), e.g. 12 months"
+                  value={formData.timeline}
+                  onChange={handleChange}
+                  className="h-11 max-w-xs rounded-full text-sm"
+                />
+              </div>
+            )}
+            {showFields && (<>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <Label
@@ -193,6 +259,8 @@ const CreateRoadmapModal = ({ open, onClose }) => {
                 />
               </div>
             </div>
+
+            </>)}
 
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <Button

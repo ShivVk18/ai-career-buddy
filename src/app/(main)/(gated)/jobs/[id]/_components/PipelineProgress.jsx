@@ -149,7 +149,7 @@ export default function PipelineProgress({ pipeline, driving, callError, onRetry
       )}
       {pipeline.complete && (
         <p className="text-xs text-muted">
-          All done. Everything pip drafted waits in <Link href="/dashboard#needs-you" className="underline">needs you</Link> for your ok. Nothing is sent.
+          All done. Everything pip drafted waits in <Link href="/needs-you" className="underline">needs you</Link> for your ok. Nothing is sent.
         </p>
       )}
     </section>

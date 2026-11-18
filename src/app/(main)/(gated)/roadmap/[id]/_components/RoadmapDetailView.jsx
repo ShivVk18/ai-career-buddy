@@ -80,6 +80,7 @@ const RoadmapDetailView = ({ roadmap }) => {
         toast.success("Undone");
       } else {
         toast.success(done ? "Step completed" : "Step marked not done", {
+          duration: 5000,
           action: { label: "Undo", onClick: () => toggleStepRef.current?.(stepId, !done, true) },
         });
       }

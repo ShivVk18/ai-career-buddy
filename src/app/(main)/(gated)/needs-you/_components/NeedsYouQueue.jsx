@@ -271,29 +271,37 @@ function ItemBody({ item, busy, onApprove, removeOptimistic }) {
           </div>
         </div>
       );
-    case "PREP_INTERVIEW":
+    case "PREP_INTERVIEW": {
+      const hasSession = String(item.href || "").startsWith("/interview/practice");
       return (
         <div className="space-y-3">
           <p className="text-sm text-text">You have an interview coming up. Pip can make practice questions from the job description.</p>
           <div className="flex flex-wrap gap-2">
+            {hasSession ? (
+              <Link href={item.href} className="btn-pill-primary inline-flex min-h-11 items-center px-5 text-xs">
+                Practice for this interview
+              </Link>
+            ) : (
             <button
               type="button"
               disabled={busy}
               onClick={async () => {
                 const res = await removeOptimistic(item, () => createInterviewPrep(item.applicationId), "Practice questions are ready.");
-                if (res?.prepSessionId) toast.message("Start practising", { action: { label: "Practice", onClick: () => router.push(`/interview/practice/${res.prepSessionId}`) } });
+                if (res?.prepSessionId) toast.message("Start practising", { action: { label: "Practice", onClick: () => router.push(`/interview/practice?session=${res.prepSessionId}`) } });
               }}
               className="btn-pill-primary inline-flex min-h-11 items-center gap-2 px-5 text-xs disabled:opacity-60"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               Prepare questions
             </button>
-            <Link href={item.href} className="btn-pill-secondary inline-flex min-h-11 items-center px-5 text-xs">
+            )}
+            <Link href={`/jobs/${item.jobId}`} className="btn-pill-secondary inline-flex min-h-11 items-center px-5 text-xs">
               Open the job
             </Link>
           </div>
         </div>
       );
+    }
     default:
       return (
         <Link href={item.href} className="btn-pill-secondary inline-flex min-h-11 items-center px-5 text-xs">
