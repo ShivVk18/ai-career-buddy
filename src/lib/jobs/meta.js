@@ -24,10 +24,14 @@ export function verifyJobField(field, catalog) {
   const ids = validateSourceIds(field?.sourceIds, catalog).filter((id) => id.startsWith("jd:"));
   if (ids.length === 0) return null;
   const byId = new Map(catalog.map((c) => [c.id, c.text]));
-  const cited = ids.map((id) => byId.get(id)).join("\n");
+  const lines = ids.map((id) => byId.get(id));
+  const cited = lines.join("\n");
   const have = new Set(tokens(cited));
   const want = tokens(value);
   if (want.length === 0 || !want.every((t) => have.has(t))) return null;
+  // The value must also read contiguously (same words, same order) inside ONE cited line.
+  const phrase = ` ${want.join(" ")} `;
+  if (!lines.some((l) => ` ${tokens(l).join(" ")} `.includes(phrase))) return null;
   if (inventedNumbers(value, cited).length > 0) return null;
   return { value, sources: snapshot(ids, catalog) };
 }

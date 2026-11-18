@@ -731,7 +731,7 @@ NeedsYouItem = {
 - `getNeedsYou()` returns `{ count: number, items: NeedsYouItem[] }` (derived, newest first, max 50) or `{ error, code }`. Sources: pipeline steps with `needsYou`, ATS scores with fixable weaknesses, follow-ups due (5 quiet days after `appliedAt` while status is APPLIED; at most 2 per application, tracked in `followUpCount`/`nextActionAt`, created lazily on load; the draft is only written when the user clicks it and is never sent), and INTERVIEWING applications with `interviewAt` in the future and no `prepSessionId`.
 - `approveNeedsYou(applicationId, step: "TAILOR"|"WRITER"|"CONNECTOR")` sets that step's `needsYou` to false. Returns `{ success: true }`.
 - `setApplicationStatus(id, status)` returns `{ application: Application, previousStatus: ApplicationStatus }` (use `previousStatus` for Undo by calling it again). `markApplied(id)` sets APPLIED and `appliedAt` (returns the same shape). `setInterviewDate(id, date: ISO string | "YYYY-MM-DD")` sets INTERVIEWING + `interviewAt` and creates the prep session from the job description (`prepSessionId`; one AI action), returning `{ application, previousStatus, prepSessionId: string | null }`; if prep could not be created, `prepSessionId` is null and `prepError` holds the code (the date is still saved). `closeApplication(id, reason: string 0-300)` sets CLOSED + `closedReason`, turns the ATS gaps linked to that job into roadmap tasks with NO AI (once, `gapTasksAddedAt`), returns `{ application, previousStatus, tasksAdded: number }`. Errors: `INVALID | NOT_FOUND | FAILED` (`NO_ROADMAP` is not an error: `tasksAdded` is 0 and tasks go to a new "Gaps" roadmap only if the user has an active one).
-- `getApplications()` returns `{ applications: { id, status, job: {id, company, title, location, url}, appliedAt, interviewAt, nextActionAt, nextAction: { label: string, href: string } | null, updatedAt }[] }` (not deleted, newest activity first) for the board and home.
+- `getApplications()` returns `{ applications: { id, status, job: {id, company, title, location, url}, appliedAt, interviewAt, prepSessionId: string | null, nextActionAt, nextAction: { label: string, href: string } | null, updatedAt }[] }` (not deleted, newest activity first) for the board and home.
 - `getDashboardData()` adds `applications` (max 10, same shape as above), `needsYouCount: number`, `hasOffer: boolean` (any non-deleted application in OFFER), `profileStrength: number | null`. Existing fields and `targets` are unchanged (old derived targets stay as a fallback).
 
 ### 11.6 Onboarding and profile (BUILT, task 5; `src/actions/Onboarding.js`, `User.js`)
@@ -773,6 +773,13 @@ Chip = { id: string, kind: "role"|"project"|"skill"|"years", label: string, deta
 - `deleteJob` -> 5 s Undo toast -> `restoreJob`.
 - Nothing in 11 sends an email or edits the main resume; chat stays read-only (D62).
 
+
+### 11.9 Fix round 1 (backend)
+- **`prepSessionId`** (string | null) is now on `Application` everywhere: `getJob`/`publicJob.application`, every `application` returned by `Applications.js` actions, `getApplications` and the dashboard. `nextAction` for INTERVIEWING with an upcoming date and a prep session is `{ label: "Practice for your interview", href: "/interview/practice?session=<id>" }`. With no `interviewAt` at all it is `{ label: "Add your interview date", href: "/jobs/<id>" }`; with a past date it stays "Add the result".
+- **`PREP_INTERVIEW` needs-you item** stays until at least one `InterviewAnswer` of the prep session has a score (`overall` not null). Its `href` is `/interview/practice?session=<id>` when a session exists, else `/jobs/<jobId>`.
+- **`setApplicationStatus(id, status, interviewAt?)`**: every result now has `previousInterviewAt: string | null` (the value before the move). For Undo call `setApplicationStatus(id, previousStatus, previousInterviewAt)`: a date string sets `interviewAt`, `null` clears it, omitted leaves it unchanged. A plain board move never changes `interviewAt`, so moving to INTERVIEWING without a date shows "Add your interview date". `setInterviewDate` also returns `previousInterviewAt`. Invalid date string: `INVALID`.
+- `deleteATSScore` removes `evidence.resumeText` in the same update as `deletedAt` (a restored result needs a re-upload for the resume fix).
+- Job chip values must read contiguously inside one cited line; `suggestedIndustry` must appear (whole word) in its quote.
 
 ## Requests from frontend
 

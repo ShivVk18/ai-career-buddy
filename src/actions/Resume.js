@@ -373,7 +373,7 @@ export async function duplicateResume() {
   }
 }
 
-// seedResumeTemplates moved to scripts/seed-resume-templates.mjs (script-only). A "use server" export
+// seedResumeTemplates moved to seeder/seedTemplates.js (script-only). A "use server" export
 // is callable by any visitor, and it writes global ResumeTemplate rows.
 
 // ---------------------------------------------------------------------------------------------

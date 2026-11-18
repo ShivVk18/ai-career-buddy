@@ -86,7 +86,9 @@ export function verifyChips(raw, text) {
   const i = raw?.suggestedIndustry;
   if (i) {
     const value = clean(i.value, 60);
-    if (value && quoteOk(i.quote)) suggestedIndustry = value;
+    const q = value ? quoteOk(i.quote, value) : null;
+    const nv = value ? normalizeText(value) : "";
+    if (q && nv && new RegExp(`(?<![a-z0-9])${escapeRe(nv)}(?![a-z0-9])`).test(normalizeText(q))) suggestedIndustry = value;
   }
   return { chips, suggestedTargetRole, suggestedIndustry, years };
 }

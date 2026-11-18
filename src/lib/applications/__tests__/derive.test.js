@@ -27,6 +27,8 @@ describe("misc", () => {
     expect(nextAction(i, NOW).label).toBe("Prepare for your interview");
     expect(nextAction({ ...i, prepSessionId: "s" }, NOW).label).toBe("Practice for your interview");
     expect(nextAction({ ...i, interviewAt: new Date(NOW - 5 * DAY_MS) }, NOW).label).toBe("Add the result");
+    expect(nextAction({ ...i, prepSessionId: "s" }, NOW).href).toBe("/interview/practice?session=s");
+    expect(nextAction({ ...i, interviewAt: null }, NOW).label).toBe("Add your interview date");
     expect(nextAction({ status: "CLOSED", jobId: "j" }, NOW)).toBeNull();
   });
   it("turns gaps into new steps without duplicating", () => {

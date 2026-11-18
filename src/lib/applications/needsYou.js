@@ -91,13 +91,14 @@ export async function deriveNeedsYou(userDbId, now = Date.now()) {
           select: { id: true, jobId: true, createdAt: true, evidence: true },
         })
       : [],
-    prepIds.length ? db.quizSession.findMany({ where: { id: { in: prepIds }, userId: userDbId }, select: { id: true } }) : [],
+    // A prep session stops being a to-do once at least one of its answers is scored.
+    prepIds.length ? db.interviewAnswer.findMany({ where: { sessionId: { in: prepIds }, userId: userDbId, overall: { not: null } }, select: { sessionId: true }, distinct: ["sessionId"] }) : [],
   ]);
   const byId = (rows) => new Map(rows.map((r) => [r.id, r]));
   const draftMap = byId(drafts);
   const letterMap = byId(letters);
   const emailMap = byId(emails);
-  const prepSet = new Set(preps.map((p) => p.id));
+  const prepSet = new Set(preps.map((p) => p.sessionId));
   const latestScore = new Map();
   for (const s of scores) if (!latestScore.has(s.jobId)) latestScore.set(s.jobId, s); // newest first
 
@@ -134,7 +135,7 @@ export async function deriveNeedsYou(userDbId, now = Date.now()) {
     }
 
     if (a.status === "INTERVIEWING" && interviewUpcoming(a, now) && !(a.prepSessionId && prepSet.has(a.prepSessionId))) {
-      items.push({ ...base(a), id: `PREP_INTERVIEW:${a.id}`, type: "PREP_INTERVIEW", title: `Prepare for your interview at ${label(a)}`, refId: a.id, href: `/jobs/${a.jobId}`, dueAt: iso(a.interviewAt), createdAt: iso(a.updatedAt) });
+      items.push({ ...base(a), id: `PREP_INTERVIEW:${a.id}`, type: "PREP_INTERVIEW", title: `Prepare for your interview at ${label(a)}`, refId: a.id, href: a.prepSessionId ? `/interview/practice?session=${encodeURIComponent(a.prepSessionId)}` : `/jobs/${a.jobId}`, dueAt: iso(a.interviewAt), createdAt: iso(a.updatedAt) });
     }
   }
   return items.sort((x, y) => Date.parse(y.createdAt) - Date.parse(x.createdAt));

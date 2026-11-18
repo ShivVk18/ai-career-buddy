@@ -62,8 +62,9 @@ export function nextAction(row, now = Date.now()) {
     }
     case "INTERVIEWING":
       if (interviewUpcoming(row, now)) {
-        return row.prepSessionId ? { label: "Practice for your interview", href: "/interview" } : { label: "Prepare for your interview", href };
+        return row.prepSessionId ? { label: "Practice for your interview", href: `/interview/practice?session=${encodeURIComponent(row.prepSessionId)}` } : { label: "Prepare for your interview", href };
       }
+      if (!row.interviewAt) return { label: "Add your interview date", href };
       return { label: "Add the result", href };
     case "OFFER":
       return { label: "Review your offer", href };
@@ -86,6 +87,7 @@ export function publicApplication(row, now = Date.now()) {
     },
     appliedAt: iso(row.appliedAt),
     interviewAt: iso(row.interviewAt),
+    prepSessionId: row.prepSessionId ?? null,
     nextActionAt: iso(row.nextActionAt),
     nextAction: nextAction(row, now),
     updatedAt: iso(row.updatedAt),

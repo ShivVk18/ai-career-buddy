@@ -268,7 +268,15 @@ export async function deleteATSScore(scoreId) {
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return { error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
-    const res = await db.aTSScore.updateMany({ where: { id: id.data, userId: user.id, deletedAt: null }, data: { deletedAt: new Date() } });
+    const row = await db.aTSScore.findFirst({ where: { id: id.data, userId: user.id, deletedAt: null }, select: { evidence: true } });
+    if (!row) return { error: "We couldn't find that result.", code: "NOT_FOUND" };
+    // Drop the stored resume text in the same update (restoring then needs a re-upload for the fix).
+    const data = { deletedAt: new Date() };
+    if (row.evidence && typeof row.evidence === "object" && !Array.isArray(row.evidence) && "resumeText" in row.evidence) {
+      const { resumeText: _drop, ...rest } = row.evidence;
+      data.evidence = rest;
+    }
+    const res = await db.aTSScore.updateMany({ where: { id: id.data, userId: user.id, deletedAt: null }, data });
     if (res.count === 0) return { error: "We couldn't find that result.", code: "NOT_FOUND" };
 
     revalidatePath("/resume-parser");

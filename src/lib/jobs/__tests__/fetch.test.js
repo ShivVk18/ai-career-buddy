@@ -1,6 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Readable } from "node:stream";
-import { fetchPublicPage, checkUrl, isBlockedIp, extractJobText, FetchGuardError, FETCH_LIMITS } from "../fetch.js";
+import https from "node:https";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { httpsRequest, pinnedLookup, fetchPublicPage, checkUrl, isBlockedIp, extractJobText, FetchGuardError, FETCH_LIMITS } from "../fetch.js";
 
 const PUBLIC = "93.184.216.34";
 const dnsTo = (map) => async (host) => {
@@ -198,5 +203,68 @@ describe("extractJobText", () => {
     expect(text.split("\n").slice(0, 3)).toEqual(["Job title: Data Engineer", "Company: Globex", "Location: Berlin, DE"]);
     expect(text).toContain("Own the pipelines.");
     expect(text).not.toContain("cookie banner");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Real transport against a local TLS server (no external network)
+// ---------------------------------------------------------------------------------------------
+describe("httpsRequest (real transport, local TLS server)", () => {
+  let server, port, dir;
+  const hasOpenssl = (() => {
+    try {
+      execFileSync("openssl", ["version"], { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  beforeAll(async () => {
+    if (!hasOpenssl) return;
+    dir = mkdtempSync(join(tmpdir(), "fetch-tls-"));
+    execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", join(dir, "k.pem"), "-out", join(dir, "c.pem"), "-days", "1", "-subj", "/CN=jobs.example.test"], { stdio: "ignore" });
+    server = https.createServer({ key: readFileSync(join(dir, "k.pem")), cert: readFileSync(join(dir, "c.pem")) }, (_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<html><body>hello job</body></html>");
+    });
+    await new Promise((r) => server.listen(0, "127.0.0.1", r));
+    port = server.address().port;
+  });
+  afterAll(async () => {
+    if (server) await new Promise((r) => server.close(r));
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  });
+
+  const url = () => new URL("https://jobs.example.test/job/1");
+  const readBody = async (res) => {
+    let out = "";
+    for await (const c of res.body) out += c;
+    return out;
+  };
+
+  it.runIf(hasOpenssl)("connects through the pinned lookup (works with { all: true } on Node 20+)", async () => {
+    const res = await httpsRequest(url(), { ip: "127.0.0.1", family: 4, tls: { port, rejectUnauthorized: false }, isBlocked: () => false });
+    expect(res.status).toBe(200);
+    expect(await readBody(res)).toContain("hello job");
+  });
+
+  it.runIf(hasOpenssl)("still rejects when the connected peer address is blocked", async () => {
+    const err = await rejection(httpsRequest(url(), { ip: "127.0.0.1", family: 4, tls: { port, rejectUnauthorized: false } }));
+    expect(err).toBeInstanceOf(FetchGuardError);
+    expect(err.code ?? err.reason ?? err.message).toMatch(/private_address|URL_BLOCKED/);
+  });
+});
+
+describe("pinnedLookup", () => {
+  it("answers every calling convention", () => {
+    const look = pinnedLookup("93.184.216.34", 4);
+    let r;
+    look("h", { all: true }, (...a) => (r = a));
+    expect(r).toEqual([null, [{ address: "93.184.216.34", family: 4 }]]);
+    look("h", {}, (...a) => (r = a));
+    expect(r).toEqual([null, "93.184.216.34", 4]);
+    look("h", (...a) => (r = a));
+    expect(r).toEqual([null, "93.184.216.34", 4]);
   });
 });

@@ -168,7 +168,16 @@ async function resolvePublic(host, lookup) {
  * Default transport. Resolves { status, headers, body: AsyncIterable<Buffer>, destroy() }.
  * `lookup` is overridden so the socket can only ever connect to `ip`.
  */
-function httpsRequest(url, { ip, family, signal }) {
+/** dns.lookup replacement that always answers with the vetted IP; handles (host, cb), (host, opts, cb) and { all: true }. */
+export function pinnedLookup(ip, family) {
+  return (_host, opts, cb) => {
+    if (typeof opts === "function") cb = opts, opts = {};
+    if (opts && opts.all) cb(null, [{ address: ip, family }]);
+    else cb(null, ip, family);
+  };
+}
+
+export function httpsRequest(url, { ip, family, signal, tls, isBlocked = isBlockedIp } = {}) {
   return new Promise((resolve, reject) => {
     const req = https.request(
       {
@@ -178,9 +187,10 @@ function httpsRequest(url, { ip, family, signal }) {
         path: `${url.pathname}${url.search}`,
         method: "GET",
         servername: net.isIP(url.hostname.replace(/^\[|\]$/g, "")) ? undefined : url.hostname, // SNI + certificate check use the real name
-        lookup: (_host, _opts, cb) => cb(null, ip, family),
+        lookup: pinnedLookup(ip, family),
         agent: false,
         signal,
+        ...(tls ?? {}), // tests only (self-signed certificate)
         headers: {
           "User-Agent": USER_AGENT,
           Accept: "text/html,application/xhtml+xml;q=0.9",
@@ -194,7 +204,7 @@ function httpsRequest(url, { ip, family, signal }) {
     req.on("socket", (socket) => {
       socket.on("connect", () => {
         // Belt and braces against rebinding: the peer we really connected to must be public.
-        if (isBlockedIp(socket.remoteAddress)) req.destroy(blocked("private_address"));
+        if (isBlocked(socket.remoteAddress)) req.destroy(blocked("private_address"));
       });
     });
     req.on("error", reject);

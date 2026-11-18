@@ -28,7 +28,7 @@ async function loadApp(id, userDbId) {
 
 const freshApplication = (id, userDbId) => db.application.findFirst({ where: { id, userId: userDbId, deletedAt: null }, select: APPLICATION_SELECT });
 const outApplication = (a) => ({
-  id: a.id, status: a.status, appliedAt: iso(a.appliedAt), interviewAt: iso(a.interviewAt), nextActionAt: iso(a.nextActionAt),
+  id: a.id, status: a.status, appliedAt: iso(a.appliedAt), interviewAt: iso(a.interviewAt), prepSessionId: a.prepSessionId ?? null, nextActionAt: iso(a.nextActionAt),
   followUpCount: a.followUpCount ?? 0, closedReason: a.closedReason ?? null,
 });
 
@@ -173,23 +173,33 @@ async function changeStatus(app, userDbId, status, extra = {}) {
  * Moves an application to a status. Returns { application, previousStatus }: call it again with previousStatus
  * to Undo. Errors: INVALID | NOT_FOUND | FAILED.
  */
-export async function setApplicationStatus(id, status) {
+export async function setApplicationStatus(id, status, interviewAt) {
   const b = await begin(id);
   if (b.err) return b.err;
   const st = statusSchema.safeParse(status);
   if (!st.success) return fail("INVALID", "Choose Saved, Applied, Interviewing, Offer or Closed.");
+  // Optional interviewAt (for Undo): a date string sets it, null clears it, undefined leaves it alone.
+  let extra = {};
+  if (interviewAt !== undefined) {
+    const when = interviewAt === null ? null : typeof interviewAt === "string" ? parseDateInput(interviewAt) : undefined;
+    if (when === undefined || (interviewAt !== null && !when)) return fail("INVALID", "Choose a valid interview date.");
+    extra = { interviewAt: when };
+  }
   try {
     const app = await loadApp(b.id, b.user.id);
     if (!app) return NOT_FOUND_APP();
-    if (app.status === st.data && st.data !== "CLOSED") return { application: outApplication(app), previousStatus: app.status };
+    const previousInterviewAt = iso(app.interviewAt);
+    if (app.status === st.data && st.data !== "CLOSED" && interviewAt === undefined) {
+      return { application: outApplication(app), previousStatus: app.status, previousInterviewAt };
+    }
     // Closed: same as closeApplication (gap tasks once, via gapTasksAddedAt), so board moves and the job page agree.
     if (st.data === "CLOSED") {
       const closed = await closeWithGaps(app, b.user.id, app.status === "CLOSED" ? undefined : {});
-      return closed ?? NOT_FOUND_APP();
+      return closed ? { ...closed, previousInterviewAt } : NOT_FOUND_APP();
     }
-    const fresh = await changeStatus(app, b.user.id, st.data);
+    const fresh = await changeStatus(app, b.user.id, st.data, extra);
     if (!fresh) return NOT_FOUND_APP();
-    return { application: outApplication(fresh), previousStatus: app.status };
+    return { application: outApplication(fresh), previousStatus: app.status, previousInterviewAt };
   } catch (error) {
     console.error("setApplicationStatus failed:", safeErr(error));
     return fail("FAILED", "We couldn't update that application. Please try again.");
@@ -232,6 +242,7 @@ async function setInterviewDateImpl(id, date) {
     return {
       application: outApplication(fresh),
       previousStatus: app.status,
+      previousInterviewAt: iso(app.interviewAt),
       prepSessionId: prep.sessionId,
       ...(prep.sessionId ? {} : { prepError: prep.code }),
     };

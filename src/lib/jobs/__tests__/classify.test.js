@@ -66,6 +66,9 @@ describe("job chips", () => {
     expect(verifyJobField({ value: "Acme Corp", sourceIds: ["jd:2"] }, catalog)?.sources[0].id).toBe("jd:2");
     expect(verifyJobField({ value: "Senior Frontend Engineer", sourceIds: ["jd:1"] }, catalog)?.value).toBe("Senior Frontend Engineer");
   });
+  it("nulls a rearranged value that is not contiguous in one line", () => {
+    expect(verifyJobField({ value: "Engineer Frontend Senior", sourceIds: ["jd:1"] }, catalog)).toBeNull();
+  });
   it("nulls unsourced, wrong-line, unknown-id and invented values", () => {
     expect(verifyJobField({ value: "Acme Corp", sourceIds: [] }, catalog)).toBeNull();
     expect(verifyJobField({ value: "Acme Corp", sourceIds: ["jd:1"] }, catalog)).toBeNull();
