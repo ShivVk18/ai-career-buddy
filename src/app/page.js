@@ -20,11 +20,9 @@ import {
 } from "lucide-react";
 import LandingNav from "@/components/landingPage/LandingNav";
 import SampleDemo from "@/components/landingPage/SampleDemo";
-import { BackgroundGrid } from "@/components/ui/aceternity/background-grid";
-import { TextGenerateEffect } from "@/components/ui/aceternity/text-generate-effect";
+import HeroStack from "@/components/landingPage/HeroStack";
+import Reveal from "@/components/landingPage/Reveal";
 import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
-import { BentoGrid, BentoGridItem } from "@/components/ui/aceternity/bento-grid";
-import { GlowCard } from "@/components/ui/aceternity/glow-card";
 
 const STEPS = [
   { icon: ClipboardPaste, title: "paste a job", desc: "A link or the description text. Pip pulls out the requirements." },
@@ -34,12 +32,12 @@ const STEPS = [
 ];
 
 const TOOLS = [
-  { name: "resume builder", href: "/resume", icon: ScrollText, span: "md:col-span-2", desc: "A paper document with match highlights, struck weak lines, and source chips pointing back to your resume, profile and the job description." },
-  { name: "ats scanner", href: "/resume-parser", icon: ClipboardCheck, desc: "A score per role, with sourced fixes you can accept for a real re-score." },
-  { name: "interview prep", href: "/interview", icon: Sparkles, desc: "One question at a time, scored against a rubric with evidence quotes and timers." },
-  { name: "cover letter", href: "/cover-letter", icon: FileText, desc: "Pick a tone, get clichés flagged as you edit, and aim for 250 to 350 words." },
-  { name: "cold email", href: "/cold-email", icon: Mail, desc: "A 100 to 140 word note with matched projects, opened in your own mail app." },
-  { name: "career roadmap", href: "/roadmap", icon: BrainCircuit, span: "md:col-span-3", desc: "Phase-by-phase steps tied to the gaps in your own ATS results, with progress you can undo." },
+  { name: "resume builder", href: "/resume", icon: ScrollText, span: "md:col-span-4 md:row-span-2", desc: "A paper document with match highlights, struck weak lines, and source chips pointing back to your resume, profile and the job description." },
+  { name: "ats scanner", href: "/resume-parser", icon: ClipboardCheck, span: "md:col-span-2", desc: "A score per role, with sourced fixes you can accept for a real re-score." },
+  { name: "interview prep", href: "/interview", icon: Sparkles, span: "md:col-span-2", desc: "One question at a time, scored against a rubric with evidence quotes and timers." },
+  { name: "cover letter", href: "/cover-letter", icon: FileText, span: "md:col-span-2", desc: "Pick a tone, get clichés flagged as you edit, and aim for 250 to 350 words." },
+  { name: "cold email", href: "/cold-email", icon: Mail, span: "md:col-span-2", desc: "A 100 to 140 word note with matched projects, opened in your own mail app." },
+  { name: "career roadmap", href: "/roadmap", icon: BrainCircuit, span: "md:col-span-4", desc: "Phase-by-phase steps tied to the gaps in your own ATS results, with progress you can undo." },
 ];
 
 const TRUST = [
@@ -61,175 +59,233 @@ function Pip({ name = "coffee", size = 24, className = "" }) {
   );
 }
 
-function SectionHead({ id, eyebrow, title, sub }) {
+const DISPLAY = "font-bold leading-[0.9] tracking-[-0.045em] lowercase";
+const SERIF = "font-doc font-normal italic tracking-[-0.03em]";
+const MARQUEE = ["resume builder", "ats scanner", "interview prep", "cover letter", "cold email", "career roadmap"];
+
+function SectionHead({ id, no, eyebrow, children }) {
   return (
-    <div id={id} className="mx-auto mb-10 max-w-2xl scroll-mt-24 text-center">
-      <span className="mb-3 inline-block rounded-full bg-pip-soft px-3 py-1 text-xs font-medium text-pip-ink">{eyebrow}</span>
-      <h2 className="text-3xl font-bold tracking-tight text-text sm:text-4xl">{title}</h2>
-      {sub && <p className="mt-3 text-sm text-muted sm:text-base">{sub}</p>}
-    </div>
+    <Reveal id={id} className="mb-12 scroll-mt-24 sm:mb-16">
+      <p className="mb-5 flex items-center gap-3 font-pixel text-sm text-faint">
+        <span className="text-primary-ink">{no}</span>
+        <span className="h-px w-10 bg-line" aria-hidden="true" />
+        {eyebrow}
+      </p>
+      <h2 className={`max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] text-text ${DISPLAY}`}>{children}</h2>
+    </Reveal>
   );
 }
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-bg font-sans text-text selection:bg-lime selection:text-lime-foreground">
+    <div className="min-h-screen overflow-x-clip bg-bg font-sans text-text selection:bg-lime selection:text-lime-foreground">
       <LandingNav />
 
       <main>
         {/* Hero */}
-        <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
-          <BackgroundGrid />
-          <div className="relative z-10 mx-auto max-w-3xl text-center">
-            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-card">
-              <Pip name="coffee" size={18} /> pip, your ai career assistant
-            </span>
-            <h1 className="mb-5 text-4xl font-bold leading-[1.05] tracking-tight text-text sm:text-6xl">
-              <TextGenerateEffect words="nothing invented. every line cites a source." />
-            </h1>
-            <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-              Paste a job and Pip tailors your resume, cover letter and interview prep from what you actually provide. You review every change before anything is used.
-            </p>
-            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <HoverBorderGradient as={Link} href="/dashboard" containerClassName="w-full sm:w-auto">
-                start free <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </HoverBorderGradient>
-              <a href="#sample" className="btn-pill-secondary min-h-11 w-full text-sm sm:w-auto">see a sample</a>
+        <section className="grain relative px-4 pb-24 pt-12 sm:px-6 sm:pt-20 lg:pt-24">
+          <div className="grid-lines pointer-events-none absolute inset-0" aria-hidden="true" />
+          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-12 lg:gap-8">
+            <div className="lg:col-span-7">
+              <p className="mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-panel py-1.5 pl-2 pr-3 text-xs text-muted">
+                <Pip name="coffee" size={18} /> pip, your ai career assistant
+              </p>
+              <h1 className={`mb-8 text-[clamp(3.25rem,12.5vw,8.5rem)] text-text ${DISPLAY}`}>
+                nothing <span className={SERIF}>invented.</span>
+                <br />
+                every line <span className="highlight-match rounded-sm px-1">cited.</span>
+              </h1>
+              <p className="mb-10 max-w-md text-base leading-relaxed text-muted sm:text-lg">
+                Paste a job. Pip tailors your resume, letter and prep from what you provide, and you approve every change.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <HoverBorderGradient as={Link} href="/dashboard" containerClassName="w-full sm:w-auto">
+                  start free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </HoverBorderGradient>
+                <a href="#how" className="btn-pill-secondary min-h-11 w-full text-sm sm:w-auto">see how it works</a>
+              </div>
+              <p className="mt-5 text-xs text-muted">free to start - up to 50 AI actions a day</p>
             </div>
-            <p className="mt-4 text-xs text-muted">free to start - up to 50 AI actions a day</p>
+            <div className="pb-8 lg:col-span-5">
+              <HeroStack />
+            </div>
           </div>
         </section>
 
-        {/* How it works */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <SectionHead id="how" eyebrow="how it works" title="from job link to application, in four steps" />
-          <ol className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((s, i) => (
-              <li key={s.title}>
-                <GlowCard className="h-full p-5">
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pip-soft text-primary-ink">
-                      <s.icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="font-pixel text-sm text-muted">0{i + 1}</span>
-                  </div>
-                  <h3 className="mb-1 text-base font-semibold text-text">{s.title}</h3>
-                  <p className="text-sm leading-relaxed text-muted">{s.desc}</p>
-                </GlowCard>
-              </li>
+        {/* Marquee */}
+        <div className="marquee overflow-hidden border-y border-line bg-panel py-5" aria-label="The six tools: resume builder, ats scanner, interview prep, cover letter, cold email, career roadmap">
+          <div className="marquee-track flex w-max gap-10" aria-hidden="true">
+            {[...MARQUEE, ...MARQUEE, ...MARQUEE, ...MARQUEE].map((m, i) => (
+              <span key={i} className="flex items-center gap-10 whitespace-nowrap text-2xl font-bold tracking-tight text-text sm:text-3xl">
+                {m}
+                <span className="h-2.5 w-2.5 rounded-full bg-lime" />
+              </span>
             ))}
-          </ol>
+          </div>
+        </div>
+
+        {/* How it works */}
+        <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">
+          <div className="grid gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <div className="lg:sticky lg:top-28">
+                <SectionHead id="how" no="01" eyebrow="how it works">
+                  four steps, <span className={SERIF}>one</span> job.
+                </SectionHead>
+                <p className="-mt-4 max-w-sm text-muted">From a pasted link to an application you send yourself.</p>
+              </div>
+            </div>
+            <ol className="lg:col-span-7">
+              {STEPS.map((s, i) => (
+                <Reveal as="li" key={s.title} delay={i * 60} className="group grid grid-cols-[auto_1fr] gap-x-6 border-t border-line py-8 last:border-b sm:gap-x-10 sm:py-10">
+                  <span className="text-[clamp(3.5rem,9vw,6.5rem)] font-bold leading-none tracking-[-0.06em] text-line transition-colors duration-300 group-hover:text-primary-ink">0{i + 1}</span>
+                  <div className="pt-2">
+                    <s.icon className="mb-3 h-5 w-5 text-primary-ink" aria-hidden="true" />
+                    <h3 className="mb-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{s.title}</h3>
+                    <p className="max-w-md text-sm leading-relaxed text-muted sm:text-base">{s.desc}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </ol>
+          </div>
         </section>
 
         {/* Tools bento */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <SectionHead id="tools" eyebrow="six tools, one memory" title="everything for one job, in one place" sub="Each tool works from your profile and what you give it, and they share what they find." />
-          <BentoGrid>
-            {TOOLS.map((t) => (
-              <BentoGridItem
-                key={t.name}
-                as={Link}
-                href={t.href}
-                className={t.span}
-                icon={<t.icon className="h-5 w-5 text-primary-ink" aria-hidden="true" />}
-                title={t.name}
-                description={t.desc}
-              >
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-ink">
-                  open <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/glow:translate-x-0.5" aria-hidden="true" />
-                </span>
-              </BentoGridItem>
+        <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 sm:pb-32">
+          <SectionHead id="tools" no="02" eyebrow="six tools, one memory">
+            everything for the job, <span className={SERIF}>together.</span>
+          </SectionHead>
+          <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-6">
+            {TOOLS.map((t, i) => (
+              <Reveal key={t.name} delay={i * 50} className={t.span}>
+                <Link
+                  href={t.href}
+                  className={`group relative flex h-full min-h-56 flex-col justify-between overflow-hidden rounded-3xl border border-line p-6 transition duration-300 hover:-translate-y-1 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-8 ${i === 0 ? "bg-primary text-white" : "bg-panel"}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <span className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transform-none ${i === 0 ? "bg-white/15 text-white" : "bg-soft text-primary-ink"}`}>
+                      <t.icon className="h-6 w-6" aria-hidden="true" />
+                    </span>
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-full border transition duration-300 group-hover:bg-lime group-hover:text-lime-foreground ${i === 0 ? "border-white/40" : "border-line text-muted"}`}>
+                      <ArrowRight className="h-4 w-4 -rotate-45 transition-transform duration-300 group-hover:rotate-0 motion-reduce:transform-none" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <div className="mt-10">
+                    <h3 className={`mb-2 font-bold tracking-tight ${i === 0 ? "text-4xl sm:text-5xl" : "text-2xl"}`}>{t.name}</h3>
+                    <p className={`max-w-md text-sm leading-relaxed ${i === 0 ? "text-white/85" : "text-muted"}`}>{t.desc}</p>
+                  </div>
+                </Link>
+              </Reveal>
             ))}
-          </BentoGrid>
+          </div>
         </section>
 
         {/* Sample preview */}
-        <section className="px-4 py-16 sm:px-6">
-          <SectionHead id="sample" eyebrow="product preview" title="what a tailored resume looks like" sub="This is a sample with made-up names and numbers, shown to explain the format." />
-          <SampleDemo />
-        </section>
-
-        {/* Trust */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <SectionHead id="trust" eyebrow="trust" title="built so you stay in control" />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {TRUST.map((t) => (
-              <GlowCard key={t.title} className="p-6">
-                <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-lime text-lime-foreground">
-                  <t.icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <h3 className="mb-1 text-base font-semibold text-text">{t.title}</h3>
-                <p className="text-sm leading-relaxed text-muted">{t.desc}</p>
-              </GlowCard>
-            ))}
+        <section className="border-y border-line bg-soft px-4 py-24 sm:px-6 sm:py-32">
+          <div className="mx-auto max-w-7xl">
+            <SectionHead id="sample" no="03" eyebrow="product preview, sample">
+              what a tailored resume <span className={SERIF}>looks like.</span>
+            </SectionHead>
+            <p className="-mt-6 mb-10 max-w-lg text-muted">This is a sample with made-up names and numbers, shown to explain the format.</p>
+            <SampleDemo />
           </div>
         </section>
 
-        {/* Pricing */}
-        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-          <SectionHead id="pricing" eyebrow="pricing" title="free while we build" />
-          <GlowCard className="p-6 sm:p-8">
-            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-xl font-semibold text-text">free</h3>
-              <span className="text-sm text-muted">paid plans are planned, not available yet</span>
-            </div>
-            <ul className="mb-6 grid grid-cols-1 gap-3 text-sm text-text sm:grid-cols-2">
-              {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"].map((f) => (
-                <li key={f} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}
-                </li>
+        {/* Trust: indigo block */}
+        <section className="grain relative bg-primary px-4 py-24 text-white sm:px-6 sm:py-32">
+          <div className="relative z-10 mx-auto max-w-7xl">
+            <p id="trust" className="mb-10 flex scroll-mt-24 items-center gap-3 font-pixel text-sm text-white/80">
+              <span className="text-lime">04</span><span className="h-px w-10 bg-white/40" aria-hidden="true" /> trust
+            </p>
+            <Reveal>
+              <p className={`text-[clamp(3rem,11vw,9rem)] ${DISPLAY}`}>
+                nothing <span className={SERIF}>invented.</span>
+              </p>
+              <p className={`text-[clamp(3rem,11vw,9rem)] ${DISPLAY}`}>
+                nothing sent <span className="text-lime">without you.</span>
+              </p>
+            </Reveal>
+            <div className="mt-16 grid gap-px overflow-hidden rounded-3xl border border-white/25 bg-white/25 md:grid-cols-3">
+              {TRUST.map((t) => (
+                <div key={t.title} className="bg-primary p-6 sm:p-8">
+                  <t.icon className="mb-6 h-6 w-6 text-lime" aria-hidden="true" />
+                  <h3 className="mb-2 text-lg font-bold tracking-tight">{t.title}</h3>
+                  <p className="text-sm leading-relaxed text-white/85">{t.desc}</p>
+                </div>
               ))}
-            </ul>
-            <Link href="/dashboard" className="btn-pill-primary min-h-11 text-sm">start free</Link>
-          </GlowCard>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing: lime break */}
+        <section className="bg-lime px-4 py-24 text-lime-foreground sm:px-6 sm:py-32">
+          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-12">
+            <Reveal id="pricing" className="scroll-mt-24 lg:col-span-6">
+              <p className="mb-5 flex items-center gap-3 font-pixel text-sm"><span>05</span><span className="h-px w-10 bg-lime-foreground/40" aria-hidden="true" /> pricing</p>
+              <h2 className={`text-[clamp(3rem,9vw,7rem)] ${DISPLAY}`}>
+                free, <span className={SERIF}>while</span> we build.
+              </h2>
+              <p className="mt-6 max-w-sm text-sm">Paid plans are planned, not available yet.</p>
+            </Reveal>
+            <Reveal delay={80} className="lg:col-span-6">
+              <div className="rounded-3xl border border-lime-foreground/20 bg-bg p-6 text-text sm:p-8">
+                <p className="mb-6 text-xl font-bold tracking-tight">free</p>
+                <ul className="mb-8 space-y-3 text-sm">
+                  {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"].map((f) => (
+                    <li key={f} className="flex items-start gap-3 border-b border-line pb-3 last:border-0">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/dashboard" className="btn-pill-primary min-h-11 w-full text-sm sm:w-auto">start free</Link>
+              </div>
+            </Reveal>
+          </div>
         </section>
 
         {/* FAQ */}
-        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-          <SectionHead id="faq" eyebrow="faq" title="questions, answered" />
-          <div className="space-y-3">
-            {FAQS.map((f) => (
-              <details key={f.q} className="group rounded-2xl border border-line bg-panel shadow-card">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 text-sm font-medium text-text [&::-webkit-details-marker]:hidden">
-                  {f.q}
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                </summary>
-                <p className="px-5 pb-5 text-sm leading-relaxed text-muted">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        {/* Closing CTA */}
-        <section className="px-4 pb-20 sm:px-6">
-          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-line bg-panel px-6 py-14 text-center shadow-card">
-            <BackgroundGrid />
-            <div className="relative z-10">
-              <Pip name="rocket" size={40} className="mx-auto mb-4" />
-              <h2 className="mb-3 text-3xl font-bold tracking-tight text-text sm:text-4xl">ready for your next role?</h2>
-              <p className="mx-auto mb-6 max-w-md text-sm text-muted">No hype words and no generic templates. Just your work, sharpened for the job.</p>
-              <Link href="/dashboard" className="btn-pill-primary min-h-11 px-7 text-sm">start free with pip</Link>
+        <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">
+          <div className="grid gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <SectionHead id="faq" no="06" eyebrow="faq">
+                questions, <span className={SERIF}>answered.</span>
+              </SectionHead>
+            </div>
+            <div className="lg:col-span-7">
+              {FAQS.map((f) => (
+                <details key={f.q} className="group border-t border-line last:border-b">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-lg py-5 text-base font-semibold text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg [&::-webkit-details-marker]:hidden">
+                    {f.q}
+                    <ChevronDown className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <p className="max-w-xl pb-6 text-sm leading-relaxed text-muted sm:text-base">{f.a}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-line bg-panel px-4 py-10 text-xs text-muted sm:px-6">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
-          <div className="flex items-center gap-2.5">
-            <Pip name="coffee" size={20} />
-            <span className="font-semibold text-text">ascendai</span>
-            <span aria-hidden="true">-</span>
-            <span>pip by stick it up (mit)</span>
+      <footer className="border-t border-line bg-panel px-4 pt-16 text-xs text-muted sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
+            <div>
+              <p className="mb-4 text-2xl font-bold tracking-tight text-text sm:text-3xl">ready for your next role?</p>
+              <Link href="/dashboard" className="btn-pill-primary min-h-11 px-7 text-sm">start free with pip</Link>
+            </div>
+            <nav aria-label="Tools" className="flex flex-wrap gap-x-5 gap-y-2 md:max-w-sm md:justify-end">
+              <Link href="/resume" className="hover:text-text">resume builder</Link>
+              <Link href="/interview" className="hover:text-text">interview prep</Link>
+              <Link href="/cover-letter" className="hover:text-text">cover letter</Link>
+              <Link href="/cold-email" className="hover:text-text">cold email</Link>
+              <Link href="/roadmap" className="hover:text-text">career roadmap</Link>
+              <Link href="/resume-parser" className="hover:text-text">ats scanner</Link>
+            </nav>
           </div>
-          <nav aria-label="Tools" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <Link href="/resume" className="hover:text-text">resume builder</Link>
-            <Link href="/interview" className="hover:text-text">interview prep</Link>
-            <Link href="/cover-letter" className="hover:text-text">cover letter</Link>
-            <Link href="/cold-email" className="hover:text-text">cold email</Link>
-            <Link href="/roadmap" className="hover:text-text">career roadmap</Link>
-            <Link href="/resume-parser" className="hover:text-text">ats scanner</Link>
-          </nav>
+          <p className="mt-10 flex items-center gap-2"><Pip name="coffee" size={20} /> pip by stick it up (mit)</p>
+          <p aria-hidden="true" className="select-none overflow-hidden whitespace-nowrap pt-4 text-center text-[clamp(5rem,26vw,24rem)] font-bold leading-[0.78] tracking-[-0.06em] text-soft">
+            ascend
+          </p>
         </div>
       </footer>
     </div>
