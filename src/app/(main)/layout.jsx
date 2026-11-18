@@ -2,7 +2,7 @@ import AppSidebar from "@/components/shared/AppSidebar";
 
 export default async function MainLayout({ children }) {
   return (
-    <div className="min-h-screen bg-bg text-text flex flex-col md:flex-row antialiased">
+    <div className="min-h-screen md:h-screen md:overflow-hidden bg-bg text-text flex flex-col md:flex-row antialiased">
       {/* App Sidebar + Mobile Tab Bar */}
       <AppSidebar />
 
