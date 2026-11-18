@@ -14,12 +14,14 @@ export function WhyRow() {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {WHY.map((w, i) => (
-        <Reveal as="li" key={w.title} delay={i * 60} className={`rounded-2xl border p-6 ${w.hot ? "border-sky-solid bg-sky-solid text-white" : "border-sky-tint-line bg-sky-tint text-text"}`}>
-          <span className={`mb-5 flex h-10 w-10 items-center justify-center rounded-xl ${w.hot ? "bg-white/20 text-white" : "bg-panel text-primary-ink"}`}>
-            <w.icon className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <h3 className="mb-1.5 text-lg font-semibold tracking-tight">{w.title}</h3>
-          <p className={`text-sm leading-relaxed ${w.hot ? "text-white/90" : "text-muted"}`}>{w.desc}</p>
+        <Reveal as="li" key={w.title} delay={i * 60}>
+          <div className={`group relative h-full overflow-hidden rounded-2xl border p-6 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_14px_30px_-12px_rgba(30,60,160,0.35)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${w.hot ? "lp-shimmer border-sky-solid bg-sky-solid text-white" : "border-sky-tint-line bg-sky-tint text-text"}`}>
+            <span className={`mb-5 flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:transform-none ${w.hot ? "bg-white/20 text-white" : "bg-panel text-primary-ink"}`}>
+              <w.icon className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <h3 className="mb-1.5 text-lg font-semibold tracking-tight">{w.title}</h3>
+            <p className={`text-sm leading-relaxed ${w.hot ? "text-white/90" : "text-muted"}`}>{w.desc}</p>
+          </div>
         </Reveal>
       ))}
     </ul>
@@ -42,31 +44,31 @@ const CARDS = [
   { name: "Resume builder", href: "/resume", icon: ScrollText, span: "md:col-span-4", desc: "Tracked changes with sources, accepted one by one.",
     prev: (
       <p className="rounded-xl border border-line bg-panel p-3 text-sm leading-relaxed">
-        <s className="text-faint">Responsible for improving the checkout page.</s>{" "}
-        <ins className="rounded bg-lime/30 px-1 no-underline">Redesigned checkout, cutting drop-off by 12%.</ins>{" "}
+        <s className="bt-strike text-faint">Responsible for improving the checkout page.</s>{" "}
+        <ins className="bt-ins rounded bg-lime/30 px-1 no-underline">Redesigned checkout, cutting drop-off by 12%.</ins>{" "}
         <span className="mt-2 flex gap-1.5"><Chip>resume</Chip><Chip>job post</Chip></span>
       </p>
     ) },
   { name: "ATS scanner", href: "/resume-parser", icon: ClipboardCheck, span: "md:col-span-2", desc: "A score and sourced fixes.",
     prev: (
       <ul className="space-y-1.5 rounded-xl border border-line bg-panel p-3 text-xs">
-        {CHECKS.map(([l, ok]) => (
-          <li key={l} className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full ${ok ? "bg-lime text-lime-foreground" : "border border-line text-faint"}`}>{ok && <Check className="h-3 w-3" aria-hidden="true" />}</span>{l}</li>
+        {CHECKS.map(([l, ok], i) => (
+          <li key={l} className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full ${ok ? "bg-lime text-lime-foreground" : "border border-line text-faint"}`}>{ok && <Check style={{ "--i": i }} className="bt-tick h-3 w-3" aria-hidden="true" />}</span>{l}</li>
         ))}
       </ul>
     ) },
   { name: "Interview prep", href: "/interview", icon: Sparkles, span: "md:col-span-2", desc: "Scored against a rubric.",
     prev: (
       <ul className="space-y-1.5 rounded-xl border border-line bg-panel p-3 text-xs">
-        {RUBRIC.map(([l, n]) => (
-          <li key={l} className="flex items-center gap-2"><span className="w-16">{l}</span><span className="h-1.5 flex-1 rounded-full bg-soft"><span className="block h-1.5 rounded-full bg-sky-solid" style={{ width: `${n * 20}%` }} /></span>{n}/5</li>
+        {RUBRIC.map(([l, n], i) => (
+          <li key={l} className="flex items-center gap-2"><span className="w-16">{l}</span><span className="h-1.5 flex-1 rounded-full bg-soft"><span className="bt-bar block h-1.5 rounded-full bg-sky-solid" style={{ width: `${n * 20}%`, "--i": i }} /></span>{n}/5</li>
         ))}
       </ul>
     ) },
   { name: "Career roadmap", href: "/roadmap", icon: BrainCircuit, span: "md:col-span-2", desc: "Steps tied to your own gaps.",
     prev: (
       <ol className="space-y-1.5 rounded-xl border border-line bg-panel p-3 text-xs">
-        {ROAD.map((r, i) => <li key={r} className="flex items-center gap-2"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-sky-tint text-[10px] text-primary-ink">{i + 1}</span>{r}</li>)}
+        {ROAD.map((r, i) => <li key={r} className="flex items-center gap-2" style={{ "--i": i }}><span className={`bt-badge relative flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${i < 2 ? "bt-done bg-lime text-lime-foreground" : "bg-sky-tint text-primary-ink"}`}><span className="bt-num">{i + 1}</span>{i < 2 && <Check className="bt-tick absolute h-3 w-3" aria-hidden="true" />}</span>{r}</li>)}
       </ol>
     ) },
   { name: "Cover letter", href: "/cover-letter", icon: FileText, span: "md:col-span-2", desc: "Tone, cliché flags, 250 to 350 words.",
@@ -106,29 +108,32 @@ export function Bento() {
 }
 
 const SPOKES = [
-  { name: "Checker", role: "Matches requirements", pos: "left-[4%] top-[6%]", line: "M50 50 L16 16" },
-  { name: "Tailor", role: "Proposes resume edits", pos: "right-[4%] top-[6%]", line: "M50 50 L84 16" },
-  { name: "Writer", role: "Drafts letter and email", pos: "left-[4%] bottom-[6%]", line: "M50 50 L16 84" },
-  { name: "Connector", role: "Finds who to contact", pos: "right-[4%] bottom-[6%]", line: "M50 50 L84 84" },
+  { name: "Checker", role: "Matches requirements", pos: "left-[4%] top-[6%]", line: "M50 50 L16 16", dx: "-34%", dy: "-34%" },
+  { name: "Tailor", role: "Proposes resume edits", pos: "right-[4%] top-[6%]", line: "M50 50 L84 16", dx: "34%", dy: "-34%" },
+  { name: "Writer", role: "Drafts letter and email", pos: "left-[4%] bottom-[6%]", line: "M50 50 L16 84", dx: "-34%", dy: "34%" },
+  { name: "Connector", role: "Finds who to contact", pos: "right-[4%] bottom-[6%]", line: "M50 50 L84 84", dx: "34%", dy: "34%" },
 ];
 
 export function BotHub() {
   return (
-    <div className="relative mx-auto h-[28rem] max-w-3xl rounded-3xl border border-sky-tint-line bg-sky-tint sm:h-[26rem]">
+    <Reveal className="relative mx-auto h-[28rem] max-w-3xl rounded-3xl border border-sky-tint-line bg-sky-tint sm:h-[26rem]">
       <svg className="absolute inset-0 h-full w-full text-sky-solid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        {SPOKES.map((s) => <path key={s.name} d={s.line} stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" fill="none" vectorEffect="non-scaling-stroke" opacity="0.6" />)}
+        {SPOKES.map((s, i) => <path key={s.name} d={s.line} pathLength="1" className="hub-line" style={{ "--i": i }} stroke="currentColor" strokeWidth="0.4" strokeLinecap="round" fill="none" opacity="0.5" />)}
       </svg>
       <div className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-2 border-sky-solid bg-panel text-center shadow-card">
         <Image src="/pip/pip-coffee.svg" alt="" width={40} height={40} unoptimized style={{ imageRendering: "pixelated" }} />
         <span className="text-sm font-semibold">Pip</span>
       </div>
       {SPOKES.map((s) => (
-        <div key={s.name} className={`absolute ${s.pos} w-36 rounded-2xl border border-line bg-panel p-3 text-center shadow-card sm:w-44`}>
+        <div key={s.name + "-dot"} className="hub-dot" style={{ "--i": SPOKES.indexOf(s), "--dx": s.dx, "--dy": s.dy }} aria-hidden="true" />
+      ))}
+      {SPOKES.map((s, i) => (
+        <div key={s.name} style={{ "--i": i }} className={`hub-node absolute ${s.pos} w-36 rounded-2xl border border-line bg-panel p-3 text-center shadow-card sm:w-44`}>
           <p className="text-sm font-semibold">{s.name}</p>
           <p className="text-xs text-muted">{s.role}</p>
         </div>
       ))}
-    </div>
+    </Reveal>
   );
 }
 
@@ -136,7 +141,8 @@ export function Pricing() {
   const free = ["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"];
   return (
     <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
-      <Reveal className="rounded-3xl border-2 border-sky-solid bg-panel p-6 shadow-card sm:p-8">
+      <Reveal>
+        <div className="h-full rounded-3xl border-2 border-sky-solid bg-panel p-6 shadow-card transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(47,85,217,0.12),0_0_36px_-6px_rgba(47,85,217,0.45)] sm:p-8">
         <div className="mb-6 flex items-center justify-between">
           <p className="text-xl font-bold tracking-tight">Free</p>
           <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-lime-foreground">Available now</span>
@@ -144,7 +150,8 @@ export function Pricing() {
         <ul className="mb-8 space-y-3 text-sm">
           {free.map((f) => <li key={f} className="flex items-start gap-3"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}</li>)}
         </ul>
-        <Link href="/dashboard" className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-sky-solid text-sm font-medium text-white transition hover:opacity-90">Get started free</Link>
+        <Link href="/dashboard" className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-sky-solid text-sm font-medium text-white transition duration-200 hover:opacity-90 active:scale-[0.98]">Get started free</Link>
+        </div>
       </Reveal>
       <Reveal delay={60} className="rounded-3xl border border-line bg-soft p-6 sm:p-8">
         <div className="mb-6 flex items-center justify-between">

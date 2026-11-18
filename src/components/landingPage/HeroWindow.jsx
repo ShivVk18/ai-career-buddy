@@ -25,8 +25,8 @@ const APPS = [
 // Tilted app window mock, built from divs. Fictional data, labelled sample.
 export default function HeroWindow() {
   return (
-    <figure className="relative mx-auto w-full max-w-xl text-left [perspective:1600px] lg:max-w-none" aria-label="Sample product window">
-      <div className="overflow-hidden rounded-2xl border border-white/40 bg-panel text-text shadow-[0_40px_80px_-30px_rgba(10,20,90,0.6)] motion-safe:lg:[transform:rotateY(-12deg)_rotateX(4deg)] lg:origin-left">
+    <figure className="lp-win-in relative mx-auto w-full max-w-xl text-left [perspective:1600px] lg:max-w-none" aria-label="Sample product window">
+      <div className="lp-float overflow-hidden rounded-2xl border border-white/40 bg-panel text-text shadow-[0_40px_80px_-30px_rgba(10,20,90,0.6)] motion-safe:lg:[transform:rotateY(-12deg)_rotateX(4deg)] lg:origin-left">
         <div className="flex items-center justify-between gap-3 border-b border-line bg-soft px-4 py-2.5">
           <span className="flex gap-1.5" aria-hidden="true">
             <span className="h-2.5 w-2.5 rounded-full bg-line" />

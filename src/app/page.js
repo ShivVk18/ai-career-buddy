@@ -59,6 +59,11 @@ function Pip({ name = "coffee", size = 24, className = "" }) {
   );
 }
 
+const HEADLINE = [
+  ..."Land your next job,".split(" ").map((t) => ({ t })),
+  ..."without the busywork".split(" ").map((t) => ({ t, em: true })),
+];
+
 const INPUTS = ["Your resume PDF", "Pasted job posts", "Job links", "Your profile", "Interview practice", "Roadmap"];
 
 function SectionHead({ id, eyebrow, children, sub }) {
@@ -78,26 +83,31 @@ export default function LandingPage() {
         {/* Hero */}
         <section className="hero-sky relative overflow-hidden pb-16 text-white sm:pb-24">
           <LandingNav />
-          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-4 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:gap-6">
+          <div className="hero-clouds" aria-hidden="true" />
+          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-4 pt-28 sm:px-8 sm:pt-36 lg:grid-cols-[0.9fr_1.1fr] lg:gap-6">
             <div className="text-center lg:text-left">
-              <p className="glass mb-6 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium sm:text-sm">
+              <p className="lp-rise glass mb-6 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium sm:text-sm">
                 AI career copilot · every line cites a source
               </p>
               <h1 className="text-balance text-[clamp(2.5rem,7vw,4.5rem)] font-semibold leading-[1.04] tracking-[-0.03em]">
-                Land your next job, <em className="font-doc font-normal italic">without the busywork</em>
+                {HEADLINE.map((w, i) => (
+                  <span key={i}>
+                    <span className={`lp-rise inline-block ${w.em ? "font-doc font-normal italic" : ""}`} style={{ "--d": `${120 + i * 40}ms` }}>{w.t}</span>{" "}
+                  </span>
+                ))}
               </h1>
-              <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg lg:mx-0">
+              <p style={{ "--d": "650ms" }} className="lp-rise mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg lg:mx-0">
                 Paste a job and Pip tailors your resume, letter and prep from what you provide. You approve every change before anything is sent.
               </p>
-              <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-                <Link href="/dashboard" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-sky-solid transition hover:bg-white/90 sm:w-auto">
+              <div style={{ "--d": "780ms" }} className="lp-rise mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                <Link href="/dashboard" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-sky-solid transition duration-200 hover:bg-white/90 active:scale-[0.98] sm:w-auto">
                   Get started free <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <a href="#how" className="glass inline-flex min-h-12 w-full items-center justify-center rounded-full px-6 text-sm font-medium text-white transition hover:bg-white/20 sm:w-auto">
+                <a href="#how" className="glass inline-flex min-h-12 w-full items-center justify-center rounded-full px-6 text-sm font-medium text-white transition duration-200 hover:bg-white/20 active:scale-[0.98] sm:w-auto">
                   See how it works
                 </a>
               </div>
-              <p className="mt-4 text-xs text-white/85">Free to start, up to 50 AI actions a day</p>
+              <p style={{ "--d": "880ms" }} className="lp-rise mt-4 text-xs text-white/85">Free to start, up to 50 AI actions a day</p>
             </div>
             <HeroWindow />
           </div>
@@ -172,14 +182,14 @@ export default function LandingPage() {
             Nothing invented. Nothing sent without you.
           </SectionHead>
           <div className="grid gap-4 md:grid-cols-3">
-            {TRUST.map((t) => (
-              <div key={t.title} className="rounded-2xl border border-line bg-panel p-6 text-center">
+            {TRUST.map((t, i) => (
+              <Reveal key={t.title} delay={i * 60} className="rounded-2xl border border-line bg-panel p-6 text-center">
                 <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-primary-ink">
                   <t.icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <h3 className="mb-2 text-base font-semibold capitalize tracking-tight text-text">{t.title}</h3>
                 <p className="text-sm leading-relaxed text-muted">{t.desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </section>
