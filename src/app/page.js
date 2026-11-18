@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import LandingNav from "@/components/landingPage/LandingNav";
 import SampleDemo from "@/components/landingPage/SampleDemo";
-import { Spotlight } from "@/components/ui/aceternity/spotlight";
 import { BackgroundGrid } from "@/components/ui/aceternity/background-grid";
 import { TextGenerateEffect } from "@/components/ui/aceternity/text-generate-effect";
 import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
@@ -81,7 +80,6 @@ export default function LandingPage() {
         {/* Hero */}
         <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
           <BackgroundGrid />
-          <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" />
           <div className="relative z-10 mx-auto max-w-3xl text-center">
             <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-card">
               <Pip name="coffee" size={18} /> pip, your ai career assistant

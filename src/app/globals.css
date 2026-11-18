@@ -310,11 +310,6 @@
 }
 
 /* Aceternity-style kit helpers (src/components/ui/aceternity) */
-@keyframes spotlightIn {
-  from { opacity: 0; transform: translate(-72px, -62px) scale(0.5); }
-  to { opacity: 1; transform: translate(0, 0) scale(1); }
-}
-.animate-spotlight { animation: spotlightIn 1.6s ease 0.4s 1 forwards; }
 
 @keyframes borderSpin {
   to { transform: rotate(360deg); }
