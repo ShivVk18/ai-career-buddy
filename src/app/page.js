@@ -20,9 +20,8 @@ import {
 } from "lucide-react";
 import LandingNav from "@/components/landingPage/LandingNav";
 import SampleDemo from "@/components/landingPage/SampleDemo";
-import HeroStack from "@/components/landingPage/HeroStack";
+import HeroWindow, { HeroGlow, ToolChips } from "@/components/landingPage/HeroWindow";
 import Reveal from "@/components/landingPage/Reveal";
-import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
 
 const STEPS = [
   { icon: ClipboardPaste, title: "paste a job", desc: "A link or the description text. Pip pulls out the requirements." },
@@ -59,19 +58,14 @@ function Pip({ name = "coffee", size = 24, className = "" }) {
   );
 }
 
-const DISPLAY = "font-bold leading-[0.9] tracking-[-0.045em] lowercase";
-const SERIF = "font-doc font-normal italic tracking-[-0.03em]";
-const MARQUEE = ["resume builder", "ats scanner", "interview prep", "cover letter", "cold email", "career roadmap"];
+const INPUTS = ["Your resume PDF", "Pasted job posts", "Job links", "Your profile", "Interview practice", "Roadmap"];
 
-function SectionHead({ id, no, eyebrow, children }) {
+function SectionHead({ id, eyebrow, children, sub }) {
   return (
-    <Reveal id={id} className="mb-12 scroll-mt-24 sm:mb-16">
-      <p className="mb-5 flex items-center gap-3 font-pixel text-sm text-faint">
-        <span className="text-primary-ink">{no}</span>
-        <span className="h-px w-10 bg-line" aria-hidden="true" />
-        {eyebrow}
-      </p>
-      <h2 className={`max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] text-text ${DISPLAY}`}>{children}</h2>
+    <Reveal id={id} className="mx-auto mb-12 max-w-2xl scroll-mt-24 text-center">
+      <p className="mb-4 inline-flex rounded-full border border-line bg-panel px-3 py-1 text-xs font-medium text-primary-ink">{eyebrow}</p>
+      <h2 className="text-3xl font-bold tracking-tight text-text sm:text-5xl">{children}</h2>
+      {sub && <p className="mx-auto mt-4 max-w-lg text-muted">{sub}</p>}
     </Reveal>
   );
 }
@@ -79,100 +73,90 @@ function SectionHead({ id, no, eyebrow, children }) {
 export default function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-clip bg-bg font-sans text-text selection:bg-lime selection:text-lime-foreground">
-      <LandingNav />
-
       <main>
-        {/* Hero */}
-        <section className="grain relative px-4 pb-24 pt-12 sm:px-6 sm:pt-20 lg:pt-24">
-          <div className="grid-lines pointer-events-none absolute inset-0" aria-hidden="true" />
-          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-12 lg:gap-8">
-            <div className="lg:col-span-7">
-              <p className="mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-panel py-1.5 pl-2 pr-3 text-xs text-muted">
-                <Pip name="coffee" size={18} /> pip, your ai career assistant
+        {/* Hero frame */}
+        <div className="p-2 sm:p-4 lg:px-6">
+          <section className="relative overflow-hidden rounded-3xl border border-line bg-panel shadow-sm">
+            <HeroGlow />
+            <LandingNav />
+            <div className="relative z-10 px-4 pb-16 pt-14 text-center sm:px-6 sm:pt-20 lg:pt-24">
+              <p className="mx-auto mb-6 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-xs font-medium text-primary-ink sm:text-sm">
+                AI career copilot · every line cites a source
               </p>
-              <h1 className={`mb-8 text-[clamp(3.25rem,12.5vw,8.5rem)] text-text ${DISPLAY}`}>
-                nothing <span className={SERIF}>invented.</span>
-                <br />
-                every line <span className="highlight-match rounded-sm px-1">cited.</span>
+              <h1 className="mx-auto max-w-3xl text-balance text-[clamp(2.5rem,8vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.04em] text-text">
+                Land your next job, without the busywork
               </h1>
-              <p className="mb-10 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-                Paste a job. Pip tailors your resume, letter and prep from what you provide, and you approve every change.
+              <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+                Paste a job and Pip tailors your resume, letter and prep from what you provide.
+                <br className="hidden sm:block" /> You approve every change before anything is sent.
               </p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <HoverBorderGradient as={Link} href="/dashboard" containerClassName="w-full sm:w-auto">
-                  start free <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </HoverBorderGradient>
-                <a href="#how" className="btn-pill-secondary min-h-11 w-full text-sm sm:w-auto">see how it works</a>
+              <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link href="/dashboard" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-primary dark:hover:bg-primary-hover sm:w-auto">
+                  Get started free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <a href="#how" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-panel px-6 text-sm font-medium text-text transition hover:bg-soft sm:w-auto">
+                  See how it works
+                </a>
               </div>
-              <p className="mt-5 text-xs text-muted">free to start - up to 50 AI actions a day</p>
+              <p className="mt-4 text-xs text-muted">Free to start, up to 50 AI actions a day</p>
+              <ToolChips />
+              <div className="mt-12">
+                <HeroWindow />
+              </div>
             </div>
-            <div className="pb-8 lg:col-span-5">
-              <HeroStack />
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-        {/* Marquee */}
-        <div className="marquee overflow-hidden border-y border-line bg-panel py-5" aria-label="The six tools: resume builder, ats scanner, interview prep, cover letter, cold email, career roadmap">
-          <div className="marquee-track flex w-max gap-10" aria-hidden="true">
-            {[...MARQUEE, ...MARQUEE, ...MARQUEE, ...MARQUEE].map((m, i) => (
-              <span key={i} className="flex items-center gap-10 whitespace-nowrap text-2xl font-bold tracking-tight text-text sm:text-3xl">
-                {m}
-                <span className="h-2.5 w-2.5 rounded-full bg-lime" />
-              </span>
+        {/* Inputs */}
+        <div className="px-4 pb-8 pt-8 text-center sm:px-6">
+          <p className="mb-4 text-sm text-muted">Works from what you already have</p>
+          <ul className="mx-auto flex max-w-3xl flex-wrap justify-center gap-2">
+            {INPUTS.map((c) => (
+              <li key={c} className="rounded-full border border-line bg-panel px-3.5 py-1.5 text-sm text-text">{c}</li>
             ))}
-          </div>
+          </ul>
         </div>
 
         {/* How it works */}
-        <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">
-          <div className="grid gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <div className="lg:sticky lg:top-28">
-                <SectionHead id="how" no="01" eyebrow="how it works">
-                  four steps, <span className={SERIF}>one</span> job.
-                </SectionHead>
-                <p className="-mt-4 max-w-sm text-muted">From a pasted link to an application you send yourself.</p>
-              </div>
-            </div>
-            <ol className="lg:col-span-7">
-              {STEPS.map((s, i) => (
-                <Reveal as="li" key={s.title} delay={i * 60} className="group grid grid-cols-[auto_1fr] gap-x-6 border-t border-line py-8 last:border-b sm:gap-x-10 sm:py-10">
-                  <span className="text-[clamp(3.5rem,9vw,6.5rem)] font-bold leading-none tracking-[-0.06em] text-line transition-colors duration-300 group-hover:text-primary-ink">0{i + 1}</span>
-                  <div className="pt-2">
-                    <s.icon className="mb-3 h-5 w-5 text-primary-ink" aria-hidden="true" />
-                    <h3 className="mb-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{s.title}</h3>
-                    <p className="max-w-md text-sm leading-relaxed text-muted sm:text-base">{s.desc}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </ol>
-          </div>
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+          <SectionHead id="how" eyebrow="How it works" sub="From a pasted link to an application you send yourself.">
+            Four steps, one job
+          </SectionHead>
+          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((s, i) => (
+              <Reveal as="li" key={s.title} delay={i * 60} className="rounded-2xl border border-line bg-panel p-6">
+                <span className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-soft text-primary-ink">
+                  <s.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <p className="mb-1 text-xs font-medium text-faint">Step {i + 1}</p>
+                <h3 className="mb-2 text-lg font-semibold capitalize tracking-tight text-text">{s.title}</h3>
+                <p className="text-sm leading-relaxed text-muted">{s.desc}</p>
+              </Reveal>
+            ))}
+          </ol>
         </section>
 
         {/* Tools bento */}
-        <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 sm:pb-32">
-          <SectionHead id="tools" no="02" eyebrow="six tools, one memory">
-            everything for the job, <span className={SERIF}>together.</span>
+        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
+          <SectionHead id="tools" eyebrow="Six tools, one memory">
+            Everything for the job, together
           </SectionHead>
           <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-6">
             {TOOLS.map((t, i) => (
               <Reveal key={t.name} delay={i * 50} className={t.span}>
                 <Link
                   href={t.href}
-                  className={`group relative flex h-full min-h-56 flex-col justify-between overflow-hidden rounded-3xl border border-line p-6 transition duration-300 hover:-translate-y-1 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-8 ${i === 0 ? "bg-primary text-white" : "bg-panel"}`}
+                  className="group flex h-full min-h-48 flex-col justify-between rounded-2xl border border-line bg-panel p-6 transition duration-300 hover:-translate-y-0.5 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                 >
                   <div className="flex items-start justify-between">
-                    <span className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transform-none ${i === 0 ? "bg-white/15 text-white" : "bg-soft text-primary-ink"}`}>
-                      <t.icon className="h-6 w-6" aria-hidden="true" />
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-primary-ink">
+                      <t.icon className="h-5 w-5" aria-hidden="true" />
                     </span>
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-full border transition duration-300 group-hover:bg-lime group-hover:text-lime-foreground ${i === 0 ? "border-white/40" : "border-line text-muted"}`}>
-                      <ArrowRight className="h-4 w-4 -rotate-45 transition-transform duration-300 group-hover:rotate-0 motion-reduce:transform-none" aria-hidden="true" />
-                    </span>
+                    <ArrowRight className="h-4 w-4 -rotate-45 text-muted transition-transform group-hover:rotate-0 motion-reduce:transform-none" aria-hidden="true" />
                   </div>
-                  <div className="mt-10">
-                    <h3 className={`mb-2 font-bold tracking-tight ${i === 0 ? "text-4xl sm:text-5xl" : "text-2xl"}`}>{t.name}</h3>
-                    <p className={`max-w-md text-sm leading-relaxed ${i === 0 ? "text-white/85" : "text-muted"}`}>{t.desc}</p>
+                  <div className="mt-8">
+                    <h3 className="mb-1.5 text-lg font-semibold capitalize tracking-tight text-text">{t.name}</h3>
+                    <p className="max-w-md text-sm leading-relaxed text-muted">{t.desc}</p>
                   </div>
                 </Link>
               </Reveal>
@@ -181,111 +165,89 @@ export default function LandingPage() {
         </section>
 
         {/* Sample preview */}
-        <section className="border-y border-line bg-soft px-4 py-24 sm:px-6 sm:py-32">
-          <div className="mx-auto max-w-7xl">
-            <SectionHead id="sample" no="03" eyebrow="product preview, sample">
-              what a tailored resume <span className={SERIF}>looks like.</span>
+        <section className="border-y border-line bg-soft px-4 py-20 sm:px-6 sm:py-28">
+          <div className="mx-auto max-w-6xl">
+            <SectionHead id="sample" eyebrow="Product preview, sample" sub="A sample with made-up names and numbers, shown to explain the format.">
+              What a tailored resume looks like
             </SectionHead>
-            <p className="-mt-6 mb-10 max-w-lg text-muted">This is a sample with made-up names and numbers, shown to explain the format.</p>
             <SampleDemo />
           </div>
         </section>
 
-        {/* Trust: indigo block */}
-        <section className="grain relative bg-primary px-4 py-24 text-white sm:px-6 sm:py-32">
-          <div className="relative z-10 mx-auto max-w-7xl">
-            <p id="trust" className="mb-10 flex scroll-mt-24 items-center gap-3 font-pixel text-sm text-white/80">
-              <span className="text-lime">04</span><span className="h-px w-10 bg-white/40" aria-hidden="true" /> trust
-            </p>
-            <Reveal>
-              <p className={`text-[clamp(3rem,11vw,9rem)] ${DISPLAY}`}>
-                nothing <span className={SERIF}>invented.</span>
-              </p>
-              <p className={`text-[clamp(3rem,11vw,9rem)] ${DISPLAY}`}>
-                nothing sent <span className="text-lime">without you.</span>
-              </p>
-            </Reveal>
-            <div className="mt-16 grid gap-px overflow-hidden rounded-3xl border border-white/25 bg-white/25 md:grid-cols-3">
-              {TRUST.map((t) => (
-                <div key={t.title} className="bg-primary p-6 sm:p-8">
-                  <t.icon className="mb-6 h-6 w-6 text-lime" aria-hidden="true" />
-                  <h3 className="mb-2 text-lg font-bold tracking-tight">{t.title}</h3>
-                  <p className="text-sm leading-relaxed text-white/85">{t.desc}</p>
-                </div>
-              ))}
-            </div>
+        {/* Trust */}
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+          <SectionHead id="trust" eyebrow="Trust">
+            Nothing invented. Nothing sent without you.
+          </SectionHead>
+          <div className="grid gap-4 md:grid-cols-3">
+            {TRUST.map((t) => (
+              <div key={t.title} className="rounded-2xl border border-line bg-panel p-6 text-center">
+                <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-primary-ink">
+                  <t.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h3 className="mb-2 text-base font-semibold capitalize tracking-tight text-text">{t.title}</h3>
+                <p className="text-sm leading-relaxed text-muted">{t.desc}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Pricing: lime break */}
-        <section className="bg-lime px-4 py-24 text-lime-foreground sm:px-6 sm:py-32">
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-12">
-            <Reveal id="pricing" className="scroll-mt-24 lg:col-span-6">
-              <p className="mb-5 flex items-center gap-3 font-pixel text-sm"><span>05</span><span className="h-px w-10 bg-lime-foreground/40" aria-hidden="true" /> pricing</p>
-              <h2 className={`text-[clamp(3rem,9vw,7rem)] ${DISPLAY}`}>
-                free, <span className={SERIF}>while</span> we build.
-              </h2>
-              <p className="mt-6 max-w-sm text-sm">Paid plans are planned, not available yet.</p>
-            </Reveal>
-            <Reveal delay={80} className="lg:col-span-6">
-              <div className="rounded-3xl border border-lime-foreground/20 bg-bg p-6 text-text sm:p-8">
-                <p className="mb-6 text-xl font-bold tracking-tight">free</p>
-                <ul className="mb-8 space-y-3 text-sm">
-                  {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"].map((f) => (
-                    <li key={f} className="flex items-start gap-3 border-b border-line pb-3 last:border-0">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/dashboard" className="btn-pill-primary min-h-11 w-full text-sm sm:w-auto">start free</Link>
-              </div>
-            </Reveal>
-          </div>
+        {/* Pricing */}
+        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
+          <SectionHead id="pricing" eyebrow="Pricing" sub="Paid plans are planned, not available yet.">
+            Free, while we build
+          </SectionHead>
+          <Reveal className="mx-auto max-w-md rounded-3xl border border-line bg-panel p-6 shadow-sm sm:p-8">
+            <div className="mb-6 flex items-center justify-between">
+              <p className="text-xl font-bold tracking-tight text-text">Free</p>
+              <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-lime-foreground">Available now</span>
+            </div>
+            <ul className="mb-8 space-y-3 text-sm text-text">
+              {["Up to 50 AI actions per day", "Open-question interview practice", "Resume tailoring and ATS fixes", "Cover letters and cold emails grounded in your details", "Pip, your AI career assistant"].map((f) => (
+                <li key={f} className="flex items-start gap-3">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {f}
+                </li>
+              ))}
+            </ul>
+            <Link href="/dashboard" className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-zinc-900 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-primary dark:hover:bg-primary-hover">
+              Get started free
+            </Link>
+            <p className="mt-4 text-center text-xs text-muted">Paid plan: planned</p>
+          </Reveal>
         </section>
 
         {/* FAQ */}
-        <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">
-          <div className="grid gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <SectionHead id="faq" no="06" eyebrow="faq">
-                questions, <span className={SERIF}>answered.</span>
-              </SectionHead>
-            </div>
-            <div className="lg:col-span-7">
-              {FAQS.map((f) => (
-                <details key={f.q} className="group border-t border-line last:border-b">
-                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-lg py-5 text-base font-semibold text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg [&::-webkit-details-marker]:hidden">
-                    {f.q}
-                    <ChevronDown className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                  </summary>
-                  <p className="max-w-xl pb-6 text-sm leading-relaxed text-muted sm:text-base">{f.a}</p>
-                </details>
-              ))}
-            </div>
+        <section className="mx-auto max-w-3xl px-4 pb-20 sm:px-6 sm:pb-28">
+          <SectionHead id="faq" eyebrow="FAQ">
+            Questions, answered
+          </SectionHead>
+          <div className="space-y-3">
+            {FAQS.map((f) => (
+              <details key={f.q} className="group rounded-2xl border border-line bg-panel px-5">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-lg py-4 text-base font-semibold text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                  {f.q}
+                  <ChevronDown className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <p className="pb-5 text-sm leading-relaxed text-muted sm:text-base">{f.a}</p>
+              </details>
+            ))}
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-line bg-panel px-4 pt-16 text-xs text-muted sm:px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
-            <div>
-              <p className="mb-4 text-2xl font-bold tracking-tight text-text sm:text-3xl">ready for your next role?</p>
-              <Link href="/dashboard" className="btn-pill-primary min-h-11 px-7 text-sm">start free with pip</Link>
-            </div>
-            <nav aria-label="Tools" className="flex flex-wrap gap-x-5 gap-y-2 md:max-w-sm md:justify-end">
-              <Link href="/resume" className="hover:text-text">resume builder</Link>
-              <Link href="/interview" className="hover:text-text">interview prep</Link>
-              <Link href="/cover-letter" className="hover:text-text">cover letter</Link>
-              <Link href="/cold-email" className="hover:text-text">cold email</Link>
-              <Link href="/roadmap" className="hover:text-text">career roadmap</Link>
-              <Link href="/resume-parser" className="hover:text-text">ats scanner</Link>
-            </nav>
-          </div>
-          <p className="mt-10 flex items-center gap-2"><Pip name="coffee" size={20} /> pip by stick it up (mit)</p>
-          <p aria-hidden="true" className="select-none overflow-hidden whitespace-nowrap pt-4 text-center text-[clamp(5rem,26vw,24rem)] font-bold leading-[0.78] tracking-[-0.06em] text-soft">
-            ascend
-          </p>
+      <footer className="border-t border-line bg-panel px-4 py-12 text-xs text-muted sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 text-center">
+          <p className="text-2xl font-bold tracking-tight text-text">ascend</p>
+          <nav aria-label="Tools" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+            <Link href="/resume" className="hover:text-text">Resume builder</Link>
+            <Link href="/resume-parser" className="hover:text-text">ATS scanner</Link>
+            <Link href="/interview" className="hover:text-text">Interview prep</Link>
+            <Link href="/cover-letter" className="hover:text-text">Cover letter</Link>
+            <Link href="/cold-email" className="hover:text-text">Cold email</Link>
+            <Link href="/roadmap" className="hover:text-text">Career roadmap</Link>
+            <a href="#trust" className="hover:text-text">Trust</a>
+          </nav>
+          <p className="flex items-center gap-2"><Pip name="coffee" size={20} /> Pip by stick it up (MIT)</p>
         </div>
       </footer>
     </div>
