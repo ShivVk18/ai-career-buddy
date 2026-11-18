@@ -39,6 +39,14 @@ describe("getProfileChips", () => {
     expect(out.chips.every((c) => c.source === null && c.id)).toBe(true);
     expect(out.years).toBe(3);
     expect(out.industry).toBe("Tech");
+    expect(out.targetRole).toBeNull();
+    expect(out.jobSearchStage).toBeNull();
+  });
+  it("returns targetRole and jobSearchStage", async () => {
+    db.user.findUnique.mockResolvedValue({ skills: [], experience: null, industry: null, targetRole: "Designer", jobSearchStage: "APPLYING" });
+    const out = await getProfileChips();
+    expect(out.targetRole).toBe("Designer");
+    expect(out.jobSearchStage).toBe("APPLYING");
   });
   it("works with no resume", async () => {
     db.resume.findUnique.mockResolvedValue(null);

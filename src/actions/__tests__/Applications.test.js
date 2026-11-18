@@ -22,7 +22,7 @@ vi.mock("@/lib/prisma", () => ({ db }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("@/actions/Practice", () => ({ generateOpenQuestions: vi.fn() }));
 
-const { setApplicationStatus, markApplied, closeApplication, approveNeedsYou } = await import("../Applications.js");
+const { setApplicationStatus, markApplied, closeApplication, approveNeedsYou, unapproveNeedsYou } = await import("../Applications.js");
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -68,5 +68,45 @@ describe("application actions", () => {
     expect(app.pipeline.steps.WRITER.needsYou).toBe(false);
     expect(await approveNeedsYou("a1", "WRITER")).toEqual({ success: true });
     expect((await approveNeedsYou("a1", "NOPE")).code).toBe("INVALID");
+  });
+  it("unapprove restores needsYou for a done step and is idempotent", async () => {
+    await approveNeedsYou("a1", "WRITER");
+    expect(await unapproveNeedsYou("a1", "WRITER")).toEqual({ success: true });
+    expect(app.pipeline.steps.WRITER.needsYou).toBe(true);
+    expect(await unapproveNeedsYou("a1", "WRITER")).toEqual({ success: true });
+    expect(app.pipeline.steps.WRITER.needsYou).toBe(true);
+  });
+  it("unapprove does not invent a review for a step that is not done, and un-dismisses the ATS fix", async () => {
+    await unapproveNeedsYou("a1", "TAILOR");
+    expect(app.pipeline.steps.TAILOR?.needsYou).toBeUndefined();
+    await approveNeedsYou("a1", "CHECKER");
+    expect(app.pipeline.steps.CHECKER.fixDismissed).toBe(true);
+    await unapproveNeedsYou("a1", "CHECKER");
+    expect(app.pipeline.steps.CHECKER.fixDismissed).toBe(false);
+  });
+  it("unapprove validates input and ownership", async () => {
+    expect((await unapproveNeedsYou("a1", "NOPE")).code).toBe("INVALID");
+    expect((await unapproveNeedsYou("other", "WRITER")).code).toBe("NOT_FOUND");
+  });
+  it("a board move to CLOSED adds gap tasks once, like closeApplication", async () => {
+    const r = await setApplicationStatus("a1", "CLOSED");
+    expect(r.application.status).toBe("CLOSED");
+    expect(r.previousStatus).toBe("SAVED");
+    expect(r.tasksAdded).toBe(2);
+    expect(path.steps).toHaveLength(3);
+    // out of CLOSED and back in: nothing added twice, nothing removed
+    await setApplicationStatus("a1", "APPLIED");
+    expect(path.steps).toHaveLength(3);
+    const again = await setApplicationStatus("a1", "CLOSED");
+    expect(again.tasksAdded).toBe(0);
+    expect(path.steps).toHaveLength(3);
+  });
+  it("closing via the board with no roadmap leaves gapTasksAddedAt unset so a later close can add them", async () => {
+    const saved = path;
+    path = null;
+    expect((await setApplicationStatus("a1", "CLOSED")).tasksAdded).toBe(0);
+    expect(app.gapTasksAddedAt).toBeNull();
+    path = saved;
+    expect((await setApplicationStatus("a1", "CLOSED")).tasksAdded).toBe(2);
   });
 });

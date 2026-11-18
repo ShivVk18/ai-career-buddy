@@ -26,6 +26,7 @@ const inputSchema = z.object({
   jobDescription: z.string().trim().min(1).max(20000),
   resumeBase64: z.string().min(1),
   resumeType: z.string().max(100).optional(),
+  jobId: z.string().trim().min(1).max(100).optional(),
 });
 
 /** The stored resume text never leaves the server; clients get hasResumeText and the other evidence fields. */
@@ -109,7 +110,7 @@ async function createATSAnalysisImpl(formData) {
         ? failure("INVALID_FILE", INVALID_FILE_MSG)
         : failure("INVALID", "Please check the company, job title and job description and try again.");
     }
-    const { companyName, jobTitle, jobDescription, resumeBase64, resumeType } = parsedInput.data;
+    const { companyName, jobTitle, jobDescription, resumeBase64, resumeType, jobId } = parsedInput.data;
 
     // Validate the file before any AI call.
     const pdf = await validateAndExtractPdf(resumeBase64, resumeType);
@@ -126,6 +127,12 @@ async function createATSAnalysisImpl(formData) {
       create: { clerkUserId: userId, email, name, skills: [] },
     });
     await purgeOldResumeText(dbUser.id);
+
+    if (jobId) {
+      // Optional link to one of the caller's jobs; refused before any AI call.
+      const job = await db.job.findFirst({ where: { id: jobId, userId: dbUser.id, deletedAt: null }, select: { id: true } });
+      if (!job) return failure("NOT_FOUND", "We couldn't find that job.");
+    }
 
     const scored = await scoreResume({ userId, resumeText, jobDescription, jobTitle, companyName });
     if (scored.empty) return failure("NO_SOURCES", NO_SOURCES_MSG);
@@ -149,6 +156,7 @@ async function createATSAnalysisImpl(formData) {
         jobTitle,
         companyName,
         jobDescription,
+        ...(jobId ? { job: { connect: { id: jobId } } } : {}),
       },
     });
 

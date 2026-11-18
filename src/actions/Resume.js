@@ -765,16 +765,59 @@ OUTPUT: valid JSON only, no markdown fences:
   }
 }
 
+/**
+ * Reads one pending tailoring draft (owner-scoped) in the shape tailorResume returned it, so the review can be
+ * reopened from /needs-you. Returns { draftId, jobId, jobTitle, companyName, matchBefore, proposals, expiresAt }
+ * or { error, code: INVALID | NOT_FOUND | STALE | FAILED }. STALE = older than 24 h. Saved versions are NOT_FOUND here.
+ */
+export async function getTailorDraft(draftId) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const id = idSchema.safeParse(draftId);
+  if (!id.success) return fail("INVALID", "Missing draft id.");
+  try {
+    const { user, resume } = await loadOwner(userId);
+    if (!user) return NO_PROFILE;
+    if (!resume) return fail("NOT_FOUND", NO_RESUME_MSG);
+    const row = await db.resumeVersion.findFirst({ where: { id: id.data, resumeId: resume.id } });
+    const env = row ? decodeVersion(row) : null;
+    if (!row || env.kind !== "draft" || !Array.isArray(env.proposals)) {
+      return fail("NOT_FOUND", "These suggestions are no longer available. Please run tailoring again.");
+    }
+    if (Date.now() - row.createdAt.getTime() > DRAFT_TTL_MS) {
+      return fail("STALE", "These suggestions have expired. Please run tailoring again.");
+    }
+    const jd = row.jobDescription ?? "";
+    return {
+      draftId: row.id,
+      jobId: row.jobId ?? null,
+      jobTitle: row.jobTitle ?? "",
+      companyName: row.companyName ?? "",
+      matchBefore: matchText(jd, resumeToText(resume)),
+      proposals: env.proposals.map(({ proposalId, entryId, bulletIndex, original, proposed, reason, sources }) => ({
+        proposalId, entryId, bulletIndex, original, proposed, reason, sources: Array.isArray(sources) ? sources : [],
+      })),
+      expiresAt: new Date(row.createdAt.getTime() + DRAFT_TTL_MS).toISOString(),
+    };
+  } catch (error) {
+    console.error("getTailorDraft failed:", safeErr(error));
+    return fail("FAILED", "We couldn't load these suggestions. Please try again.");
+  }
+}
+
 const saveTailoredSchema = z.object({
   draftId: idSchema,
   acceptedProposalIds: z.array(z.string().trim().min(1).max(20)).min(1).max(MAX_PROPOSALS),
+  // User-edited lines: { proposalId: text }. Only for accepted ids; one line, 1-600 chars.
+  edits: z.record(z.string().trim().min(1).max(20), z.string().max(5000)).optional(),
   label: z.string().trim().min(1).max(120).optional(),
 });
 
 /**
  * Saves the accepted proposals as a ResumeVersion. Takes only ids: the proposal text comes from the
  * server-side draft and is re-verified against the CURRENT resume and job description (bullet still
- * identical, no invented numbers). The main resume is never modified.
+ * identical, no invented numbers). The main resume is never modified. Optional `edits: {proposalId: text}` replaces
+ * the proposed text of an ACCEPTED proposal (same checks; stored with userEdited:true and no sources).
  * Returns { versionId, label, applied:[proposalId], skipped:[{proposalId, reason}], matchBefore, matchAfter }
  * or { error, code: INVALID | NOT_FOUND | STALE | FAILED }.
  */
@@ -784,6 +827,14 @@ export async function saveTailoredVersion(input) {
   const parsed = saveTailoredSchema.safeParse(input ?? {});
   if (!parsed.success) return fail("INVALID", "Accept at least one edit to save a version.");
   const { draftId, acceptedProposalIds, label } = parsed.data;
+  const accepted = new Set(acceptedProposalIds);
+  const edits = new Map();
+  for (const [pid, raw] of Object.entries(parsed.data.edits ?? {})) {
+    const text = String(raw).replace(/\s+/g, " ").trim();
+    if (!accepted.has(pid)) return fail("INVALID", "You can only edit lines you accepted.");
+    if (!text || text.length > MAX_PROPOSED) return fail("INVALID", `An edited line must be 1 to ${MAX_PROPOSED} characters.`);
+    edits.set(pid, text);
+  }
 
   try {
     const { user, resume } = await loadOwner(userId);
@@ -804,13 +855,19 @@ export async function saveTailoredVersion(input) {
     const applied = [];
     const skipped = [];
     const wanted = [...new Set(acceptedProposalIds)];
+    for (const pid of edits.keys()) {
+      if (!env.proposals.some((x) => x.proposalId === pid)) return fail("INVALID", "You can only edit lines from this draft.");
+    }
 
     for (const pid of wanted) {
-      const p = env.proposals.find((x) => x.proposalId === pid);
-      if (!p) {
+      const found = env.proposals.find((x) => x.proposalId === pid);
+      if (!found) {
         skipped.push({ proposalId: pid, reason: "UNKNOWN" });
         continue;
       }
+      // A user-edited line replaces the proposed text; it is the user's own words, so it has no AI sources (no chips).
+      const userEdited = edits.has(pid);
+      const p = userEdited ? { ...found, proposed: edits.get(pid), sources: [], userEdited: true } : found;
       // Re-verify against the current resume: the entry exists and the bullet is still the same text.
       const target = resolveEntry(next, p.entryId);
       const entry = target?.list[target.index];
@@ -848,8 +905,8 @@ export async function saveTailoredVersion(input) {
         tailoredContent: encodeVersion("version", {
           label: finalLabel,
           content: next,
-          applied: applied.map(({ proposalId, entryId, bulletIndex, original, proposed, reason, sources }) => ({
-            proposalId, entryId, bulletIndex, original, proposed, reason, sources,
+          applied: applied.map(({ proposalId, entryId, bulletIndex, original, proposed, reason, sources, userEdited }) => ({
+            proposalId, entryId, bulletIndex, original, proposed, reason, sources, ...(userEdited ? { userEdited: true } : {}),
           })),
         }),
       },

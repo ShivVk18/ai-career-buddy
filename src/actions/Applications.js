@@ -98,6 +98,42 @@ export async function approveNeedsYou(applicationId, step) {
   }
 }
 
+/**
+ * Reverses approveNeedsYou (Undo): TAILOR | WRITER | CONNECTOR get `needsYou: true` back (only when that step is
+ * done, so nothing is invented), CHECKER un-dismisses the ATS fix item. Idempotent. Returns { success: true } or { error, code }.
+ */
+export async function unapproveNeedsYou(applicationId, step) {
+  const b = await begin(applicationId);
+  if (b.err) return b.err;
+  const s = approveSchema.safeParse({ step });
+  if (!s.success) return fail("INVALID", "Unknown step.");
+  try {
+    for (let i = 0; i < CAS_TRIES; i++) {
+      const app = await loadApp(b.id, b.user.id);
+      if (!app) return NOT_FOUND_APP();
+      const p = normalizePipeline(app.pipeline);
+      const st = p.steps[s.data.step];
+      if (s.data.step === "CHECKER") {
+        if (st.fixDismissed !== true) return { success: true };
+        st.fixDismissed = false;
+      } else {
+        if (st.needsYou === true) return { success: true };
+        if (st.status !== "done") return { success: true }; // nothing awaiting review to bring back
+        st.needsYou = true;
+      }
+      const res = await db.application.updateMany({
+        where: { id: app.id, userId: b.user.id, deletedAt: null, updatedAt: app.updatedAt },
+        data: { pipeline: p },
+      });
+      if (res.count === 1) return { success: true };
+    }
+    return fail("FAILED", "We couldn't save that. Please try again.");
+  } catch (error) {
+    console.error("unapproveNeedsYou failed:", safeErr(error));
+    return fail("FAILED", "We couldn't save that. Please try again.");
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // Status changes
 
@@ -145,7 +181,12 @@ export async function setApplicationStatus(id, status) {
   try {
     const app = await loadApp(b.id, b.user.id);
     if (!app) return NOT_FOUND_APP();
-    if (app.status === st.data) return { application: outApplication(app), previousStatus: app.status };
+    if (app.status === st.data && st.data !== "CLOSED") return { application: outApplication(app), previousStatus: app.status };
+    // Closed: same as closeApplication (gap tasks once, via gapTasksAddedAt), so board moves and the job page agree.
+    if (st.data === "CLOSED") {
+      const closed = await closeWithGaps(app, b.user.id, app.status === "CLOSED" ? undefined : {});
+      return closed ?? NOT_FOUND_APP();
+    }
     const fresh = await changeStatus(app, b.user.id, st.data);
     if (!fresh) return NOT_FOUND_APP();
     return { application: outApplication(fresh), previousStatus: app.status };
@@ -323,20 +364,29 @@ export async function closeApplication(id, reason) {
   try {
     const app = await loadApp(b.id, b.user.id);
     if (!app) return NOT_FOUND_APP();
-    const fresh = await changeStatus(app, b.user.id, "CLOSED", { closedReason: r.data || null });
-    if (!fresh) return NOT_FOUND_APP();
-
-    let tasksAdded = 0;
-    try {
-      tasksAdded = await addGapTasks(app, b.user.id);
-    } catch (err) {
-      console.error("gap tasks failed:", safeErr(err)); // the application is closed either way
-    }
-    return { application: outApplication((await freshApplication(app.id, b.user.id)) ?? fresh), previousStatus: app.status, tasksAdded };
+    return (await closeWithGaps(app, b.user.id, { closedReason: r.data || null })) ?? NOT_FOUND_APP();
   } catch (error) {
     console.error("closeApplication failed:", safeErr(error));
     return fail("FAILED", "We couldn't close that application. Please try again.");
   }
+}
+
+/**
+ * Shared by closeApplication and setApplicationStatus("CLOSED"). `extra` undefined = already closed, only the gap
+ * tasks are (idempotently) attempted. Returns { application, previousStatus, tasksAdded } or null when the row vanished.
+ */
+async function closeWithGaps(app, userDbId, extra) {
+  let fresh;
+  if (extra === undefined) fresh = await freshApplication(app.id, userDbId);
+  else fresh = await changeStatus(app, userDbId, "CLOSED", extra);
+  if (!fresh) return null;
+  let tasksAdded = 0;
+  try {
+    tasksAdded = await addGapTasks(app, userDbId);
+  } catch (err) {
+    console.error("gap tasks failed:", safeErr(err)); // the application is closed either way
+  }
+  return { application: outApplication((await freshApplication(app.id, userDbId)) ?? fresh), previousStatus: app.status, tasksAdded };
 }
 
 async function addGapTasks(app, userDbId) {

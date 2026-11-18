@@ -86,7 +86,7 @@ export async function getProfileChips() {
   const { user } = await requireUser();
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
   try {
-    const me = await db.user.findUnique({ where: { id: user.id }, select: { skills: true, experience: true, industry: true } });
+    const me = await db.user.findUnique({ where: { id: user.id }, select: { skills: true, experience: true, industry: true, targetRole: true, jobSearchStage: true } });
     const resume = await db.resume.findUnique({ where: { userId: user.id }, select: { experience: true, projects: true } });
     const chips = [];
     const entries = (list, kind, section) => {
@@ -109,7 +109,10 @@ export async function getProfileChips() {
     }
     const years = Number.isInteger(me?.experience) ? me.experience : null;
     if (years !== null) chips.push({ id: chipId("years", String(years)), kind: "years", label: years === 1 ? "1 year" : `${years} years`, source: null });
-    return { chips, suggestedTargetRole: null, suggestedIndustry: me?.industry ? { value: me.industry, source: null } : null, years, industry: me?.industry ?? null };
+    return {
+      chips, suggestedTargetRole: null, suggestedIndustry: me?.industry ? { value: me.industry, source: null } : null, years, industry: me?.industry ?? null,
+      targetRole: me?.targetRole ?? null, jobSearchStage: me?.jobSearchStage ?? null,
+    };
   } catch (error) {
     console.error("getProfileChips failed:", safeErr(error));
     return fail("FAILED", "We couldn't load your profile. Please try again.");
