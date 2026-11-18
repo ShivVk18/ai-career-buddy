@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Upload, FileText, Loader, AlertCircle, CheckCircle, Target, TrendingUp, Sparkles, Zap, Brain, Search } from 'lucide-react';
 import { createATSAnalysis } from '@/actions/ResumeParser';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import { getATSScoreById } from "@/actions/ResumeParser";
+import { getResume } from "@/actions/Resume";
 import JobStart from "@/components/shared/JobStart";
 import AtsResult from "./AtsResult";
 import AtsHistory from "./AtsHistory";
@@ -29,6 +31,18 @@ const ResumeParserComponent = () => {
   const [dragActive, setDragActive] = useState(false);
   const [notice, setNotice] = useState('');
   const [historyKey, setHistoryKey] = useState(0);
+  const [hasSaved, setHasSaved] = useState(false);
+  const [source, setSource] = useState('saved'); // 'saved' | 'pdf'
+  const [noResume, setNoResume] = useState(false);
+  const useSaved = hasSaved && source === 'saved';
+
+  useEffect(() => {
+    let alive = true;
+    getResume()
+      .then((r) => { if (alive) setHasSaved(!!r); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // Convert PDF → base64
   const fileToBase64 = (file) => {
@@ -43,7 +57,8 @@ const ResumeParserComponent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.resumePdf) {
+    setNoResume(false);
+    if (!useSaved && !formData.resumePdf) {
       setError("Please upload your resume in PDF format");
       return;
     }
@@ -57,17 +72,25 @@ const ResumeParserComponent = () => {
     setError('');
 
     try {
-      const base64Resume = await fileToBase64(formData.resumePdf);
+      const base64Resume = useSaved ? null : await fileToBase64(formData.resumePdf);
 
       const response = await createATSAnalysis({
         companyName: formData.companyName,
         jobTitle: formData.jobTitle,
         jobDescription: formData.jobDescription,
-        resumeBase64: base64Resume,
-        resumeType: formData.resumePdf.type,
+        ...(useSaved
+          ? { useSavedResume: true }
+          : { resumeBase64: base64Resume, resumeType: formData.resumePdf.type }),
         ...(jobId ? { jobId } : {}),
       });
 
+      if (response?.code === 'NO_RESUME') {
+        setNoResume(true);
+        setSource('pdf');
+        setError("You don't have a saved resume yet.");
+        setLoading(false);
+        return;
+      }
       if (!response || !response.success) {
         setError(generationErrorMessage(response, "Something went wrong while scanning. Please try again."));
         setLoading(false);
@@ -234,15 +257,37 @@ const ResumeParserComponent = () => {
             </JobStart>
             </div>
 
+            {hasSaved && (
+              <div className="mb-6 flex flex-wrap gap-3" role="radiogroup" aria-label="Resume to scan">
+                {[['saved', 'Use my saved resume'], ['pdf', 'Upload a PDF instead']].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    role="radio"
+                    aria-checked={source === val}
+                    onClick={() => setSource(val)}
+                    className={`min-h-10 px-4 rounded-sm border text-xs font-bold uppercase tracking-widest transition-editorial ${
+                      source === val ? 'border-accent bg-accent/10 text-foreground' : 'border-divider text-muted-foreground hover:border-accent'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {jobId && (
               <p className="mb-4 text-xs text-muted-foreground" role="status">
-                {formData.resumePdf
+                {useSaved
+                  ? "The job is filled in and your saved resume will be used. You're ready to scan."
+                  : formData.resumePdf
                   ? `Uses your uploaded PDF (${formData.resumePdf.name}). Choose another file below to replace it.`
                   : "The job is filled in. Add your resume PDF and you're ready to scan."}
               </p>
             )}
 
             {/* FILE UPLOAD */}
+            {!useSaved && (
             <div
               className={`border-dashed border-2 rounded-sm p-12 text-center transition-editorial mb-10 group ${
                 dragActive ? 'border-accent bg-accent/5' : 'border-divider hover:border-accent bg-divider/5'
@@ -267,6 +312,7 @@ const ResumeParserComponent = () => {
                 {!formData.resumePdf && <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-2">Drag and drop or click to select</p>}
               </label>
             </div>
+            )}
 
             {notice && (
               <div className="mb-8 p-4 border border-accent/30 bg-accent/5 text-foreground rounded-sm text-xs">
@@ -277,6 +323,9 @@ const ResumeParserComponent = () => {
             {error && (
               <div className="mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive flex items-center rounded-sm text-xs font-bold uppercase tracking-widest animate-pulse">
                 <AlertCircle className="w-4 h-4 mr-3" /> {error}
+                {noResume && (
+                  <Link href="/resume" className="ml-3 underline">Build your resume</Link>
+                )}
               </div>
             )}
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, GripVertical, MoreHorizontal, RotateCw } from "lucide-react";
 import { toast } from "sonner";
-import { getApplications, setApplicationStatus } from "@/actions/Applications";
+import { getApplications, setApplicationStatus, createInterviewPrep } from "@/actions/Applications";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import EmptyState from "@/components/shared/EmptyState";
 import {
@@ -202,12 +202,32 @@ export default function ApplicationsBoard() {
     setDateFor(null);
     patch(id, (a) => ({ ...a, ...res.application }));
     load(true);
-    const practice = res.application?.prepSessionId;
+    const practice = res.prepSessionId || null;
+    const retryPrep = async () => {
+      let p;
+      try {
+        p = await createInterviewPrep(id);
+      } catch {
+        p = null;
+      }
+      if (!p || p.error || !p.prepSessionId) {
+        toast.error(generationErrorMessage(p, "We couldn't prepare questions. Try again from the job page."));
+        return;
+      }
+      patch(id, (a) => ({ ...a, prepSessionId: p.prepSessionId }));
+      toast.success("Questions are ready", {
+        duration: 5000,
+        action: { label: "Practice", onClick: () => router.push(`/interview/practice?session=${p.prepSessionId}`) },
+      });
+    };
     toast.success("Interview date saved", {
       duration: 5000,
+      description: res.prepError ? generationErrorMessage({ code: res.prepError }, "We couldn't prepare questions yet.") : undefined,
       action: practice
         ? { label: "Practice", onClick: () => router.push(`/interview/practice?session=${practice}`) }
-        : { label: "Undo", onClick: () => move(id, prev, { isUndo: true, prevAt }) },
+        : res.prepError
+          ? { label: "Prepare questions", onClick: retryPrep }
+          : { label: "Undo", onClick: () => move(id, prev, { isUndo: true, prevAt }) },
     });
   };
 

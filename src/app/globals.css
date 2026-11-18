@@ -29,9 +29,9 @@
   --color-border: var(--line);
   --color-ring: var(--pip);
 
-  --font-sans: "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-pixel: "Pixelify Sans", monospace;
-  --font-doc: "Newsreader", Georgia, serif;
+  --font-sans: var(--nf-sans), "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-pixel: var(--nf-pixel), "Pixelify Sans", monospace;
+  --font-doc: var(--nf-doc), "Newsreader", Georgia, serif;
 }
 
 @layer base {

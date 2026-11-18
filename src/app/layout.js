@@ -1,7 +1,12 @@
 import "./globals.css";
+import { Geist, Newsreader, Pixelify_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/Theme-Provider";
+
+const geist = Geist({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], display: "swap", variable: "--nf-sans" });
+const newsreader = Newsreader({ subsets: ["latin"], weight: "variable", style: ["normal", "italic"], axes: ["opsz"], display: "swap", variable: "--nf-doc" });
+const pixelify = Pixelify_Sans({ subsets: ["latin"], weight: "variable", display: "swap", variable: "--nf-pixel" });
 
 export const metadata = {
   title: "ascendai — ai career coach with pip",
@@ -15,15 +20,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider afterSignOutUrl="/">
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Pixelify+Sans:wght@400..700&display=swap"
-            rel="stylesheet"
-          />
-        </head>
+      <html lang="en" suppressHydrationWarning className={`${geist.variable} ${newsreader.variable} ${pixelify.variable}`}>
         <body className="bg-bg text-text font-sans antialiased selection:bg-pip-soft selection:text-pip-ink min-h-screen">
           <ThemeProvider
             attribute="class"

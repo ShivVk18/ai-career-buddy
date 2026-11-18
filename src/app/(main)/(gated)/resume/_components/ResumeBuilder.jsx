@@ -25,7 +25,8 @@ import {
   CheckCircle2,
   Layers,
   PlusCircle,
-  Trash2
+  Trash2,
+  MoreHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -34,7 +35,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { saveResume } from "@/actions/Resume";
+import { useRouter } from "next/navigation";
+import { saveResume, deleteResume, restoreDeletedResume } from "@/actions/Resume";
+import { deleteWithUndo } from "@/components/shared/undoDelete";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ensureEntryIds } from "@/lib/entryIds";
 import { EntryForm } from "./EntryForm";
 import ResumeToolsPanel from "./ResumeToolsPanel";
@@ -146,6 +150,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   const [photoPreview, setPhotoPreview] = useState(initialResume?.photoUrl || "");
   const [showPreview, setShowPreview] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [resumeDeleted, setResumeDeleted] = useState(false);
+  const router = useRouter();
   const { user } = useUser();
 
   const {
@@ -224,14 +230,31 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
 
   // Auto-save functionality with debounce
   useEffect(() => {
-    if (!autoSaveEnabled || !isDirty) return;
+    if (!autoSaveEnabled || !isDirty || resumeDeleted) return;
 
     const timeoutId = setTimeout(() => {
       handleSubmit(onSubmit)();
     }, 3000);
 
     return () => clearTimeout(timeoutId);
-  }, [formValues, autoSaveEnabled, isDirty, handleSubmit]);
+  }, [formValues, autoSaveEnabled, isDirty, handleSubmit, resumeDeleted]);
+
+  // Delete now, 5 s Undo (no confirm). Autosave is held off while the resume is deleted so it is not re-created.
+  const handleDeleteResume = () => {
+    let undoId = null;
+    deleteWithUndo({
+      name: "Resume",
+      hide: () => setResumeDeleted(true),
+      show: () => setResumeDeleted(false),
+      remove: async () => {
+        const res = await deleteResume();
+        undoId = res?.undoId ?? null;
+        return res;
+      },
+      restore: () => restoreDeletedResume(undoId),
+      done: () => router.refresh(),
+    });
+  };
 
   // Photo upload with validation
   const handlePhotoUpload = useCallback((e) => {
@@ -456,7 +479,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
         <div className="flex flex-wrap justify-center gap-6 mb-12">
           <Button
             onClick={handleSubmit(onSubmit)}
-            disabled={isSaving || !isDirty}
+            disabled={isSaving || !isDirty || resumeDeleted}
             className="min-w-[200px] shadow-lg"
           >
             {isSaving ? (
@@ -490,6 +513,19 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
             {showPreview ? <EyeOff className="h-5 w-5 mr-3" /> : <Eye className="h-5 w-5 mr-3" />}
             {showPreview ? "Hide Preview" : "Show Preview"}
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" aria-label="More resume actions" className="border border-divider">
+                <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleDeleteResume} disabled={resumeDeleted || !initialResume} className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" /> Delete resume
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Auto-save and Status */}
