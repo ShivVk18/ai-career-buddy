@@ -9,6 +9,7 @@ import { getUserATSScores } from "@/actions/ResumeParser";
 
 export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
   const [rows, setRows] = useState(null);
+  const [restoreKey, setRestoreKey] = useState(0);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
       }
     })();
     return () => { live = false; };
-  }, [refreshKey]);
+  }, [refreshKey, restoreKey]);
 
   const byId = new Map((rows || []).map((r) => [r.id, r]));
 
@@ -83,7 +84,7 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
                 <Button type="button" size="sm" variant="ghost" onClick={() => onRerun(r)}>
                   <RotateCcw className="w-3 h-3 mr-2" /> Re-run with this job
                 </Button>
-                <DeleteAtsButton scoreId={r.id} onDeleted={(id) => setRows((cur) => (cur || []).filter((x) => x.id !== id))} />
+                <DeleteAtsButton scoreId={r.id} onDeleted={(id) => setRows((cur) => (cur || []).filter((x) => x.id !== id))} onRestored={() => setRestoreKey((k) => k + 1)} />
               </div>
             </li>
           );

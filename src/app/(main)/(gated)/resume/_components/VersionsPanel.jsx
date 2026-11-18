@@ -6,16 +6,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import SourceChips from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import {
@@ -25,6 +15,8 @@ import {
   getResumeVersion,
 } from "@/actions/Resume";
 import { SECTION_CLASS, HEADING_CLASS, LABEL_CLASS } from "./MatchCard";
+
+const UNDO_KEY = "resume-restore-undo";
 
 /** Sources panel: what the accepted edits of one version cited. */
 function VersionSources({ versionId }) {
@@ -77,8 +69,7 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
   const [companyName, setCompanyName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [confirmId, setConfirmId] = useState(null);
-  const [restoring, setRestoring] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
   const [openSources, setOpenSources] = useState(null);
 
   const load = useCallback(async () => {
@@ -133,34 +124,64 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
     }
   };
 
-  const handleRestore = async () => {
-    const id = confirmId;
-    setRestoring(true);
+  // The page must reload to show a restored resume, which would wipe the toast. So the Undo token is kept in
+  // sessionStorage and the Undo toast is shown right after the reload (5 s).
+  useEffect(() => {
+    let raw = null;
+    try {
+      raw = sessionStorage.getItem(UNDO_KEY);
+      sessionStorage.removeItem(UNDO_KEY);
+    } catch {}
+    if (!raw) return;
+    let undo;
+    try {
+      undo = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (!undo?.id) return;
+    toast.success(`Restored "${undo.label || "version"}"`, {
+      duration: 5000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const res = await restoreResumeVersion(undo.id).catch(() => null);
+          if (!res || res.error) {
+            toast.error(generationErrorMessage(res, "Couldn't undo that. Your resume is unchanged."));
+            return;
+          }
+          toast.success("Undone. Reloading your resume...");
+          setTimeout(() => window.location.reload(), 400);
+        },
+      },
+    });
+  }, []);
+
+  // No confirm: the current resume is snapshotted by the server first (undoVersionId), and Undo restores it.
+  const handleRestore = async (v) => {
+    if (restoringId) return;
+    setRestoringId(v.id);
     try {
       // Save pending form edits first so they end up in the "Before restore" copy and
       // autosave cannot overwrite the restored resume.
-      if (!(await ensureSaved())) {
-        setConfirmId(null);
-        return;
-      }
-      const res = await restoreResumeVersion(id);
+      if (!(await ensureSaved())) return;
+      const res = await restoreResumeVersion(v.id);
       if (!res || res.error) {
         toast.error(generationErrorMessage(res));
-        setConfirmId(null);
         return;
       }
+      const undoId = res.undoVersionId || res.backupVersionId;
+      try {
+        if (undoId) sessionStorage.setItem(UNDO_KEY, JSON.stringify({ id: undoId, label: v.label }));
+      } catch {}
       toast.success("Version restored. Reloading your resume...");
-      // The form is initialised once from the server, so reload to show the restored resume.
       setTimeout(() => window.location.reload(), 600);
     } catch {
       toast.error("We couldn't restore this version. Your resume was not changed.");
-      setConfirmId(null);
     } finally {
-      setRestoring(false);
+      setRestoringId(null);
     }
   };
-
-  const target = versions?.find((v) => v.id === confirmId);
 
   return (
     <div className={SECTION_CLASS}>
@@ -206,8 +227,8 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
                 <Button type="button" variant="ghost" size="sm" onClick={() => setOpenSources(openSources === v.id ? null : v.id)}>
                   <Link2 className="h-3 w-3 mr-2" /> Sources
                 </Button>
-                <Button type="button" variant="outline" size="sm" disabled={!v.restorable} onClick={() => setConfirmId(v.id)}>
-                  <RotateCcw className="h-3 w-3 mr-2" /> Restore
+                <Button type="button" variant="outline" size="sm" disabled={!v.restorable || !!restoringId} onClick={() => handleRestore(v)}>
+                  {restoringId === v.id ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <RotateCcw className="h-3 w-3 mr-2" />} Restore
                 </Button>
               </div>
             </div>
@@ -216,29 +237,6 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
         ))}
       </ul>
 
-      <AlertDialog open={!!confirmId} onOpenChange={(o) => !o && !restoring && setConfirmId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Restore {target ? `"${target.label}"` : "this version"}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your current resume (including any unsaved edits in the form) is saved first as a version
-              named &quot;Before restore&quot;, so you can come back to it. The page reloads after restoring.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={restoring}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={restoring}
-              onClick={(e) => {
-                e.preventDefault();
-                handleRestore();
-              }}
-            >
-              {restoring ? "Restoring..." : "Restore"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

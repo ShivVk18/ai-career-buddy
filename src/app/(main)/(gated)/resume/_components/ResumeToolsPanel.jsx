@@ -14,7 +14,7 @@ export default function ResumeToolsPanel({ ensureSaved, getResumeLike }) {
   return (
     <div className="space-y-8">
       <MatchCard getResumeLike={getResumeLike} />
-      <TailorPanel ensureSaved={ensureSaved} onSaved={bump} />
+      <TailorPanel ensureSaved={ensureSaved} onSaved={bump} getResumeLike={getResumeLike} />
       <VersionsPanel ensureSaved={ensureSaved} refreshKey={refreshKey} onChanged={bump} />
     </div>
   );

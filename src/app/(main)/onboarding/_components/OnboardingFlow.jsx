@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileUp, Loader2, PencilLine, RotateCcw } from "lucide-react";
@@ -8,7 +8,14 @@ import { toast } from "sonner";
 import PipStatus from "@/components/pixel/PipStatus";
 import EditableChips from "@/components/shared/EditableChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
-import { parseResumeToProfile, saveProfileChips, saveOnboardingAnswers, getProfileStrength } from "@/actions/Onboarding";
+import {
+  parseResumeToProfile,
+  saveProfileChips,
+  saveOnboardingAnswers,
+  getProfileStrength,
+  getProfileChips,
+} from "@/actions/Onboarding";
+import { saveResumeVersion, restoreResumeVersion } from "@/actions/Resume";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const GROUPS = [
@@ -63,7 +70,8 @@ function StrengthRing({ percent }) {
 export default function OnboardingFlow({ editing = false }) {
   const router = useRouter();
   const fileRef = useRef(null);
-  const [step, setStep] = useState("start"); // start | parsing | chips | questions | strength
+  const [step, setStep] = useState(editing ? "loading" : "start"); // loading | start | parsing | chips | questions | strength
+  const originalRef = useRef({ chips: [], industry: "" }); // edit mode: the profile as loaded, for Undo
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,6 +82,31 @@ export default function OnboardingFlow({ editing = false }) {
   const [targetRole, setTargetRole] = useState("");
   const [stage, setStage] = useState(null);
   const [strength, setStrength] = useState(null);
+
+  // Edit mode (?edit=1): start from the saved profile, keeping the original ids unchanged.
+  const loadProfile = useCallback(async () => {
+    setError(null);
+    setStep("loading");
+    try {
+      const res = await getProfileChips();
+      if (!res || res.error) {
+        setError(generationErrorMessage(res, "We couldn't load your profile."));
+        return;
+      }
+      const loaded = (res.chips || []).map((c) => ({ ...c, orig: true }));
+      const ind = res.industry || "";
+      originalRef.current = { chips: loaded, industry: ind };
+      setChips(loaded);
+      setIndustry(ind);
+      setStep("chips");
+    } catch {
+      setError("We couldn't load your profile. Please try again.");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (editing) loadProfile();
+  }, [editing, loadProfile]);
 
   const handleFile = async (file) => {
     setError(null);
@@ -95,8 +128,19 @@ export default function OnboardingFlow({ editing = false }) {
         setStep("start");
         return;
       }
-      setChips((res.chips || []).map((c) => ({ ...c, id: newId() })));
-      setIndustry(res.suggestedIndustry || "");
+      const parsed = (res.chips || []).map((c) => ({ ...c, id: newId() }));
+      if (editing) {
+        // Add to what's already there; never drop saved chips because a new PDF was read.
+        const key = (c) => `${c.kind}|${c.label.trim().toLowerCase()}`;
+        setChips((cs) => {
+          const have = new Set(cs.map(key));
+          return [...cs, ...parsed.filter((c) => !have.has(key(c)))];
+        });
+        setIndustry((cur) => cur || res.suggestedIndustry || "");
+      } else {
+        setChips(parsed);
+        setIndustry(res.suggestedIndustry || "");
+      }
       setSuggestedRole(res.suggestedTargetRole || null);
       if (res.suggestedTargetRole) setTargetRole(res.suggestedTargetRole);
       setStep("chips");
@@ -108,7 +152,7 @@ export default function OnboardingFlow({ editing = false }) {
 
   const manual = () => {
     setError(null);
-    setChips([]);
+    if (!editing) setChips([]);
     setStep("chips");
   };
 
@@ -120,7 +164,66 @@ export default function OnboardingFlow({ editing = false }) {
 
   const yearsChip = chips.find((c) => c.kind === "years");
 
+  // Edit mode: replace can remove resume entries for good, so snapshot first and offer a 5 s Undo.
+  const saveChipsEdit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const backup = await saveResumeVersion({ label: "Before profile edit" });
+      // No resume yet means nothing can be lost; any other failure stops the save.
+      const noResume = backup?.code === "NOT_FOUND";
+      if ((!backup || backup.error) && !noResume) {
+        setError(generationErrorMessage(backup, "We couldn't back up your resume first, so nothing was changed."));
+        return;
+      }
+      const payload = chips
+        .filter((c) => c.label.trim())
+        .map((c) => ({
+          ...(c.orig ? { id: c.id } : {}),
+          kind: c.kind,
+          label: c.label.trim(),
+          ...(c.detail ? { detail: c.detail } : {}),
+        }));
+      const res = await saveProfileChips({ chips: payload, mode: "replace", industry: industry.trim() });
+      if (!res || res.error) {
+        setError(generationErrorMessage(res, "We couldn't save your details."));
+        return;
+      }
+      setStrength(res.strength || null);
+      setStep("questions");
+      const previous = originalRef.current;
+      const versionId = backup?.id;
+      toast.success("Profile updated", {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const restored = versionId ? await restoreResumeVersion(versionId).catch(() => null) : { ok: true };
+            const prevPayload = previous.chips.map((c) => ({
+              id: c.id,
+              kind: c.kind,
+              label: c.label,
+              ...(c.detail ? { detail: c.detail } : {}),
+            }));
+            const back = await saveProfileChips({ chips: prevPayload, mode: "replace", industry: previous.industry }).catch(() => null);
+            if (!restored || restored.error || !back || back.error) {
+              toast.error("Couldn't undo that fully. Your earlier version is in resume versions.");
+              return;
+            }
+            toast.success("Profile restored");
+            loadProfile();
+          },
+        },
+      });
+    } catch {
+      setError("We couldn't save your details. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveChips = async () => {
+    if (editing) return saveChipsEdit();
     setBusy(true);
     setError(null);
     try {
@@ -188,6 +291,29 @@ export default function OnboardingFlow({ editing = false }) {
         </span>
       </div>
 
+      {step === "loading" && (
+        <div className="space-y-4" aria-live="polite" aria-busy={!error}>
+          <PipStatus step="thinking" text="getting your profile…" />
+          {error ? (
+            <>
+              {errorBox}
+              <button type="button" onClick={loadProfile} className="btn-pill-primary min-h-11 px-6 text-sm">
+                Try again
+              </button>
+            </>
+          ) : (
+            <div className="space-y-3" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex gap-2">
+                  <div className="h-8 w-24 animate-pulse rounded-full bg-soft" />
+                  <div className="h-8 w-32 animate-pulse rounded-full bg-soft" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {step === "start" && (
         <div className="space-y-5">
           <PipStatus step="coffee" text="drop your resume and i'll pull out the details. you can fix anything after." />
@@ -237,7 +363,7 @@ export default function OnboardingFlow({ editing = false }) {
             className="inline-flex min-h-10 items-center gap-2 text-xs font-medium text-pip-ink underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-pip/50 rounded"
           >
             <PencilLine className="h-3.5 w-3.5" aria-hidden="true" />
-            No resume? Add chips yourself
+            {editing ? "Back to my chips" : "No resume? Add chips yourself"}
           </button>
         </div>
       )}
@@ -307,13 +433,24 @@ export default function OnboardingFlow({ editing = false }) {
               type="button"
               onClick={() => {
                 setError(null);
-                setStep("start");
+                if (editing) loadProfile();
+                else setStep("start");
               }}
               className="inline-flex min-h-10 items-center gap-1.5 text-xs text-muted hover:text-text rounded focus-visible:ring-2 focus-visible:ring-pip/50"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-              start over
+              {editing ? "undo my edits" : "start over"}
             </button>
+            {editing && (
+              <button
+                type="button"
+                onClick={() => setStep("start")}
+                className="inline-flex min-h-10 items-center gap-1.5 text-xs text-muted hover:text-text rounded focus-visible:ring-2 focus-visible:ring-pip/50"
+              >
+                <FileUp className="h-3.5 w-3.5" aria-hidden="true" />
+                add from a PDF
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -246,7 +246,7 @@ function WeaknessFix({ scoreId, index, hasResumeText, resumePurged, onOpenScore,
   );
 }
 
-export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore, onDeleted }) {
+export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore, onDeleted, onRestored }) {
   const legacy = !result.evidence;
   const fix = result.evidence?.appliedFix;
   return (
@@ -259,7 +259,7 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
 
         {result.id && onDeleted && (
           <div className="-mt-6 mb-6 flex justify-end">
-            <DeleteAtsButton scoreId={result.id} onDeleted={onDeleted} variant="outline" />
+            <DeleteAtsButton scoreId={result.id} onDeleted={onDeleted} onRestored={onRestored} variant="outline" />
           </div>
         )}
 

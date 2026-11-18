@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Sparkles, Brain, Zap } from "lucide-react";
 import { generateCareerRoadmap } from "@/actions/CareerRoadmap";
+import { getProfileChips } from "@/actions/Onboarding";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { generationErrorMessage } from "@/components/shared/generationError";
@@ -24,7 +25,37 @@ const CreateRoadmapModal = ({ open, onClose }) => {
     industry: "",
     timeline: "",
   });
+  const [prefilled, setPrefilled] = useState(false);
+  const triedPrefill = useRef(false);
   const router = useRouter();
+
+  // Smart defaults: current role, target role and industry come from the profile. Anything the user already typed wins.
+  useEffect(() => {
+    if (!open || triedPrefill.current) return;
+    triedPrefill.current = true;
+    (async () => {
+      try {
+        const res = await getProfileChips();
+        if (!res || res.error) return;
+        const role = (res.chips || []).find((c) => c.kind === "role");
+        const target = res.targetRole || res.suggestedTargetRole || "";
+        const found = {
+          currentRole: role?.label || "",
+          targetRole: target,
+          industry: res.industry || "",
+        };
+        setFormData((f) => ({
+          ...f,
+          currentRole: f.currentRole || found.currentRole,
+          targetRole: f.targetRole || found.targetRole,
+          industry: f.industry || found.industry,
+        }));
+        setPrefilled(Object.values(found).some(Boolean));
+      } catch {
+        // Prefill is a convenience only; the fields stay empty and editable.
+      }
+    })();
+  }, [open]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,6 +69,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
       }
       toast.success("Your roadmap is ready! 🎉");
       setFormData({ currentRole: "", targetRole: "", industry: "", timeline: "" });
+      triedPrefill.current = false; // prefill again next time it opens
       onClose();
       router.push(`/roadmap/${roadmap.id}`);
     } catch (error) {
@@ -80,6 +112,7 @@ const CreateRoadmapModal = ({ open, onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {prefilled && <p className="text-xs text-muted-foreground">Filled in from your profile. Change anything that isn&apos;t right.</p>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <Label

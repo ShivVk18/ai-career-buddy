@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import { getATSScoreById } from "@/actions/ResumeParser";
+import JobStart from "@/components/shared/JobStart";
 import AtsResult from "./AtsResult";
 import AtsHistory from "./AtsHistory";
 
@@ -181,7 +182,14 @@ const ResumeParserComponent = () => {
               Analysis Setup
             </h3>
 
-            {/* FORM FIELDS */}
+            {/* FORM FIELDS: pick a job, or enter the details by hand */}
+            <div className="mb-8">
+            <JobStart
+              hasErrors={(!!error && !formData.jobDescription.trim()) || !!notice}
+              onPick={({ company, title, jdText }) =>
+                setFormData((prev) => ({ ...prev, companyName: company, jobTitle: title, jobDescription: jdText }))
+              }
+            >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div className="space-y-3">
                 <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Company Name</label>
@@ -215,6 +223,9 @@ const ResumeParserComponent = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, jobDescription: e.target.value }))}
                 className="bg-divider/10 border border-divider rounded-sm p-4 w-full outline-none focus:border-accent transition-editorial font-general text-sm text-foreground placeholder:text-muted-foreground/30"
               />
+            </div>
+
+            </JobStart>
             </div>
 
             {/* FILE UPLOAD */}
@@ -292,6 +303,7 @@ const ResumeParserComponent = () => {
             resetAll();
             setHistoryKey((k) => k + 1);
           }}
+          onRestored={() => setHistoryKey((k) => k + 1)}
         />
         </>
       )}

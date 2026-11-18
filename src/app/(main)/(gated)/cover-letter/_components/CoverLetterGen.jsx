@@ -15,16 +15,19 @@ import { coverLetterSchema } from "@/app/lib/schema";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { generationErrorMessage } from "@/components/shared/generationError";
+import JobStart from "@/components/shared/JobStart";
 import { COVER_LETTER_TONES, DEFAULT_TONE, TONE_LABELS } from "@/lib/writing";
 
 export default function CoverLetterGenerator() {
   const router = useRouter();
   const [tone, setTone] = useState(DEFAULT_TONE);
+  const [jobId, setJobId] = useState(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
     reset,
   } = useForm({
     resolver: zodResolver(coverLetterSchema),
@@ -51,7 +54,7 @@ export default function CoverLetterGenerator() {
 
   const onSubmit = async (data) => {
     try {
-      await generateLetterFn({ ...data, tone });
+      await generateLetterFn({ ...data, tone, ...(jobId ? { jobId } : {}) });
     } catch (error) {
       toast.error(error.message || "Failed to generate cover letter");
     }
@@ -90,6 +93,17 @@ export default function CoverLetterGenerator() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+            {/* Pick a job (fills the details), or enter them by hand */}
+            <JobStart
+              hasErrors={!!(errors.companyName || errors.jobTitle || errors.jobDescription)}
+              onPick={({ jobId: id, company, title, jdText }) => {
+                setJobId(id);
+                setValue("companyName", company, { shouldValidate: true });
+                setValue("jobTitle", title, { shouldValidate: true });
+                setValue("jobDescription", jdText, { shouldValidate: true });
+              }}
+              onClear={() => setJobId(null)}
+            >
             {/* Entity and Role */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
@@ -138,6 +152,8 @@ export default function CoverLetterGenerator() {
                 <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
               )}
             </div>
+
+            </JobStart>
 
             {/* Tone */}
             <div className="space-y-3">

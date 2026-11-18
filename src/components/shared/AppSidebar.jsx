@@ -20,21 +20,28 @@ import {
   ChevronRight,
   Menu,
   X,
+  Inbox,
+  Settings,
+  Search,
 } from "lucide-react";
 import ChatSlideOver from "../chat/ChatSlideOver";
+import CommandMenu from "./CommandMenu";
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const { signOut } = useClerk();
   const [chatOpen, setChatOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mainNav = [
     { label: "home", href: "/dashboard", icon: Home },
-    { label: "applications", href: "/dashboard#applications", icon: Briefcase },
+    { label: "applications", href: "/applications", icon: Briefcase },
+    { label: "needs you", href: "/needs-you", icon: Inbox },
     { label: "chat with pip", href: "/chat", icon: MessageSquare, badge: "ai" },
     { label: "profile", href: "/onboarding?edit=1", icon: User },
+    { label: "settings", href: "/settings", icon: Settings },
   ];
 
   const tools = [
@@ -74,8 +81,16 @@ export default function AppSidebar() {
           </Link>
 
           <button
+            onClick={() => setCmdOpen(true)}
+            className="w-8 h-8 rounded-full bg-[#FBFAF7] border border-[#ECEAE4] hover:border-pip flex items-center justify-center text-text hover:text-pip transition shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
+            title="search and jump (Ctrl/Cmd + K)"
+            aria-label="Open command menu"
+          >
+            <Search className="w-4 h-4 text-muted" />
+          </button>
+          <button
             onClick={() => setChatOpen(true)}
-            className="w-8 h-8 rounded-full bg-[#FBFAF7] border border-[#ECEAE4] hover:border-pip flex items-center justify-center text-text hover:text-pip transition shadow-2xs"
+            className="w-8 h-8 rounded-full bg-[#FBFAF7] border border-[#ECEAE4] hover:border-pip flex items-center justify-center text-text hover:text-pip transition shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-pip/50"
             title="quick chat with pip"
           >
             <Sparkles className="w-4 h-4 text-pip" />
@@ -217,6 +232,23 @@ export default function AppSidebar() {
               </Link>
             ))}
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "applications", href: "/applications", icon: Briefcase },
+              { label: "needs you", href: "/needs-you", icon: Inbox },
+              { label: "settings", href: "/settings", icon: Settings },
+            ].map((t) => (
+              <Link
+                key={t.label}
+                href={t.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2.5 min-h-11 rounded-xl border border-[#ECEAE4] text-xs font-medium hover:border-pip text-text flex items-center gap-2"
+              >
+                <t.icon className="w-4 h-4 text-pip" />
+                <span>{t.label}</span>
+              </Link>
+            ))}
+          </div>
           <div className="pt-2 border-t border-[#ECEAE4] flex justify-between items-center text-xs text-muted">
             <span>logged in as {user?.firstName || "candidate"}</span>
             <button onClick={() => signOut()} className="text-pip font-medium">sign out</button>
@@ -234,6 +266,15 @@ export default function AppSidebar() {
         >
           <Home className="w-4 h-4" />
           <span>home</span>
+        </Link>
+        <Link
+          href="/applications"
+          className={`flex flex-col items-center gap-1 text-[10px] font-sans ${
+            pathname.startsWith("/applications") ? "text-pip font-semibold" : "text-muted"
+          }`}
+        >
+          <Briefcase className="w-4 h-4" />
+          <span>jobs</span>
         </Link>
         <Link
           href="/resume"
@@ -275,6 +316,9 @@ export default function AppSidebar() {
 
       {/* Slide-over Pip Chat from any page */}
       <ChatSlideOver isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+
+      {/* Cmd/Ctrl+K from anywhere in the app */}
+      <CommandMenu open={cmdOpen} onOpenChange={setCmdOpen} onOpenChat={() => setChatOpen(true)} />
     </>
   );
 }

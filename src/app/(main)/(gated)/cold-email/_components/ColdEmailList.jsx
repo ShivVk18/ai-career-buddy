@@ -1,37 +1,35 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { Eye, Trash2, FileText, Calendar, Building2, Briefcase, CheckCircle, ChevronRight } from "lucide-react"
-import { toast } from "sonner"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { deleteColdEmail, restoreColdEmail } from "@/actions/ColdEmail"
+import { deleteWithUndo } from "@/components/shared/undoDelete"
 
-import { deleteColdEmail } from "@/actions/ColdEmail"
-
-export default function ColdEmailList({ coldEmails }) {
+export default function ColdEmailList({ coldEmails: all }) {
   const router = useRouter()
+  const [hidden, setHidden] = useState(() => new Set())
+  const coldEmails = (all || []).filter((e) => !hidden.has(e.id))
+  const setHide = (id, on) =>
+    setHidden((h) => {
+      const n = new Set(h)
+      if (on) n.add(id)
+      else n.delete(id)
+      return n
+    })
 
-  const handleDelete = async (id) => {
-    try {
-      await deleteColdEmail(id)
-      toast.success("Cold email deleted successfully!")
-      router.refresh()
-    } catch (error) {
-      toast.error(error.message || "Failed to delete cold email")
-    }
-  }
+  const handleDelete = (email) =>
+    deleteWithUndo({
+      name: "Cold email",
+      hide: () => setHide(email.id, true),
+      show: () => setHide(email.id, false),
+      remove: () => deleteColdEmail(email.id),
+      restore: () => restoreColdEmail(email.id),
+      done: () => router.refresh(),
+    })
 
   if (!coldEmails?.length) {
     return (
@@ -139,7 +137,7 @@ export default function ColdEmailList({ coldEmails }) {
                 </div>
               </div>
 
-              <div className="flex space-x-3 opacity-0 group-hover:opacity-100 transition-editorial">
+              <div className="flex space-x-3 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-editorial">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -147,42 +145,24 @@ export default function ColdEmailList({ coldEmails }) {
                     e.stopPropagation()
                     router.push(`/cold-email/${letter.id}`)
                   }}
-                  className="h-10 w-10 p-0 rounded-sm border border-divider hover:border-accent hover:bg-accent/10"
+                  aria-label={`Open cold email for ${letter.jobTitle}`}
+                  className="h-11 w-11 p-0 rounded-sm border border-divider hover:border-accent hover:bg-accent/10"
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-10 w-10 p-0 rounded-sm border border-divider hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-background border-divider rounded-sm">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="font-clash font-bold uppercase tracking-tight">Delete Cold Email?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-muted-foreground font-light">
-                        This action cannot be undone. This will permanently delete your email for{" "}
-                        <span className="text-accent font-bold">{letter.jobTitle}</span> at{" "}
-                        <span className="text-accent font-bold">{letter.companyName}</span>.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="rounded-sm border-divider">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(letter.id)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-sm"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Delete cold email for ${letter.jobTitle}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(letter)
+                  }}
+                  className="h-11 w-11 p-0 rounded-sm border border-divider hover:border-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 

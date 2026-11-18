@@ -20,30 +20,14 @@ import { toast } from "sonner";
 
 import { ParagraphSources } from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
-import { updateCoverLetter, regenerateCoverLetter, shortenCoverLetter } from "@/actions/CoverLetter";
+import { updateCoverLetter, undoLetterChange } from "@/actions/CoverLetter";
+import { LETTER_SWITCHES, runLetterSwitch } from "@/components/shared/letterActions";
 import { WordCount, ClicheCheck } from "@/components/shared/WritingHints";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { COVER_LETTER_WORDS, COVER_LETTER_TONES, DEFAULT_TONE, TONE_LABELS } from "@/lib/writing";
-
-const ACTION_COPY = {
-  regenerate: { title: "Regenerate this letter?", cta: "Regenerate" },
-  formal: { title: "Make this letter more formal?", cta: "Make more formal" },
-  shorten: { title: "Shorten this letter?", cta: "Shorten" },
-};
 
 const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initialTone = null }) => {
   const [sources, setSources] = useState(initialSources);
   const [tone, setTone] = useState(COVER_LETTER_TONES.includes(initialTone) ? initialTone : DEFAULT_TONE);
-  const [pendingAction, setPendingAction] = useState(null);
   const [working, setWorking] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [previewMode, setPreviewMode] = useState("preview");
@@ -68,16 +52,20 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
     }
   };
 
-  const runAction = async () => {
-    const kind = pendingAction;
-    setPendingAction(null);
-    if (!kind) return;
+  // No confirm dialog: the server keeps the previous letter, and Undo (5 s) swaps it back.
+  const runAction = async (kind) => {
     setWorking(true);
     try {
-      const res =
-        kind === "shorten"
-          ? await shortenCoverLetter(id)
-          : await regenerateCoverLetter(id, kind === "formal" ? { formality: "formal" } : { tone });
+      // Unsaved edits are saved first, so Undo brings them back too.
+      if (isDirty) {
+        const saved = await updateCoverLetter(id, editedContent);
+        if (!saved || saved.error) {
+          toast.error(generationErrorMessage(saved, "Save your edits first, then try again."));
+          return;
+        }
+        setSavedContent(editedContent);
+      }
+      const res = await runLetterSwitch(id, kind, tone);
       if (!res || res.error || res.code) {
         toast.error(generationErrorMessage(res));
         return;
@@ -85,7 +73,24 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
       setEditedContent(res.content);
       setSavedContent(res.content);
       setSources(res.sources ?? null);
-      toast.success("Letter updated");
+      const sw = LETTER_SWITCHES.find((x) => x.key === kind);
+      toast.success(sw ? sw.done : "Letter regenerated", {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const back = await undoLetterChange(id).catch(() => null);
+            if (!back || back.error) {
+              toast.error(generationErrorMessage(back, "Couldn't undo that. Your letter is as it was after the change."));
+              return;
+            }
+            setEditedContent(back.content);
+            setSavedContent(back.content);
+            setSources(back.sources ?? null);
+            toast.success("Change undone");
+          },
+        },
+      });
     } catch (error) {
       toast.error(error?.message || "Something went wrong. Please try again.");
     } finally {
@@ -209,12 +214,12 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
               <option key={t} value={t}>{TONE_LABELS[t]}</option>
             ))}
           </select>
-          {[["regenerate", "Regenerate"], ["formal", "More formal"], ["shorten", "Shorter"]].map(([k, label]) => (
+          {[["regenerate", "Regenerate"], ["formal", "More formal"], ["shorten", "Shorter"], ["warmer", "Warmer"]].map(([k, label]) => (
             <Button
               key={k}
               variant="outline"
               disabled={working || !id}
-              onClick={() => setPendingAction(k)}
+              onClick={() => runAction(k)}
               className="h-12 px-6 border-divider hover:border-accent text-[10px] font-bold tracking-widest uppercase"
             >
               {working && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -224,25 +229,6 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
         </div>
         {working && <p className="text-xs text-muted-foreground">Rewriting your letter...</p>}
       </div>
-
-      <AlertDialog open={!!pendingAction} onOpenChange={(o) => !o && setPendingAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{pendingAction ? ACTION_COPY[pendingAction].title : ""}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingAction === "shorten"
-                ? "This rewrites your current saved text, including your edits, and replaces it. Unsaved edits will be lost."
-                : "This replaces the current letter and its sources with a new one. Any edits you made, saved or not, will be lost."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={runAction}>
-              {pendingAction ? ACTION_COPY[pendingAction].cta : ""}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Editor Container */}
       <div className="border border-border bg-background rounded-sm overflow-hidden shadow-2xl relative">

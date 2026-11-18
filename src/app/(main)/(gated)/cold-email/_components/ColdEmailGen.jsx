@@ -14,15 +14,19 @@ import { coldEmailSchema } from "@/app/lib/schema";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { generationErrorMessage } from "@/components/shared/generationError";
+import JobStart from "@/components/shared/JobStart";
 import { generateColdEmail } from "@/actions/ColdEmail";
 
 export default function ColdEmailGenerator() {
   const router = useRouter();
+  const [jobId, setJobId] = useState(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
     reset,
   } = useForm({
     resolver: zodResolver(coldEmailSchema),
@@ -49,7 +53,7 @@ export default function ColdEmailGenerator() {
 
   const onSubmit = async (data) => {
     try {
-      await generateLetterFn(data);
+      await generateLetterFn({ ...data, ...(jobId ? { jobId } : {}) });
     } catch (error) {
       toast.error(error.message || "Failed to generate cold email");
     }
@@ -88,6 +92,17 @@ export default function ColdEmailGenerator() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+            {/* Pick a job (fills the details), or enter them by hand */}
+            <JobStart
+              hasErrors={!!(errors.companyName || errors.jobTitle || errors.jobDescription)}
+              onPick={({ jobId: id, company, title, jdText }) => {
+                setJobId(id);
+                setValue("companyName", company, { shouldValidate: true });
+                setValue("jobTitle", title, { shouldValidate: true });
+                setValue("jobDescription", jdText, { shouldValidate: true });
+              }}
+              onClear={() => setJobId(null)}
+            >
             {/* Entity and Role */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
@@ -121,11 +136,35 @@ export default function ColdEmailGenerator() {
               </div>
             </div>
 
-            {/* Recipient (optional, typed by you) */}
+
+            {/* Job description */}
+            <div className="space-y-3">
+              <Label htmlFor="jobDescription" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+                Job Description
+              </Label>
+              <Textarea
+                id="jobDescription"
+                placeholder="Paste the job description or specific requirements here. The more detail you provide, the better the email will be..."
+                className="h-48 bg-divider/5 border-border focus:border-accent"
+                {...register("jobDescription")}
+              />
+              {errors.jobDescription && (
+                <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
+              )}
+            </div>
+            </JobStart>
+
+            {/* Recipient (optional, typed by you), behind "more" */}
             <div className="space-y-6">
-              <h4 className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                Recipient (optional)
-              </h4>
+              <button
+                type="button"
+                aria-expanded={moreOpen || !!(errors.recipientName || errors.recipientRole || errors.recipientEmail)}
+                onClick={() => setMoreOpen((v) => !v)}
+                className="min-h-10 rounded text-[10px] font-bold tracking-widest uppercase text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {moreOpen ? "less" : "more: add who it's for (optional)"}
+              </button>
+              <div className={moreOpen || errors.recipientName || errors.recipientRole || errors.recipientEmail ? "space-y-6" : "hidden"}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3">
                   <Label htmlFor="recipientName" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
@@ -158,22 +197,7 @@ export default function ColdEmailGenerator() {
               <p className="text-xs text-muted-foreground">
                 The email address is only saved for the &quot;Open in mail client&quot; button. It is never sent to the AI and nothing is sent automatically.
               </p>
-            </div>
-
-            {/* Content Logic */}
-            <div className="space-y-3">
-              <Label htmlFor="jobDescription" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                Job Description
-              </Label>
-              <Textarea
-                id="jobDescription"
-                placeholder="Paste the job description or specific requirements here. The more detail you provide, the better the email will be..."
-                className="h-48 bg-divider/5 border-border focus:border-accent"
-                {...register("jobDescription")}
-              />
-              {errors.jobDescription && (
-                <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
-              )}
+              </div>
             </div>
 
             {/* Execution Trigger */}

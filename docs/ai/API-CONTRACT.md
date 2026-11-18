@@ -773,3 +773,13 @@ Chip = { id: string, kind: "role"|"project"|"skill"|"years", label: string, deta
 - `deleteJob` -> 5 s Undo toast -> `restoreJob`.
 - Nothing in 11 sends an email or edits the main resume; chat stays read-only (D62).
 
+
+## Requests from frontend
+
+Raised by frontend tasks 10-12 (UX flow pass). Each is a blocker for the part of the UI named; the UI is built so the swap is one place.
+
+1. **Read a pending tailoring draft** (blocks the "TAILOR_DRAFT" review in `/needs-you`). Nothing returns a draft's proposals by `draftId` (`getResumeVersion` refuses drafts; `tailorResume` returns them only to its own caller, i.e. the pipeline never shows them). Needed: server action `getTailorDraft(draftId: string)` in `src/actions/Resume.js`, owner-scoped, returning `{ draftId, jobTitle, companyName, jobId: string | null, matchBefore: {percent,matched,missing,termCount}, proposals: [{ proposalId, entryId, bulletIndex, original, proposed, reason, sources: Snapshot[] }], expiresAt: ISO string }` (the same shape `tailorResume` returns) or `{ error, code: "INVALID" | "NOT_FOUND" | "STALE" | "FAILED" }`. The frontend calls it from `src/app/(main)/(gated)/needs-you/_components/tailorDraftSource.js` (today a stub that returns `UNSUPPORTED`).
+2. **Save an edited proposal line** (blocks "click a line to edit it inline" on tracked changes). `saveTailoredVersion` takes ids only, so edited text cannot be saved. Needed: an optional `edits: { [proposalId]: string }` (each 1-600 chars, only for ids in `acceptedProposalIds`) that replaces `proposed` for that save, re-verified like any proposal (bullet unchanged, every number in the text appears in the original or the job description). The UI has the edit control behind `EDIT_LINES_SUPPORTED` in `src/components/shared/TrackedChanges.jsx` (off).
+3. **Target role for prefill** (roadmap modal). Nothing exposes `User.targetRole` to the UI. Needed: add `targetRole: string | null` to `getProfileChips()`. The roadmap modal already reads `res.targetRole` and falls back to empty.
+4. **(Note, no change needed unless wanted)** `createATSAnalysis` does not accept `jobId`, so the ATS checker's job picker pre-fills company, title and job description but cannot link the score to the job. Add an optional `jobId` (same check as `generateCoverLetter`) if linking is wanted.
+5. **(Note)** `approveNeedsYou` has no inverse, so approving an item in `/needs-you` has no Undo. Add `unapproveNeedsYou(applicationId, step)` if an Undo is wanted there.

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Eye, Trash2, FileText, Calendar, Building2, Briefcase, CheckCircle, ChevronRight } from "lucide-react";
@@ -12,31 +13,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { deleteCoverLetter } from "@/actions/CoverLetter";
+import { deleteCoverLetter, restoreCoverLetter } from "@/actions/CoverLetter";
+import { deleteWithUndo } from "@/components/shared/undoDelete";
 
-export default function CoverLetterList({ coverLetters }) {
+export default function CoverLetterList({ coverLetters: all }) {
   const router = useRouter();
+  const [hidden, setHidden] = useState(() => new Set());
+  const coverLetters = (all || []).filter((l) => !hidden.has(l.id));
+  const setHide = (id, on) =>
+    setHidden((h) => {
+      const n = new Set(h);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
 
-  const handleDelete = async (id) => {
-    try {
-      await deleteCoverLetter(id);
-      toast.success("Cover letter deleted successfully!");
-      router.refresh();
-    } catch (error) {
-      toast.error(error.message || "Failed to delete cover letter");
-    }
-  };
+  const handleDelete = (letter) =>
+    deleteWithUndo({
+      name: "Cover letter",
+      hide: () => setHide(letter.id, true),
+      show: () => setHide(letter.id, false),
+      remove: () => deleteCoverLetter(letter.id),
+      restore: () => restoreCoverLetter(letter.id),
+      done: () => router.refresh(),
+    });
 
   if (!coverLetters?.length) {
     return (
@@ -144,7 +144,7 @@ export default function CoverLetterList({ coverLetters }) {
                 </div>
               </div>
               
-              <div className="flex space-x-3 opacity-0 group-hover:opacity-100 transition-editorial">
+              <div className="flex space-x-3 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-editorial">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -152,42 +152,24 @@ export default function CoverLetterList({ coverLetters }) {
                     e.stopPropagation();
                     router.push(`/cover-letter/${letter.id}`);
                   }}
-                  className="h-10 w-10 p-0 rounded-sm border border-divider hover:border-accent hover:bg-accent/10"
+                  aria-label={`Open cover letter for ${letter.jobTitle}`}
+                  className="h-11 w-11 p-0 rounded-sm border border-divider hover:border-accent hover:bg-accent/10"
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
                 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-10 w-10 p-0 rounded-sm border border-divider hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-background border-divider rounded-sm">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="font-clash font-bold uppercase tracking-tight">Delete Cover Letter?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-muted-foreground font-light">
-                        This action cannot be undone. This will permanently delete your cover letter for{" "}
-                        <span className="text-accent font-bold">{letter.jobTitle}</span> at{" "}
-                        <span className="text-accent font-bold">{letter.companyName}</span>.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="rounded-sm border-divider">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(letter.id)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-sm"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Delete cover letter for ${letter.jobTitle}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(letter);
+                  }}
+                  className="h-11 w-11 p-0 rounded-sm border border-divider hover:border-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
             

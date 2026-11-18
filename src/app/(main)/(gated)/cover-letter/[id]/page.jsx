@@ -3,10 +3,19 @@ import { ArrowLeft, FileText, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCoverLetter } from "@/actions/CoverLetter";
 import CoverLetterPreview from "../_components/CoverLetterPreview";
+import EmptyState from "@/components/shared/EmptyState";
 
 export default async function EditCoverLetterPage({ params }) {
   const { id } = await params;
   const coverLetter = await getCoverLetter(id);
+
+  if (!coverLetter) {
+    return (
+      <div className="mx-auto max-w-xl p-6 py-16">
+        <EmptyState step="detective" text="i can't find that letter. it may have been deleted." actionLabel="back to cover letters" href="/cover-letter" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-transparent text-foreground relative py-12 px-6 md:px-12">
