@@ -69,7 +69,7 @@ const fromError = (e) => failed(e.code ?? "FAILED", e.error ?? "This step failed
 // Step bodies. Each returns { status, output?, ids?, reason?, error?, needsYou? } and never throws for expected cases.
 
 async function stepChecker({ user, job, clerkUserId }) {
-  const resume = await db.resume.findUnique({ where: { userId: user.id } });
+  const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
   const resumeText = resume ? resumeToText(resume).slice(0, 30000) : "";
   if (!resume || resumeText.trim().length < MIN_RESUME_TEXT) {
     return skipped("NO_RESUME");

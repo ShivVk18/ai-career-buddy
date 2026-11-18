@@ -9,13 +9,13 @@ const PRUNE_BATCH = 50; // per model, per call
 export const undoCutoff = () => new Date(Date.now() - UNDO_DAYS * 24 * 60 * 60 * 1000);
 
 /**
- * Hard-deletes this user's soft-deleted CoverLetter, ColdEmail, ATSScore and Job rows older than 7 days, at
+ * Hard-deletes this user's soft-deleted CoverLetter, ColdEmail, ATSScore, Job, CareerPath and Resume rows older than 7 days, at
  * most 50 per model per call (oldest first). Opportunistic (there is no job runner) and bounded; never
  * throws: a failure is logged and the request carries on. Deleting a Job also removes its Application (cascade).
  */
 export async function pruneDeleted(userDbId) {
   const cutoff = undoCutoff();
-  const models = [db.coverLetter, db.coldEmail, db.aTSScore, db.job];
+  const models = [db.coverLetter, db.coldEmail, db.aTSScore, db.job, db.careerPath];
   for (const model of models) {
     try {
       if (!model?.findMany) continue;
@@ -32,5 +32,17 @@ export async function pruneDeleted(userDbId) {
     } catch (err) {
       console.error("pruneDeleted failed:", safeErr(err));
     }
+  }
+
+  // A deleted resume: its versions go first (FK), then the row.
+  try {
+    const old = await db.resume?.findMany?.({ where: { userId: userDbId, deletedAt: { not: null, lt: cutoff } }, select: { id: true }, take: PRUNE_BATCH });
+    if (old && old.length) {
+      const ids = old.map((r) => r.id);
+      await db.resumeVersion.deleteMany({ where: { resumeId: { in: ids } } });
+      await db.resume.deleteMany({ where: { id: { in: ids }, userId: userDbId, deletedAt: { not: null, lt: cutoff } } });
+    }
+  } catch (err) {
+    console.error("pruneDeleted failed:", safeErr(err));
   }
 }

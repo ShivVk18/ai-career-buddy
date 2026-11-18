@@ -137,7 +137,7 @@ async function generateCoverLetterImpl(data) {
     if (!job) return fail("NOT_FOUND", "We couldn't find that job.");
   }
 
-  const resume = await db.resume.findUnique({ where: { userId: user.id } });
+  const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
   const catalog = buildSources({ profile: user, resume, jobDescription });
   if (catalog.length === 0) return fail("NO_SOURCES", NO_SOURCES_MSG);
 
@@ -320,7 +320,7 @@ async function regenerateCoverLetterImpl(id, opts) {
     const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id, deletedAt: null } });
     if (!row) return fail("NOT_FOUND", "We couldn't find that item.");
 
-    const resume = await db.resume.findUnique({ where: { userId: user.id } });
+    const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
     const catalog = buildSources({ profile: user, resume, jobDescription: row.jobDescription });
     if (catalog.length === 0) return fail("NO_SOURCES", NO_SOURCES_MSG);
 

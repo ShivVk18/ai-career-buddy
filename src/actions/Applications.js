@@ -197,6 +197,10 @@ export async function setApplicationStatus(id, status, interviewAt) {
       const closed = await closeWithGaps(app, b.user.id, app.status === "CLOSED" ? undefined : {});
       return closed ? { ...closed, previousInterviewAt } : NOT_FOUND_APP();
     }
+    // Interviewing with a date: same as setInterviewDate (saves, then creates or links the prep session; one AI action).
+    if (st.data === "INTERVIEWING" && extra.interviewAt instanceof Date) {
+      return await withAiAction(() => saveInterviewWithPrep(app, b.user.id, extra.interviewAt));
+    }
     const fresh = await changeStatus(app, b.user.id, st.data, extra);
     if (!fresh) return NOT_FOUND_APP();
     return { application: outApplication(fresh), previousStatus: app.status, previousInterviewAt };
@@ -234,22 +238,37 @@ async function setInterviewDateImpl(id, date) {
   try {
     const app = await loadApp(b.id, b.user.id);
     if (!app) return NOT_FOUND_APP();
-    let fresh = await changeStatus(app, b.user.id, "INTERVIEWING", { interviewAt: when });
-    if (!fresh) return NOT_FOUND_APP();
-
-    const prep = await ensurePrep(app, b.user.id);
-    if (prep.sessionId && prep.sessionId !== app.prepSessionId) fresh = (await freshApplication(app.id, b.user.id)) ?? fresh;
-    return {
-      application: outApplication(fresh),
-      previousStatus: app.status,
-      previousInterviewAt: iso(app.interviewAt),
-      prepSessionId: prep.sessionId,
-      ...(prep.sessionId ? {} : { prepError: prep.code }),
-    };
+    return await saveInterviewWithPrep(app, b.user.id, when);
   } catch (error) {
     console.error("setInterviewDate failed:", safeErr(error));
     return fail("FAILED", "We couldn't save the interview date. Please try again.");
   }
+}
+
+/**
+ * Shared by setInterviewDate and setApplicationStatus(id, "INTERVIEWING", date): saves INTERVIEWING + the date,
+ * then creates or links the prep session (prep failure never undoes the save). Call inside withAiAction.
+ * Returns { application, previousStatus, previousInterviewAt, prepSessionId, prepError? } or NOT_FOUND.
+ */
+async function saveInterviewWithPrep(app, userDbId, when) {
+  let fresh = await changeStatus(app, userDbId, "INTERVIEWING", { interviewAt: when });
+  if (!fresh) return NOT_FOUND_APP();
+
+  let prep;
+  try {
+    prep = await ensurePrep(app, userDbId);
+  } catch (err) {
+    console.error("interview prep failed:", safeErr(err));
+    prep = { sessionId: null, code: "FAILED" };
+  }
+  if (prep.sessionId && prep.sessionId !== app.prepSessionId) fresh = (await freshApplication(app.id, userDbId)) ?? fresh;
+  return {
+    application: outApplication(fresh),
+    previousStatus: app.status,
+    previousInterviewAt: iso(app.interviewAt),
+    prepSessionId: prep.sessionId,
+    ...(prep.sessionId ? {} : { prepError: prep.code }),
+  };
 }
 
 /** Keeps a prep session that still exists, otherwise creates one from the job description and links it. */
@@ -402,7 +421,7 @@ async function closeWithGaps(app, userDbId, extra) {
 
 async function addGapTasks(app, userDbId) {
   if (app.gapTasksAddedAt) return 0;
-  const path = await db.careerPath.findFirst({ where: { userId: userDbId, status: "active" }, orderBy: { updatedAt: "desc" } });
+  const path = await db.careerPath.findFirst({ where: { userId: userDbId, status: "active", deletedAt: null }, orderBy: { updatedAt: "desc" } });
   if (!path) return 0; // NO_ROADMAP: not an error; a later close can still add them
   const scores = await db.aTSScore.findMany({
     where: { userId: userDbId, jobId: app.jobId, deletedAt: null },
@@ -419,7 +438,7 @@ async function addGapTasks(app, userDbId) {
 
   try {
     for (let i = 0; i < CAS_TRIES; i++) {
-      const cur = i === 0 ? path : await db.careerPath.findFirst({ where: { id: path.id, userId: userDbId } });
+      const cur = i === 0 ? path : await db.careerPath.findFirst({ where: { id: path.id, userId: userDbId, deletedAt: null } });
       if (!cur) break;
       const steps = Array.isArray(cur.steps) ? cur.steps : [];
       const added = gapSteps(skills, steps, { company: app.job?.company, title: app.job?.title, jobId: app.jobId });
@@ -427,7 +446,7 @@ async function addGapTasks(app, userDbId) {
       const all = [...steps, ...added];
       const progress = (all.filter((s) => s && s.completed).length / all.length) * 100;
       const res = await db.careerPath.updateMany({
-        where: { id: cur.id, userId: userDbId, updatedAt: cur.updatedAt },
+        where: { id: cur.id, userId: userDbId, deletedAt: null, updatedAt: cur.updatedAt },
         data: { steps: all, progress },
       });
       if (res.count === 1) return added.length;

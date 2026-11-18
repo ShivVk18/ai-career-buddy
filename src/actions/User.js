@@ -92,6 +92,6 @@ export async function getUserOnboardingStatus() {
 
   // D59: onboarded = has an industry (existing users), OR a resume, OR both onboarding answers.
   let isOnboarded = !!user.industry || (!!user.targetRole && !!user.jobSearchStage);
-  if (!isOnboarded) isOnboarded = (await db.resume.count({ where: { userId: user.id } })) > 0;
+  if (!isOnboarded) isOnboarded = (await db.resume.count({ where: { userId: user.id, deletedAt: null } })) > 0;
   return { isOnboarded };
 }

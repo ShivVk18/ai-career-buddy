@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { runAIStructured, withAiAction } from "@/lib/ai";
 import { resumeChipsSchema } from "@/lib/ai/schemas";
@@ -87,7 +88,7 @@ export async function getProfileChips() {
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
   try {
     const me = await db.user.findUnique({ where: { id: user.id }, select: { skills: true, experience: true, industry: true, targetRole: true, jobSearchStage: true } });
-    const resume = await db.resume.findUnique({ where: { userId: user.id }, select: { experience: true, projects: true } });
+    const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null }, select: { experience: true, projects: true } });
     const chips = [];
     const entries = (list, kind, section) => {
       const withIds = assignEntryIds(Array.isArray(list) ? list : [], section);
@@ -146,7 +147,7 @@ export async function saveProfileChips(input) {
   try {
     await db.$transaction(async (tx) => {
       const me = await tx.user.findUnique({ where: { id: user.id }, select: { skills: true } });
-      const resume = await tx.resume.findUnique({ where: { userId: user.id } });
+      const resume = await tx.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
 
       const known = new Set((me?.skills ?? []).map((s) => s.toLowerCase()));
       const newSkills = [];
@@ -198,9 +199,11 @@ export async function saveProfileChips(input) {
         where: { id: user.id },
         data: { skills, ...(years !== undefined ? { experience: years } : {}), ...(industry ? { industry } : replace && industry === "" ? { industry: null } : {}) },
       });
+      // A soft-deleted row is reused by a fresh profile: reset what it held (the snapshot version keeps it).
+      const wasDeleted = !resume && (await tx.resume.findUnique({ where: { userId: user.id }, select: { deletedAt: true } }))?.deletedAt;
       await tx.resume.upsert({
         where: { userId: user.id },
-        update: { experience, projects, skills: resumeSkills },
+        update: { experience, projects, skills: resumeSkills, ...(wasDeleted ? { deletedAt: null, content: "", summary: null, education: [], photoUrl: null, contactInfo: Prisma.DbNull, customCSS: null, atsScore: null, feedback: null, templateId: null } : {}) },
         create: { userId: user.id, content: "", experience, projects, skills: resumeSkills },
       });
     }, { timeout: 10000 });

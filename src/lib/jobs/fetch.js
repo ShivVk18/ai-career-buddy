@@ -164,10 +164,6 @@ async function resolvePublic(host, lookup) {
 // One request, pinned to a vetted IP
 // ---------------------------------------------------------------------------------------------
 
-/**
- * Default transport. Resolves { status, headers, body: AsyncIterable<Buffer>, destroy() }.
- * `lookup` is overridden so the socket can only ever connect to `ip`.
- */
 /** dns.lookup replacement that always answers with the vetted IP; handles (host, cb), (host, opts, cb) and { all: true }. */
 export function pinnedLookup(ip, family) {
   return (_host, opts, cb) => {
@@ -177,6 +173,10 @@ export function pinnedLookup(ip, family) {
   };
 }
 
+/**
+ * Default transport. Resolves { status, headers, body: AsyncIterable<Buffer>, destroy() }.
+ * `lookup` is overridden so the socket can only ever connect to `ip`.
+ */
 export function httpsRequest(url, { ip, family, signal, tls, isBlocked = isBlockedIp } = {}) {
   return new Promise((resolve, reject) => {
     const req = https.request(

@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { runAIStructured, runAIText, withAiAction } from "@/lib/ai";
 import { roadmapSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
+import { undoCutoff } from "@/lib/softDelete";
 import { z } from "zod";
 import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
 import { countGaps, deriveStepTargets } from "@/lib/roadmap/derive";
@@ -39,7 +40,7 @@ async function generateCareerRoadmapImpl(rawData) {
   });
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
-  const resume = await db.resume.findUnique({ where: { userId: user.id } });
+  const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
   const catalog = buildSources({
     profile: user,
     resume,
@@ -227,6 +228,7 @@ export async function getCareerRoadmaps() {
   return await db.careerPath.findMany({
     where: {
       userId: user.id,
+      deletedAt: null,
     },
     orderBy: {
       createdAt: "desc",
@@ -248,6 +250,7 @@ export async function getCareerRoadmap(id) {
     where: {
       id,
       userId: user.id,
+      deletedAt: null,
     },
   });
 }
@@ -263,7 +266,7 @@ export async function updateRoadmapProgress(id, stepId, progress) {
   if (!user) throw new Error("User not found");
 
   const careerPath = await db.careerPath.findUnique({
-    where: { id, userId: user.id },
+    where: { id, userId: user.id, deletedAt: null },
   });
 
   if (!careerPath) throw new Error("Career path not found");
@@ -276,6 +279,7 @@ export async function updateRoadmapProgress(id, stepId, progress) {
     where: {
       id,
       userId: user.id,
+      deletedAt: null,
     },
     data: {
       progress: newProgress,
@@ -296,7 +300,7 @@ export async function completeRoadmapStep(id, stepId) {
   if (!user) throw new Error("User not found");
 
   const careerPath = await db.careerPath.findUnique({
-    where: { id, userId: user.id },
+    where: { id, userId: user.id, deletedAt: null },
   });
 
   if (!careerPath) throw new Error("Career path not found");
@@ -314,6 +318,7 @@ export async function completeRoadmapStep(id, stepId) {
     where: {
       id,
       userId: user.id,
+      deletedAt: null,
     },
     data: {
       steps: updatedSteps,
@@ -324,22 +329,50 @@ export async function completeRoadmapStep(id, stepId) {
   });
 }
 
+/**
+ * Soft delete (7-day undo, D60): sets `deletedAt`. Returns { success: true, id } or { error, code: INVALID | NOT_FOUND | FAILED }.
+ * Undo with restoreCareerRoadmap(id).
+ */
 export async function deleteCareerRoadmap(id) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
+  const parsed = z.string().trim().min(1).max(64).safeParse(id);
+  if (!parsed.success) return fail("INVALID", "Invalid roadmap.");
 
-  if (!user) throw new Error("User not found");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const res = await db.careerPath.updateMany({ where: { id: parsed.data, userId: user.id, deletedAt: null }, data: { deletedAt: new Date() } });
+    if (res.count === 0) return fail("NOT_FOUND", "Roadmap not found.");
+    return { success: true, id: parsed.data };
+  } catch (error) {
+    console.error("deleteCareerRoadmap failed:", safeErr(error));
+    return fail("FAILED", "Could not delete the roadmap. Please try again.");
+  }
+}
 
-  return await db.careerPath.delete({
-    where: {
-      id,
-      userId: user.id,
-    },
-  });
+/** Undo of deleteCareerRoadmap (7 days, then NOT_FOUND). Returns { success: true, id } or { error, code }. */
+export async function restoreCareerRoadmap(id) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const parsed = z.string().trim().min(1).max(64).safeParse(id);
+  if (!parsed.success) return fail("INVALID", "Invalid roadmap.");
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const res = await db.careerPath.updateMany({
+      where: { id: parsed.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
+      data: { deletedAt: null },
+    });
+    if (res.count === 0) return fail("NOT_FOUND", "Roadmap not found.");
+    return { success: true, id: parsed.data };
+  } catch (error) {
+    console.error("restoreCareerRoadmap failed:", safeErr(error));
+    return fail("FAILED", "Could not restore the roadmap. Please try again.");
+  }
 }
 
 // D50: one cap-counted action, however many AI calls it makes.
@@ -358,7 +391,7 @@ async function generateProgressRecommendationsImpl(id) {
   if (!user) throw new Error("User not found");
 
   const careerPath = await db.careerPath.findUnique({
-    where: { id, userId: user.id },
+    where: { id, userId: user.id, deletedAt: null },
   });
 
   if (!careerPath) throw new Error("Career path not found");
@@ -421,7 +454,7 @@ export async function setRoadmapStepDone(id, stepId, done) {
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     for (let attempt = 0; attempt < 3; attempt++) {
-      const path = await db.careerPath.findFirst({ where: { id: parsed.data.id, userId: user.id } });
+      const path = await db.careerPath.findFirst({ where: { id: parsed.data.id, userId: user.id, deletedAt: null } });
       if (!path) return fail("NOT_FOUND", "Roadmap not found.");
       const steps = Array.isArray(path.steps) ? path.steps : [];
       if (!steps.some((st) => st && st.id === parsed.data.stepId)) return fail("NOT_FOUND", "Step not found.");
@@ -438,7 +471,7 @@ export async function setRoadmapStepDone(id, stepId, done) {
 
       // Optimistic lock on updatedAt: a concurrent toggle makes this miss, and we re-read and retry.
       const res = await db.careerPath.updateMany({
-        where: { id: path.id, userId: user.id, updatedAt: path.updatedAt },
+        where: { id: path.id, userId: user.id, deletedAt: null, updatedAt: path.updatedAt },
         data: { steps: updated, progress, currentStep },
       });
       if (res.count === 1) {
@@ -488,7 +521,7 @@ export async function getStepTargets(roadmapId) {
   try {
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
-    const path = await db.careerPath.findFirst({ where: { id: parsed.data, userId: user.id }, select: { steps: true } });
+    const path = await db.careerPath.findFirst({ where: { id: parsed.data, userId: user.id, deletedAt: null }, select: { steps: true } });
     if (!path) return fail("NOT_FOUND", "Roadmap not found.");
 
     const pick = { companyName: true, jobTitle: true, jobDescription: true };

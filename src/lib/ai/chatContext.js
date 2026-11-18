@@ -38,7 +38,7 @@ export async function buildChatContext(dbUserId) {
       select: { id: true, atsScore: true, matchPercentage: true, jobTitle: true, companyName: true, finalSummary: true, missingSkills: true, createdAt: true },
     }),
     db.careerPath.findMany({
-      where: { userId: dbUserId, status: "active" },
+      where: { userId: dbUserId, status: "active", deletedAt: null },
       orderBy: { updatedAt: "desc" },
       take: 3,
       select: { id: true, currentRole: true, targetRole: true, steps: true, progress: true, createdAt: true },

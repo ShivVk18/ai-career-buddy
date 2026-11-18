@@ -59,12 +59,12 @@ export async function getDashboardData() {
         select: { id: true, companyName: true, jobTitle: true, createdAt: true },
       }),
       db.careerPath.findMany({
-        where: { userId: uid, status: "active" },
+        where: { userId: uid, status: "active", deletedAt: null },
         orderBy: { updatedAt: "desc" },
         select: { id: true, targetRole: true, steps: true },
       }),
       db.assessment.count({ where: { userId: uid } }),
-      db.resume.count({ where: { userId: uid } }),
+      db.resume.count({ where: { userId: uid, deletedAt: null } }),
     ]);
 
     // Due follow-ups (D34): reminders only, never sends. Owner-scoped; due = on or before the end of today (UTC).

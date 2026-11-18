@@ -16,6 +16,7 @@ import { atsFixSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 import { scoreResume, stripRec } from "@/lib/ats/score";
 import { pruneDeleted, undoCutoff } from "@/lib/softDelete";
+import { resumeToText } from "@/lib/match";
 
 const NO_SOURCES_MSG =
   "We couldn't back the analysis with evidence from your resume. Please check that the PDF has readable text and the job description is complete, then try again.";
@@ -24,7 +25,8 @@ const inputSchema = z.object({
   companyName: z.string().trim().max(200).optional().default(""),
   jobTitle: z.string().trim().max(200).optional().default(""),
   jobDescription: z.string().trim().min(1).max(20000),
-  resumeBase64: z.string().min(1),
+  resumeBase64: z.string().min(1).optional(),
+  useSavedResume: z.boolean().optional(),
   resumeType: z.string().max(100).optional(),
   jobId: z.string().trim().min(1).max(100).optional(),
 });
@@ -105,17 +107,28 @@ async function createATSAnalysisImpl(formData) {
   try {
     const parsedInput = inputSchema.safeParse(formData ?? {});
     if (!parsedInput.success) {
-      const missingFile = !formData?.resumeBase64;
+      const missingFile = !formData?.resumeBase64 && formData?.useSavedResume !== true;
       return missingFile
         ? failure("INVALID_FILE", INVALID_FILE_MSG)
         : failure("INVALID", "Please check the company, job title and job description and try again.");
     }
-    const { companyName, jobTitle, jobDescription, resumeBase64, resumeType, jobId } = parsedInput.data;
+    const { companyName, jobTitle, jobDescription, resumeBase64, resumeType, jobId, useSavedResume } = parsedInput.data;
+    if (!useSavedResume && !resumeBase64) return failure("INVALID_FILE", INVALID_FILE_MSG);
 
-    // Validate the file before any AI call.
-    const pdf = await validateAndExtractPdf(resumeBase64, resumeType);
-    if (pdf.error) return failure(pdf.code, pdf.error);
-    const resumeText = pdf.text.slice(0, 30000);
+    let resumeText;
+    const resumeSource = useSavedResume ? "saved" : "pdf";
+    if (useSavedResume) {
+      // The user's builder resume, as text (the same resumeToText the pipeline CHECKER uses). Owner-scoped, not deleted.
+      const me = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+      const saved = me ? await db.resume.findUnique({ where: { userId: me.id, deletedAt: null } }) : null;
+      resumeText = saved ? resumeToText(saved).slice(0, 30000) : "";
+      if (!resumeText.trim()) return failure("NO_RESUME", "You don't have a saved resume yet. Add one in the resume builder or upload a PDF.");
+    } else {
+      // Validate the file before any AI call.
+      const pdf = await validateAndExtractPdf(resumeBase64, resumeType);
+      if (pdf.error) return failure(pdf.code, pdf.error);
+      resumeText = pdf.text.slice(0, 30000);
+    }
     // Ensure user exists (never writes a placeholder email)
     const email = primaryEmail(clerkUser);
     const name = clerkUser.firstName
@@ -150,7 +163,7 @@ async function createATSAnalysisImpl(formData) {
         relevantSkills: raw.relevantSkills,
         missingSkills: raw.missingSkills,
         recommendations: result.recommendations.map(stripRec).map(({ text, ...r }) => r),
-        evidence,
+        evidence: { ...evidence, resumeSource },
         finalSummary: raw.finalSummary,
         analyzedBy: "AI",
         jobTitle,

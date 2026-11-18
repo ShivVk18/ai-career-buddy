@@ -116,3 +116,10 @@ ALTER TABLE "ATSScore" ADD CONSTRAINT "ATSScore_jobId_fkey" FOREIGN KEY ("jobId"
 -- AddForeignKey
 ALTER TABLE "ColdEmail" ADD CONSTRAINT "ColdEmail_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+
+-- Undo for deleting a roadmap or the resume (soft delete)
+ALTER TABLE "CareerPath" ADD COLUMN "deletedAt" TIMESTAMP(3);
+ALTER TABLE "Resume" ADD COLUMN "deletedAt" TIMESTAMP(3);
+
+-- CreateIndex
+CREATE INDEX "CareerPath_userId_deletedAt_idx" ON "CareerPath"("userId", "deletedAt");

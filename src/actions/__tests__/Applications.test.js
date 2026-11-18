@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({ db }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("@/actions/Practice", () => ({ generateOpenQuestions: vi.fn() }));
 
+const { generateOpenQuestions } = await import("@/actions/Practice");
 const { setApplicationStatus, markApplied, closeApplication, approveNeedsYou, unapproveNeedsYou } = await import("../Applications.js");
 
 beforeEach(() => {
@@ -108,5 +109,33 @@ describe("application actions", () => {
     expect(app.gapTasksAddedAt).toBeNull();
     path = saved;
     expect((await setApplicationStatus("a1", "CLOSED")).tasksAdded).toBe(2);
+  });
+  it("a board move to INTERVIEWING with a date creates the prep session like setInterviewDate", async () => {
+    generateOpenQuestions.mockResolvedValueOnce({ sessionId: "s1" });
+    const r = await setApplicationStatus("a1", "INTERVIEWING", "2026-12-01");
+    expect(r.application.status).toBe("INTERVIEWING");
+    expect(r.prepSessionId).toBe("s1");
+    expect(r.previousStatus).toBe("SAVED");
+    expect(r.previousInterviewAt).toBeNull();
+    expect(app.prepSessionId).toBe("s1");
+    expect(app.interviewAt.toISOString()).toBe("2026-12-01T00:00:00.000Z");
+  });
+  it("keeps the status and date when prep fails, and reports prepError", async () => {
+    generateOpenQuestions.mockResolvedValueOnce({ error: "x", code: "AI_LIMIT" });
+    const r = await setApplicationStatus("a1", "INTERVIEWING", "2026-12-01");
+    expect(r.application.status).toBe("INTERVIEWING");
+    expect(r.prepSessionId).toBeNull();
+    expect(r.prepError).toBe("AI_LIMIT");
+    expect(app.interviewAt).toBeInstanceOf(Date);
+  });
+  it("a board move to INTERVIEWING without a date makes no prep session", async () => {
+    generateOpenQuestions.mockClear();
+    const r = await setApplicationStatus("a1", "INTERVIEWING");
+    expect(r.prepSessionId).toBeUndefined();
+    expect(generateOpenQuestions).not.toHaveBeenCalled();
+  });
+  it("gap tasks skip a deleted roadmap (the query filters deletedAt)", async () => {
+    await closeApplication("a1", "");
+    expect(db.careerPath.findFirst.mock.calls[0][0].where.deletedAt).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import { runAIText, runAIStructured, withAiAction } from "@/lib/ai";
 import { tailorSchema } from "@/lib/ai/schemas";
 import { matchText, resumeToText } from "@/lib/match";
 import { safeErr } from "@/lib/utils";
+import { undoCutoff } from "@/lib/softDelete";
 import { z } from "zod";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { legacyEntryId } from "@/lib/entryIds";
@@ -58,6 +59,8 @@ async function validateResumeData(data) {
 // No migration: the label lives in the envelope. Rows written before Phase 4 hold a plain string.
 // ---------------------------------------------------------------------------------------------
 
+/** Fields reset when a soft-deleted resume row is reused by a new resume. */
+const BLANK_RESUME = { customCSS: null, atsScore: null, feedback: null };
 const DRAFT_PREFIX = '{"kind":"draft"';
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const fail = (code, error) => ({ error, code });
@@ -97,7 +100,7 @@ function formSnapshot(r) {
 async function loadOwner(clerkUserId) {
   const user = await db.user.findUnique({ where: { clerkUserId }, select: { id: true, industry: true, skills: true, bio: true, experience: true } });
   if (!user) return { user: null, resume: null };
-  const resume = await db.resume.findUnique({ where: { userId: user.id }, include: { template: true } });
+  const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null }, include: { template: true } });
   return { user, resume };
 }
 
@@ -117,11 +120,14 @@ export async function saveResume(data) {
     // Validate and sanitize data (this now handles template lookup)
     const sanitizedData = await validateResumeData(data);
 
+    // A soft-deleted resume row is reused by a new save: reset what the form does not send, so nothing of
+    // the old resume leaks into the new one (the "Deleted resume" snapshot version keeps the old content).
+    const previous = await db.resume.findUnique({ where: { userId: user.id }, select: { deletedAt: true } });
     const resume = await db.resume.upsert({
       where: {
         userId: user.id,
       },
-      update: sanitizedData,
+      update: previous?.deletedAt ? { ...BLANK_RESUME, ...sanitizedData, deletedAt: null } : sanitizedData,
       create: {
         userId: user.id,
         ...sanitizedData,
@@ -164,6 +170,7 @@ export async function getResume() {
     const resume = await db.resume.findUnique({
       where: {
         userId: user.id,
+        deletedAt: null,
       },
       include: {
         template: true,
@@ -312,6 +319,11 @@ Requirements:
   }
 }
 
+/**
+ * Soft delete (7-day undo, D60): the full resume is snapshotted into a ResumeVersion labelled
+ * "Deleted resume <date>" and the row gets `deletedAt` (the versions stay attached, so there is no FK problem).
+ * Returns { success: true, undoId } where undoId is the snapshot version id; Undo is restoreDeletedResume(undoId).
+ */
 export async function deleteResume() {
   try {
     const { userId } = await auth();
@@ -323,17 +335,62 @@ export async function deleteResume() {
 
     if (!user) throw new Error("User not found");
 
-    await db.resume.delete({
-      where: {
-        userId: user.id,
-      },
-    });
+    const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null }, include: { template: true } });
+    if (!resume) return { success: true, undoId: null }; // nothing to delete
+
+    const now = new Date();
+    const [snapshot] = await db.$transaction([
+      db.resumeVersion.create({
+        data: {
+          resumeId: resume.id,
+          jobTitle: "",
+          companyName: "",
+          tailoredContent: encodeVersion("version", { label: `Deleted resume ${dateLabel(now)}`, content: formSnapshot(resume), deletedResume: true }),
+        },
+      }),
+      db.resume.updateMany({ where: { id: resume.id, userId: user.id, deletedAt: null }, data: { deletedAt: now } }),
+    ]);
 
     revalidatePath("/resume");
-    return { success: true };
+    return { success: true, undoId: snapshot.id };
   } catch (error) {
     console.error("deleteResume failed:", safeErr(error));
     throw new Error("Failed to delete resume");
+  }
+}
+
+/**
+ * Undo of deleteResume (within 7 days). Clears `deletedAt`. If the user already started a new resume (the row
+ * was reused), the old one is not overwritten: { error, code: "CONFLICT" } and the snapshot stays in the version list.
+ * Returns { success: true } or { error, code: INVALID | NOT_FOUND | CONFLICT | FAILED }.
+ */
+export async function restoreDeletedResume(undoId) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const id = z.string().min(1).max(100).safeParse(undoId);
+  if (!id.success) return fail("INVALID", "Nothing to restore.");
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return NO_PROFILE;
+    const row = await db.resumeVersion.findFirst({ where: { id: id.data, resume: { userId: user.id } }, select: { tailoredContent: true, resumeId: true } });
+    if (!row || decodeVersion(row).deletedResume !== true) return fail("NOT_FOUND", "We couldn't find that resume to restore.");
+
+    const res = await db.resume.updateMany({
+      where: { id: row.resumeId, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
+      data: { deletedAt: null },
+    });
+    if (res.count === 1) {
+      revalidatePath("/resume");
+      return { success: true };
+    }
+    const cur = await db.resume.findFirst({ where: { id: row.resumeId, userId: user.id }, select: { deletedAt: true } });
+    if (cur && !cur.deletedAt) return fail("CONFLICT", "You already started a new resume, so the deleted one can't be restored over it.");
+    return fail("NOT_FOUND", "We couldn't find that resume to restore.");
+  } catch (error) {
+    console.error("restoreDeletedResume failed:", safeErr(error));
+    return fail("FAILED", "Could not restore your resume. Please try again.");
   }
 }
 
@@ -349,7 +406,7 @@ export async function duplicateResume() {
     if (!user) throw new Error("User not found");
 
     const existingResume = await db.resume.findUnique({
-      where: { userId: user.id },
+      where: { userId: user.id, deletedAt: null },
     });
 
     if (!existingResume) throw new Error("No resume to duplicate");

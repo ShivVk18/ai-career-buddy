@@ -29,7 +29,7 @@ export function strengthFrom({ resume, user, hasJob }) {
 export async function computeProfileStrength(userDbId) {
   const [user, resume, jobCount] = await Promise.all([
     db.user.findUnique({ where: { id: userDbId }, select: { skills: true, targetRole: true, jobSearchStage: true } }),
-    db.resume.findUnique({ where: { userId: userDbId }, select: { content: true, summary: true, skills: true, experience: true, projects: true, education: true } }),
+    db.resume.findUnique({ where: { userId: userDbId, deletedAt: null }, select: { content: true, summary: true, skills: true, experience: true, projects: true, education: true } }),
     db.job.count({ where: { userId: userDbId, deletedAt: null } }),
   ]);
   return strengthFrom({ resume, user, hasJob: jobCount > 0 });

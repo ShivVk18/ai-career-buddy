@@ -100,7 +100,7 @@ async function generateColdEmailImpl(data) {
     if (!job) return fail("NOT_FOUND", "We couldn't find that job.");
   }
 
-  const resume = await db.resume.findUnique({ where: { userId: user.id } });
+  const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
   // Company and role the user typed can be cited by the subject.
   const extra = [
     companyName && { id: "input:companyName", kind: "input", label: "Company you entered", text: companyName },
