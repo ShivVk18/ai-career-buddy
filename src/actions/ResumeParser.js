@@ -15,6 +15,7 @@ import { primaryEmail } from "@/lib/clerkEmail";
 import { atsFixSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 import { scoreResume, stripRec } from "@/lib/ats/score";
+import { pruneDeleted, undoCutoff } from "@/lib/softDelete";
 
 const NO_SOURCES_MSG =
   "We couldn't back the analysis with evidence from your resume. Please check that the PDF has readable text and the job description is complete, then try again.";
@@ -171,10 +172,11 @@ export async function getUserATSScores() {
     const me = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true, experience: true } });
     if (!me) return [];
     await purgeOldResumeText(me.id);
+    await pruneDeleted(me.id);
     const candidateYears = yearsOf(me.experience);
 
     const scores = await db.aTSScore.findMany({
-      where: { userId: me.id },
+      where: { userId: me.id, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 50, // newest 50 only: Prisma can't select inside Json, so evidence (incl. resumeText) is still loaded
       select: {
@@ -222,6 +224,7 @@ export async function getATSScoreById(scoreId) {
     const score = await db.aTSScore.findFirst({
       where: { 
         id: scoreId,
+        deletedAt: null,
         user: {
           clerkUserId: userId
         }
@@ -242,7 +245,8 @@ export async function getATSScoreById(scoreId) {
 }
 
 /**
- * Deletes one of the signed-in user's ATS results (owner-scoped). Returns { success: true, message } or
+ * Soft-deletes (D60: sets deletedAt) one of the signed-in user's ATS results (owner-scoped). Undo with
+ * restoreATSScore for 7 days. Returns { success: true, id, message } or
  * { error, code: "INVALID" | "NOT_FOUND" | "FAILED" }. Results that point to it via previousScoreId keep working.
  */
 export async function deleteATSScore(scoreId) {
@@ -256,14 +260,40 @@ export async function deleteATSScore(scoreId) {
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return { error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
-    const res = await db.aTSScore.deleteMany({ where: { id: id.data, userId: user.id } });
+    const res = await db.aTSScore.updateMany({ where: { id: id.data, userId: user.id, deletedAt: null }, data: { deletedAt: new Date() } });
     if (res.count === 0) return { error: "We couldn't find that result.", code: "NOT_FOUND" };
 
     revalidatePath("/resume-parser");
-    return { success: true, message: "ATS score deleted successfully" };
+    return { success: true, id: id.data, message: "ATS score deleted successfully" };
   } catch (error) {
     console.error("deleteATSScore failed:", safeErr(error));
     return { error: "We couldn't delete that result. Please try again.", code: "FAILED" };
+  }
+}
+
+/** Undo for deleteATSScore. Works for 7 days after the delete. Returns { success: true, id } or { error, code }. */
+export async function restoreATSScore(scoreId) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const id = z.string().trim().min(1).max(100).safeParse(scoreId);
+  if (!id.success) return { error: "We couldn't find that result.", code: "INVALID" };
+
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return { error: "We couldn't find your profile.", code: "NOT_FOUND" };
+
+    const res = await db.aTSScore.updateMany({
+      where: { id: id.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
+      data: { deletedAt: null },
+    });
+    if (res.count === 0) return { error: "That result can't be restored any more.", code: "NOT_FOUND" };
+
+    revalidatePath("/resume-parser");
+    return { success: true, id: id.data };
+  } catch (error) {
+    console.error("restoreATSScore failed:", safeErr(error));
+    return { error: "We couldn't restore that result. Please try again.", code: "FAILED" };
   }
 }
 
@@ -275,6 +305,7 @@ export async function getATSAnalytics() {
   try {
     const scores = await db.aTSScore.findMany({
       where: { 
+        deletedAt: null,
         user: {
           clerkUserId: userId
         }
@@ -338,12 +369,12 @@ export async function updateATSScore(scoreId, updateData) {
     if (!user) return { success: false, error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
     const result = await db.aTSScore.updateMany({
-      where: { id: id.data, userId: user.id },
+      where: { id: id.data, userId: user.id, deletedAt: null },
       data: data.data,
     });
     if (result.count === 0) return { success: false, error: "ATS score not found.", code: "NOT_FOUND" };
 
-    const updated = await db.aTSScore.findFirst({ where: { id: id.data, userId: user.id } });
+    const updated = await db.aTSScore.findFirst({ where: { id: id.data, userId: user.id, deletedAt: null } });
     revalidatePath("/resume-parser");
     return { success: true, message: "ATS score updated successfully", data: publicScore(updated, yearsOf(user.experience)) };
   } catch (error) {
@@ -465,7 +496,7 @@ async function proposeAtsFixImpl(scoreId, weaknessIndex) {
     if (!signingKey()) return fixFail("FIX_UNAVAILABLE", FIX_UNAVAILABLE_MSG);
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fixFail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
-    const score = await db.aTSScore.findFirst({ where: { id: input.data.scoreId, userId: user.id } });
+    const score = await db.aTSScore.findFirst({ where: { id: input.data.scoreId, userId: user.id, deletedAt: null } });
     if (!score) return fixFail("NOT_FOUND", "We couldn't find that ATS result.");
 
     const ev = score.evidence && typeof score.evidence === "object" ? score.evidence : null;
@@ -624,7 +655,7 @@ async function applyAtsFixInner(userId, input) {
 
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fixFail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
-    const score = await db.aTSScore.findFirst({ where: { id: input.scoreId, userId: user.id } });
+    const score = await db.aTSScore.findFirst({ where: { id: input.scoreId, userId: user.id, deletedAt: null } });
     if (!score) return fixFail("NOT_FOUND", "We couldn't find that ATS result.");
 
     const ev = score.evidence && typeof score.evidence === "object" ? score.evidence : null;
@@ -641,6 +672,7 @@ async function applyAtsFixInner(userId, input) {
     const existing = await db.aTSScore.findFirst({
       where: {
         userId: user.id,
+        deletedAt: null,
         AND: [
           { evidence: { path: ["previousScoreId"], equals: score.id } },
           { evidence: { path: ["appliedFix", "nonce"], equals: fix.n } },
@@ -672,6 +704,7 @@ async function applyAtsFixInner(userId, input) {
       const again = await tx.aTSScore.findFirst({
         where: {
           userId: user.id,
+          deletedAt: null,
           AND: [
             { evidence: { path: ["previousScoreId"], equals: score.id } },
             { evidence: { path: ["appliedFix", "nonce"], equals: fix.n } },
@@ -683,6 +716,8 @@ async function applyAtsFixInner(userId, input) {
       const created = await tx.aTSScore.create({
         data: {
           user: { connect: { id: user.id } },
+          // A fix of a job's result stays linked to that job (the newest result of a job is the one that counts).
+          ...(score.jobId ? { job: { connect: { id: score.jobId } } } : {}),
           atsScore: raw.atsScore,
           matchPercentage: raw.matchPercentage,
           strengths: result.strengths.map((x) => x.text),

@@ -8,6 +8,7 @@ import { withAiAction } from "@/lib/ai";
 import { buildSources, formatCatalogForPrompt, snapshot } from "@/lib/ai/sources";
 import { generateSourcedParagraphs, allowedNumberText } from "@/lib/ai/paragraphs";
 import { safeErr } from "@/lib/utils";
+import { pruneDeleted, undoCutoff } from "@/lib/softDelete";
 import { COLD_EMAIL_WORDS } from "@/lib/writing";
 
 const NO_SOURCES_MSG =
@@ -113,7 +114,7 @@ async function generateColdEmailImpl(data) {
   try {
     await db.coldEmail.findFirst({
       where: { userId: user.id },
-      select: { id: true, subject: true, recipientName: true, recipientRole: true, recipientEmail: true, followUpAt: true },
+      select: { id: true, subject: true, recipientName: true, recipientRole: true, recipientEmail: true, followUpAt: true, deletedAt: true },
     });
   } catch (error) {
     if (isMissingColumn(error)) return fail("MIGRATION_PENDING", MIGRATION_MSG);
@@ -221,9 +222,11 @@ export async function getColdEmails() {
 
   if (!user) throw new Error("User not found");
 
+  await pruneDeleted(user.id);
   return await db.coldEmail.findMany({
     where: {
       userId: user.id,
+      deletedAt: null,
     },
     orderBy: {
       createdAt: "desc",
@@ -243,10 +246,11 @@ export async function getColdEmail(id) {
   if (!user) throw new Error("User not found");
 
   try {
-    return await db.coldEmail.findUnique({
+    return await db.coldEmail.findFirst({
       where: {
-        id,
+        id: typeof id === "string" ? id : "",
         userId: user.id,
+        deletedAt: null,
       },
     });
   } catch (error) {
@@ -255,22 +259,48 @@ export async function getColdEmail(id) {
   }
 }
 
+/** Soft delete (D60): sets deletedAt. Undo with restoreColdEmail (7 days). Returns { success: true, id } or { error, code }. */
 export async function deleteColdEmail(id) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
+  const pid = z.string().trim().min(1).max(100).safeParse(id);
+  if (!pid.success) return fail("INVALID", "We couldn't find that item.");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const res = await db.coldEmail.updateMany({
+      where: { id: pid.data, userId: user.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (res.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
+    return { success: true, id: pid.data };
+  } catch (error) {
+    console.error("deleteColdEmail failed:", safeErr(error));
+    return failedOrPending(error, "We couldn't delete that email. Please try again.");
+  }
+}
 
-  if (!user) throw new Error("User not found");
+/** Undo for deleteColdEmail. Works for 7 days after the delete. Returns { success: true, id } or { error, code }. */
+export async function restoreColdEmail(id) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
 
-  return await db.coldEmail.delete({
-    where: {
-      id,
-      userId: user.id,
-    },
-  });
+  const pid = z.string().trim().min(1).max(100).safeParse(id);
+  if (!pid.success) return fail("INVALID", "We couldn't find that item.");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const res = await db.coldEmail.updateMany({
+      where: { id: pid.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
+      data: { deletedAt: null },
+    });
+    if (res.count === 0) return fail("NOT_FOUND", "That email can't be restored any more.");
+    return { success: true, id: pid.data };
+  } catch (error) {
+    console.error("restoreColdEmail failed:", safeErr(error));
+    return failedOrPending(error, "We couldn't restore that email. Please try again.");
+  }
 }
 
 const updateSchema = z.object({
@@ -306,7 +336,7 @@ export async function updateColdEmail(id, content, fields) {
 
     if (data.subject !== undefined) {
       const existing = await db.coldEmail.findFirst({
-        where: { id: parsed.data.id, userId: user.id },
+        where: { id: parsed.data.id, userId: user.id, deletedAt: null },
         select: { subject: true, sources: true },
       });
       if (!existing) return fail("NOT_FOUND", "We couldn't find that item.");
@@ -320,12 +350,12 @@ export async function updateColdEmail(id, content, fields) {
     }
 
     const result = await db.coldEmail.updateMany({
-      where: { id: parsed.data.id, userId: user.id },
+      where: { id: parsed.data.id, userId: user.id, deletedAt: null },
       data,
     });
     if (result.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
 
-    return await db.coldEmail.findFirst({ where: { id: parsed.data.id, userId: user.id } });
+    return await db.coldEmail.findFirst({ where: { id: parsed.data.id, userId: user.id, deletedAt: null } });
   } catch (error) {
     console.error("updateColdEmail failed:", safeErr(error));
     return failedOrPending(error, "We couldn't save your changes. Please try again.");
@@ -364,12 +394,12 @@ export async function setColdEmailFollowUp(id, date) {
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const result = await db.coldEmail.updateMany({
-      where: { id: parsed.data.id, userId: user.id },
+      where: { id: parsed.data.id, userId: user.id, deletedAt: null },
       data: { followUpAt: when },
     });
     if (result.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
 
-    return await db.coldEmail.findFirst({ where: { id: parsed.data.id, userId: user.id } });
+    return await db.coldEmail.findFirst({ where: { id: parsed.data.id, userId: user.id, deletedAt: null } });
   } catch (error) {
     console.error("setColdEmailFollowUp failed:", safeErr(error));
     return failedOrPending(error, "We couldn't save the reminder. Please try again.");

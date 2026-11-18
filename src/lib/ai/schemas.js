@@ -170,3 +170,22 @@ export const jobMetaSchema = z.object({
   title: jobField,
   location: jobField,
 });
+
+// Resume drop (D59): chips with the verbatim quote each came from. The server verifies every quote and label
+// against the extracted PDF text and drops anything it cannot find. Years must be written in the text.
+const quoted = z.object({ value: z.string(), quote: z.string() });
+export const resumeChipsSchema = z.object({
+  chips: z
+    .array(
+      z.object({
+        kind: z.enum(["role", "project", "skill"]),
+        label: z.string(),
+        detail: z.string().nullish(),
+        quote: z.string(),
+      })
+    )
+    .default([]),
+  years: z.object({ value: z.coerce.number(), quote: z.string() }).nullish(),
+  suggestedTargetRole: quoted.nullish(),
+  suggestedIndustry: quoted.nullish(),
+});

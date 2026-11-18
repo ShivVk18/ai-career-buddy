@@ -461,7 +461,7 @@ export async function getGapFrequency() {
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return { gaps: [], resultCount: 0 };
     const rows = await db.aTSScore.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 200,
       select: { missingSkills: true },
@@ -493,9 +493,9 @@ export async function getStepTargets(roadmapId) {
 
     const pick = { companyName: true, jobTitle: true, jobDescription: true };
     const [ats, letters, emails] = await Promise.all([
-      db.aTSScore.findMany({ where: { userId: user.id, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
-      db.coverLetter.findMany({ where: { userId: user.id, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
-      db.coldEmail.findMany({ where: { userId: user.id, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
+      db.aTSScore.findMany({ where: { userId: user.id, deletedAt: null, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
+      db.coverLetter.findMany({ where: { userId: user.id, deletedAt: null, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
+      db.coldEmail.findMany({ where: { userId: user.id, deletedAt: null, jobDescription: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, select: pick }),
     ]);
     const docs = [
       ...ats.map((d) => ({ kind: "ats", company: d.companyName, role: d.jobTitle, jobDescription: d.jobDescription })),

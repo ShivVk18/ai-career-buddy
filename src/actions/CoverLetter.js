@@ -3,12 +3,14 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { buildSources, formatCatalogForPrompt } from "@/lib/ai/sources";
 import { generateSourcedParagraphs, allowedNumberText, withUpdatedHashes } from "@/lib/ai/paragraphs";
 import { runAIStructured, withAiAction } from "@/lib/ai";
 import { shortenSchema } from "@/lib/ai/schemas";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { safeErr } from "@/lib/utils";
+import { pruneDeleted, undoCutoff } from "@/lib/softDelete";
 import {
   COVER_LETTER_WORDS,
   COVER_LETTER_TONES,
@@ -47,6 +49,16 @@ const withTone = (row) => {
   const t = row.sources?.tone;
   return { ...row, tone: COVER_LETTER_TONES.includes(t) ? t : null };
 };
+
+/**
+ * One level of undo for replace-in-place edits: the current content and sources (without their own
+ * `previous`) are kept in sources.previous. Returns the sources object to store with the NEW content.
+ */
+function withPrevious(newSources, row) {
+  const old = row.sources && typeof row.sources === "object" && !Array.isArray(row.sources) ? row.sources : null;
+  const { previous: _older, ...oldSources } = old ?? {};
+  return { ...newSources, previous: { content: row.content, sources: old ? oldSources : null, at: new Date().toISOString() } };
+}
 
 function letterPrompt({ jobTitle, companyName, catalog, tone, formality }) {
   const t = TONE_PROMPTS[tone || DEFAULT_TONE];
@@ -170,9 +182,11 @@ export async function getCoverLetters() {
 
   if (!user) throw new Error("User not found");
 
+  await pruneDeleted(user.id);
   const rows = await db.coverLetter.findMany({
     where: {
       userId: user.id,
+      deletedAt: null,
     },
     orderBy: {
       createdAt: "desc",
@@ -192,31 +206,58 @@ export async function getCoverLetter(id) {
   if (!user) throw new Error("User not found");
 
   return withTone(
-    await db.coverLetter.findUnique({
+    await db.coverLetter.findFirst({
       where: {
-        id,
+        id: typeof id === "string" ? id : "",
         userId: user.id,
+        deletedAt: null,
       },
     })
   );
 }
 
+/** Soft delete (D60): sets deletedAt. Undo with restoreCoverLetter (7 days). Returns { success: true, id } or { error, code }. */
 export async function deleteCoverLetter(id) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
+  const pid = idSchema.safeParse(id);
+  if (!pid.success) return fail("INVALID", "We couldn't find that item.");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const res = await db.coverLetter.updateMany({
+      where: { id: pid.data, userId: user.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (res.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
+    return { success: true, id: pid.data };
+  } catch (error) {
+    console.error("deleteCoverLetter failed:", safeErr(error));
+    return fail("FAILED", "We couldn't delete that letter. Please try again.");
+  }
+}
 
-  if (!user) throw new Error("User not found");
+/** Undo for deleteCoverLetter. Works for 7 days after the delete. Returns { success: true, id } or { error, code }. */
+export async function restoreCoverLetter(id) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
 
-  return await db.coverLetter.delete({
-    where: {
-      id,
-      userId: user.id,
-    },
-  });
+  const pid = idSchema.safeParse(id);
+  if (!pid.success) return fail("INVALID", "We couldn't find that item.");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const res = await db.coverLetter.updateMany({
+      where: { id: pid.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
+      data: { deletedAt: null },
+    });
+    if (res.count === 0) return fail("NOT_FOUND", "That letter can't be restored any more.");
+    return { success: true, id: pid.data };
+  } catch (error) {
+    console.error("restoreCoverLetter failed:", safeErr(error));
+    return fail("FAILED", "We couldn't restore that letter. Please try again.");
+  }
 }
 
 const updateSchema = z.object({
@@ -242,12 +283,12 @@ export async function updateCoverLetter(id, content) {
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const result = await db.coverLetter.updateMany({
-      where: { id: parsed.data.id, userId: user.id },
+      where: { id: parsed.data.id, userId: user.id, deletedAt: null },
       data: { content: parsed.data.content },
     });
     if (result.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
 
-    return withTone(await db.coverLetter.findFirst({ where: { id: parsed.data.id, userId: user.id } }));
+    return withTone(await db.coverLetter.findFirst({ where: { id: parsed.data.id, userId: user.id, deletedAt: null } }));
   } catch (error) {
     console.error("updateCoverLetter failed:", safeErr(error));
     return fail("FAILED", "We couldn't save your changes. Please try again.");
@@ -276,7 +317,7 @@ async function regenerateCoverLetterImpl(id, opts) {
     const user = await db.user.findUnique({ where: { clerkUserId: userId } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
-    const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id } });
+    const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id, deletedAt: null } });
     if (!row) return fail("NOT_FOUND", "We couldn't find that item.");
 
     const resume = await db.resume.findUnique({ where: { userId: user.id } });
@@ -294,12 +335,13 @@ async function regenerateCoverLetterImpl(id, opts) {
       allowedText: allowedNumberText(catalog, row.jobTitle, row.companyName),
     });
 
+    // The previous text and sources are kept in sources.previous (one level) so the user can undo.
     const res = await db.coverLetter.updateMany({
-      where: { id: row.id, userId: user.id },
-      data: { content, sources: { ...sources, tone: useTone } },
+      where: { id: row.id, userId: user.id, deletedAt: null },
+      data: { content, sources: withPrevious({ ...sources, tone: useTone }, row) },
     });
     if (res.count === 0) return fail("NOT_FOUND", "We couldn't find that item.");
-    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } }));
+    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id, deletedAt: null } }));
   } catch (error) {
     console.error("regenerateCoverLetter failed:", safeErr(error));
     return genError(error, "regenerate the cover letter");
@@ -330,7 +372,7 @@ async function shortenCoverLetterImpl(id) {
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
-    const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id } });
+    const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id, deletedAt: null } });
     if (!row) return fail("NOT_FOUND", "We couldn't find that item.");
 
     const paras = String(row.content ?? "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
@@ -401,14 +443,50 @@ OUTPUT: valid JSON only, no markdown fences:
     if (res.words >= before) return fail("FAILED", "We couldn't make this letter shorter. Your letter was not changed.");
 
     const updated = await db.coverLetter.updateMany({
-      where: { id: row.id, userId: user.id, content: row.content }, // not changed since we read it
+      where: { id: row.id, userId: user.id, deletedAt: null, content: row.content }, // not changed since we read it
       // Source ids stay exactly as stored; only the hash of a rewritten paragraph is refreshed (when it had one).
-      data: { content: res.next.join("\n\n"), sources: withUpdatedHashes(row.sources, paras, res.next) },
+      // The text before shortening is kept in sources.previous (one level) for undoLetterChange.
+      data: { content: res.next.join("\n\n"), sources: withPrevious(withUpdatedHashes(row.sources, paras, res.next) ?? {}, row) },
     });
     if (updated.count === 0) return fail("FAILED", "The letter changed while shortening. Please try again.");
-    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id } }));
+    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id, deletedAt: null } }));
   } catch (error) {
     console.error("shortenCoverLetter failed:", safeErr(error));
     return genError(error, "shorten the cover letter");
+  }
+}
+
+/**
+ * Undo for regenerateCoverLetter / shortenCoverLetter (and the formal and tone changes): swaps the saved
+ * previous content and sources back and clears them (one level only). Owner-scoped. Returns the letter row or
+ * { error, code: "INVALID" | "NOT_FOUND" | "NOTHING_TO_UNDO" | "FAILED" }.
+ */
+export async function undoLetterChange(id) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const pid = idSchema.safeParse(id);
+  if (!pid.success) return fail("INVALID", "We couldn't find that item.");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    const row = await db.coverLetter.findFirst({ where: { id: pid.data, userId: user.id, deletedAt: null } });
+    if (!row) return fail("NOT_FOUND", "We couldn't find that item.");
+    const prev = row.sources?.previous;
+    if (!prev || typeof prev.content !== "string" || !prev.content.trim()) {
+      return fail("NOTHING_TO_UNDO", "There is nothing to undo for this letter.");
+    }
+    const { previous: _drop, ...rest } = prev.sources && typeof prev.sources === "object" ? prev.sources : {};
+    const restored = Object.keys(rest).length ? rest : null;
+    const res = await db.coverLetter.updateMany({
+      // Only if the letter still holds the sources we read (no concurrent change).
+      where: { id: row.id, userId: user.id, deletedAt: null, content: row.content },
+      data: { content: prev.content, sources: restored ?? Prisma.DbNull },
+    });
+    if (res.count === 0) return fail("FAILED", "The letter changed in the meantime. Please try again.");
+    return withTone(await db.coverLetter.findFirst({ where: { id: row.id, userId: user.id, deletedAt: null } }));
+  } catch (error) {
+    console.error("undoLetterChange failed:", safeErr(error));
+    return fail("FAILED", "We couldn't undo that change. Please try again.");
   }
 }

@@ -493,7 +493,7 @@ export async function getResumeVersion(id) {
 
 /**
  * Restores a version into the main resume. The current resume is first saved as "Before restore <date>",
- * then the version's snapshot is written through saveResume. Returns { success: true, backupVersionId } or { error, code }.
+ * then the version's snapshot is written through saveResume. Returns { success: true, backupVersionId, undoVersionId } (equal) or { error, code }.
  */
 export async function restoreResumeVersion(id) {
   const { userId } = await auth();
@@ -520,7 +520,8 @@ export async function restoreResumeVersion(id) {
     });
 
     await saveResume(env.content);
-    return { success: true, backupVersionId: backup.id };
+    // undoVersionId: Undo is restoreResumeVersion(undoVersionId) (D60); it snapshots the restored state as a new backup.
+    return { success: true, backupVersionId: backup.id, undoVersionId: backup.id };
   } catch (error) {
     console.error("restoreResumeVersion failed:", safeErr(error));
     return fail("FAILED", "We couldn't restore this version. Your resume was not changed.");

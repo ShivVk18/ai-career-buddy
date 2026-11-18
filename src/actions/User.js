@@ -90,7 +90,8 @@ export async function getUserOnboardingStatus() {
     });
   }
 
-  return {
-    isOnboarded: !!user?.industry,
-  };
+  // D59: onboarded = has an industry (existing users), OR a resume, OR both onboarding answers.
+  let isOnboarded = !!user.industry || (!!user.targetRole && !!user.jobSearchStage);
+  if (!isOnboarded) isOnboarded = (await db.resume.count({ where: { userId: user.id } })) > 0;
+  return { isOnboarded };
 }

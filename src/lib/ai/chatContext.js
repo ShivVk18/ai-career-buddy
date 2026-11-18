@@ -32,7 +32,7 @@ export async function buildChatContext(dbUserId) {
       select: { industry: true, skills: true, experience: true, bio: true },
     }),
     db.aTSScore.findMany({
-      where: { userId: dbUserId },
+      where: { userId: dbUserId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 3,
       select: { id: true, atsScore: true, matchPercentage: true, jobTitle: true, companyName: true, finalSummary: true, missingSkills: true, createdAt: true },
@@ -44,13 +44,13 @@ export async function buildChatContext(dbUserId) {
       select: { id: true, currentRole: true, targetRole: true, steps: true, progress: true, createdAt: true },
     }),
     db.coverLetter.findMany({
-      where: { userId: dbUserId },
+      where: { userId: dbUserId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 3,
       select: { id: true, companyName: true, jobTitle: true, status: true, createdAt: true },
     }),
     db.coldEmail.findMany({
-      where: { userId: dbUserId },
+      where: { userId: dbUserId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 3,
       select: { id: true, companyName: true, jobTitle: true, status: true, createdAt: true },

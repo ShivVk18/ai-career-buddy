@@ -7,7 +7,7 @@ export const COVER_LETTER_WORDS = { min: 250, max: 350 };
 /** Cold email: prompt asks for min-max; the UI shows `target` inside that range. */
 export const COLD_EMAIL_WORDS = { min: 100, max: 140, target: 120 };
 
-export const COVER_LETTER_TONES = ["stiff", "confident", "eager"];
+export const COVER_LETTER_TONES = ["stiff", "confident", "eager", "warmer"];
 export const DEFAULT_TONE = "confident";
 export const COVER_LETTER_FORMALITY = ["standard", "formal"];
 
@@ -15,12 +15,14 @@ export const TONE_LABELS = {
   stiff: "stiff (formal)",
   confident: "confident (solution-focused)",
   eager: "eager (startup energy)",
+  warmer: "warmer (friendly)",
 };
 
 /** Prompt instruction per tone. */
 export const TONE_PROMPTS = {
   stiff: "Formal and reserved: precise, respectful wording, no slang, no exclamation marks.",
   confident: "Confident and solution-focused: direct, specific, positions the candidate as the answer to the company's needs.",
+  warmer: "Warm and personable: friendly, genuine and conversational, with a human touch, but still professional and specific. No slang, no exclamation overload.",
   eager: "Warm and energetic with startup energy: enthusiastic but still professional, no exclamation overload.",
 };
 

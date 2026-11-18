@@ -714,7 +714,7 @@ Pipeline = {
 - `ATSScore` rows made by the pipeline are real scores (evidence, resume text) and show in the ATS tool; `ResumeVersion` drafts follow the 24 h expiry of 7.5.
 - "Needs you" source (task 4): an item exists while the pipeline step has `needsYou: true`; approving it (task 4 action) sets it to false. Nothing is applied to the main resume by the pipeline.
 
-### 11.5 Needs you, application status, result taps (DESIGN, task 4; `src/actions/Applications.js`, `Dashboard.js`)
+### 11.5 Needs you, application status, result taps (BUILT, task 4; `src/actions/Applications.js`, `Dashboard.js`)
 ```ts
 NeedsYouItem = {
   id: string,                                   // stable: "<type>:<refId>"
@@ -734,7 +734,7 @@ NeedsYouItem = {
 - `getApplications()` returns `{ applications: { id, status, job: {id, company, title, location, url}, appliedAt, interviewAt, nextActionAt, nextAction: { label: string, href: string } | null, updatedAt }[] }` (not deleted, newest activity first) for the board and home.
 - `getDashboardData()` adds `applications` (max 10, same shape as above), `needsYouCount: number`, `hasOffer: boolean` (any non-deleted application in OFFER), `profileStrength: number | null`. Existing fields and `targets` are unchanged (old derived targets stay as a fallback).
 
-### 11.6 Onboarding and profile (DESIGN, task 5; `src/actions/Onboarding.js`, `User.js`)
+### 11.6 Onboarding and profile (BUILT, task 5; `src/actions/Onboarding.js`, `User.js`)
 ```ts
 Chip = { id: string, kind: "role"|"project"|"skill"|"years", label: string, detail?: string,
          source: { quote: string } }            // quote verified against the extracted PDF text; unverified items are dropped
@@ -745,11 +745,24 @@ Chip = { id: string, kind: "role"|"project"|"skill"|"years", label: string, deta
 - `getProfileStrength()` returns `{ percent: number (0-100), nextAction: { label: string, href: string } | null, parts: { name: string, done: boolean }[] }`.
 - Onboarded (D59) = the user has a resume OR both `targetRole` and `jobSearchStage` set; existing users stay onboarded. `updateUser` (10.3) keeps working.
 
-### 11.7 Undo and deleting data (DESIGN, task 6)
+### 11.7 Undo and deleting data (BUILT, task 6)
 - Soft deletes set `deletedAt`: `deleteCoverLetter`, `deleteColdEmail`, `deleteATSScore` now return `{ success: true, id }`; `restoreCoverLetter(id)`, `restoreColdEmail(id)`, `restoreATSScore(id)` return `{ success: true, id }` (7 days, then `NOT_FOUND`). Every reader (lists, get-by-id, dashboard counts, targets, analytics) hides deleted rows; rows are hard-deleted lazily 7 days after `deletedAt`.
 - `restoreResumeVersion(id)` additionally returns `undoVersionId` (= `backupVersionId`); Undo is `restoreResumeVersion(undoVersionId)`.
 - Letter edits that replace content: `regenerateCoverLetter`, `shortenCoverLetter` and the new tone `"warmer"` (`COVER_LETTER_TONES` gains `warmer`; `TONE_PROMPTS` too) store `{ content, sources, at }` in `sources.previous` first. `undoLetterChange(id)` swaps it back (and clears it) and returns the letter row, or `{ error, code: "NOTHING_TO_UNDO" | "NOT_FOUND" | "FAILED" }`. Only one level of undo is kept.
 - `deleteAllMyData({ confirmation: string })` and `deleteAccount({ confirmation: string })` (src/actions/Account.js). `confirmation` must equal exactly `DELETE MY DATA` / `DELETE MY ACCOUNT` (trimmed, case-sensitive) else `{ error, code: "CONFIRMATION_REQUIRED" }`. `deleteAllMyData` deletes all the caller's rows in dependency order (InterviewAnswer first, applications, jobs, documents, resume and versions, roadmaps, goals, sessions, assessments) and resets the profile fields; the account stays. `deleteAccount` does the same, deletes the user row and then the Clerk user. Both return `{ success: true }` or `{ error, code: "CONFIRMATION_REQUIRED" | "FAILED" }` and never touch another user's rows. The UI signs the user out after `deleteAccount`.
+
+### 11.7b Shape notes and additions from tasks 4-6 (read these)
+- **Item hrefs (11.5):** `COVER_LETTER` -> `/cover-letter/<id>`, `COLD_EMAIL` -> `/cold-email/<id>`, `ATS_FIX` -> `/resume-parser`, `TAILOR_DRAFT` -> `/needs-you?item=<id>` (the review queue, task 11), `FOLLOW_UP` and `PREP_INTERVIEW` -> `/jobs/<jobId>`. Use `type` and `refId` to route differently. A TAILOR draft that expired (24 h) or was already saved drops out of the queue; a deleted letter/email drops out; an `ATS_FIX` item exists only for the NEWEST non-deleted ATS result of a job that has a resume quote in a weakness and stored resume text (under 90 days).
+- **`approveNeedsYou` also accepts `step: "CHECKER"`** (dismisses the ATS_FIX item; not in the original enum). Idempotent.
+- **Added actions (src/actions/Applications.js):** `createFollowUpDraft(applicationId)` is the click behind a `FOLLOW_UP` item. It writes ONE cold-email draft from the job record (template text, no AI, no recipient, nothing sent), increments `followUpCount` (max 2) and moves `nextActionAt` 5 days out. Returns `{ coldEmailId, href, followUpCount }` or `{ error, code: INVALID | NOT_FOUND | NOT_DUE | FAILED }`. `createInterviewPrep(applicationId)` retries prep for a `PREP_INTERVIEW` item (one AI action): `{ prepSessionId }` or `{ error, code }`.
+- **Interview date:** `YYYY-MM-DD` is stored as 00:00 UTC of that day (no time is invented); an interview counts as upcoming through that whole day. Allowed range: 1 year back to 2 years ahead (else `INVALID`). Prep is created INSIDE `setInterviewDate` (not deferred), 5 questions from the job description.
+- **Close -> gaps:** the tasks are appended as `Skill gap` steps ("Learn <skill>", max 10, deduped, skipped when a step with that skill already exists) to the user's most recently updated ACTIVE roadmap, not to a new "Gaps" roadmap. No active roadmap: `tasksAdded` 0 and `gapTasksAddedAt` stays unset so a later close can still add them. Moving out of CLOSED (Undo) clears `closedReason`; tasks already added are not removed.
+- **Status side effects:** `APPLIED` sets `appliedAt` (kept when already set, except from SAVED) and `nextActionAt = appliedAt + 5 days`; `SAVED` clears `appliedAt`/`nextActionAt`; INTERVIEWING/OFFER/CLOSED clear `nextActionAt`.
+- **Dashboard (11.5):** the four new fields fall back to `[]`, `0`, `false`, `null` if their own query fails. `profileStrength` is the percent.
+- **Onboarding:** `Chip.kind` also has `"years"` (label "5 years", only when the text states it). A role chip's `detail` is the employer, a project chip's `detail` a phrase from the text; both are dropped when not in the text. `saveProfileChips` accepts `kind: "years"` chips too (used if `years` is absent). Roles/projects are merged into the existing resume (existing entries kept, duplicates skipped); skills are merged into `User.skills` (max 50) and `Resume.skills`. `suggestedIndustry`/`suggestedTargetRole` are null unless backed by a quote. `getUserOnboardingStatus` = industry set OR resume exists OR (`targetRole` and `jobSearchStage`). `getProfileStrength` parts: Resume added, Experience or projects, Skills (3+), Target role, Job search stage, First job added.
+- **Soft delete readers:** `deleteATSScore` now returns `{ success: true, id, message }`; `restoreATSScore(id)` is in `src/actions/ResumeParser.js`. `getCoverLetter`/`getColdEmail` return `null` for deleted rows. `applyAtsFix` copies `jobId` to the new result. Lazy hard-delete (7 days, max 50 per model per call, per user) runs from the list readers and the dashboard, for letters, emails, ATS results and jobs.
+- **Letters:** `regenerateCoverLetter` (including `formality: "formal"` and tones, `warmer` included) and `shortenCoverLetter` write `sources.previous = { content, sources, at }` (one level).
+- **Account:** the field is `confirmation` (`confirm` is accepted as an alias). Extra codes: `NOT_FOUND` (deleteAllMyData, no profile) and `CLERK_FAILED` (deleteAccount: the data is already gone, calling it again retries only the Clerk step). `deleteAllMyData` keeps AiUsage rows from the last 24 h so it cannot reset the daily AI limit; `deleteAccount` deletes them all.
 
 ### 11.8 Frontend checklist
 - Home input: `intakeJob({ input })` -> `kind:"question"` opens chat with `text` pre-sent; `kind:"job"` goes to `/jobs/<job.id>` and starts the `runNextStep` loop.

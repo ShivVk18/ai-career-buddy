@@ -3,10 +3,15 @@
 import { db } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { safeErr } from "@/lib/utils";
+import { publicApplication } from "@/lib/applications/derive";
+import { computeNeedsYou } from "@/lib/applications/needsYou";
+import { computeProfileStrength } from "@/lib/profile/strength";
+import { pruneDeleted } from "@/lib/softDelete";
 
 const MAX_TARGETS = 10;
 const MAX_TASKS = 5;
 const MAX_FOLLOW_UPS = 10;
+const MAX_APPLICATIONS = 10;
 
 const norm = (v) => (typeof v === "string" ? v.trim() : "");
 
@@ -26,25 +31,30 @@ export async function getDashboardData() {
       totalTargets: 0,
       nextTasks: [],
       dueFollowUps: [],
+      applications: [],
+      needsYouCount: 0,
+      hasOffer: false,
+      profileStrength: null,
     };
 
     const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
     if (!user) return empty;
     const uid = user.id;
+    await pruneDeleted(uid); // lazy hard-delete of rows soft-deleted more than 7 days ago
 
     const [ats, letters, emails, roadmaps, assessmentCount, resumeCount] = await Promise.all([
       db.aTSScore.findMany({
-        where: { userId: uid },
+        where: { userId: uid, deletedAt: null },
         orderBy: { createdAt: "desc" },
         select: { id: true, atsScore: true, companyName: true, jobTitle: true, createdAt: true },
       }),
       db.coverLetter.findMany({
-        where: { userId: uid },
+        where: { userId: uid, deletedAt: null },
         orderBy: { createdAt: "desc" },
         select: { id: true, companyName: true, jobTitle: true, createdAt: true },
       }),
       db.coldEmail.findMany({
-        where: { userId: uid },
+        where: { userId: uid, deletedAt: null },
         orderBy: { createdAt: "desc" },
         select: { id: true, companyName: true, jobTitle: true, createdAt: true },
       }),
@@ -64,7 +74,7 @@ export async function getDashboardData() {
       const now = new Date();
       const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
       const due = await db.coldEmail.findMany({
-        where: { userId: uid, followUpAt: { not: null, lt: endOfToday } },
+        where: { userId: uid, deletedAt: null, followUpAt: { not: null, lt: endOfToday } },
         orderBy: { followUpAt: "asc" },
         take: MAX_FOLLOW_UPS,
         select: { id: true, companyName: true, jobTitle: true, recipientName: true, subject: true, followUpAt: true },
@@ -81,6 +91,42 @@ export async function getDashboardData() {
     } catch (err) {
       console.error("dashboard follow-ups failed:", safeErr(err));
     }
+
+    // UX flow pass: applications with one next action each, the "needs you" count, the offer flag, profile strength.
+    // Each part falls back to its empty value so the rest of the dashboard still loads.
+    let applications = [];
+    let needsYouCount = 0;
+    let hasOffer = false;
+    let profileStrength = null;
+    await Promise.all([
+      db.application
+        .findMany({
+          where: { userId: uid, deletedAt: null, job: { deletedAt: null } },
+          orderBy: { updatedAt: "desc" },
+          take: MAX_APPLICATIONS,
+          include: { job: { select: { id: true, title: true, company: true, location: true, url: true } } },
+        })
+        .then((rows) => {
+          applications = rows.map((r) => publicApplication(r));
+        })
+        .catch((err) => console.error("dashboard applications failed:", safeErr(err))),
+      db.application
+        .count({ where: { userId: uid, deletedAt: null, status: "OFFER", job: { deletedAt: null } } })
+        .then((n) => {
+          hasOffer = n > 0;
+        })
+        .catch((err) => console.error("dashboard offer flag failed:", safeErr(err))),
+      computeNeedsYou(uid)
+        .then((r) => {
+          needsYouCount = r.count;
+        })
+        .catch((err) => console.error("dashboard needs-you failed:", safeErr(err))),
+      computeProfileStrength(uid)
+        .then((r) => {
+          profileStrength = r.percent;
+        })
+        .catch((err) => console.error("dashboard strength failed:", safeErr(err))),
+    ]);
 
     // Targets: dedupe by (company, role); lists are newest first so the first row per kind is the latest.
     const map = new Map();
@@ -147,6 +193,10 @@ export async function getDashboardData() {
       totalTargets: all.length,
       nextTasks,
       dueFollowUps,
+      applications,
+      needsYouCount,
+      hasOffer,
+      profileStrength,
     };
   } catch (error) {
     console.error("getDashboardData failed:", safeErr(error));
