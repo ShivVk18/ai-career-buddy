@@ -7,7 +7,7 @@ import { resumeChipsSchema } from "@/lib/ai/schemas";
 import { validateAndExtractPdf } from "@/lib/ai/pdf";
 import { assignEntryIds } from "@/lib/ai/sources";
 import { safeErr } from "@/lib/utils";
-import { verifyChips } from "@/lib/onboarding/chips";
+import { verifyChips, chipId } from "@/lib/onboarding/chips";
 import { computeProfileStrength } from "@/lib/profile/strength";
 import { fail, requireUser, NO_PROFILE_MSG, AI_LIMIT_MSG, AI_UNAVAILABLE_MSG } from "@/lib/jobs/common";
 
@@ -70,16 +70,60 @@ OUTPUT: valid JSON only, no markdown:
 
 const line = (max) => z.string().trim().min(1).max(max).refine((v) => !/[\r\n]/.test(v), "single line only");
 const saveSchema = z.object({
-  chips: z.array(z.object({ kind: z.enum(["role", "project", "skill", "years"]), label: line(120), detail: z.string().trim().max(300).nullish() })).max(80),
+  chips: z.array(z.object({ id: z.string().max(80).nullish(), kind: z.enum(["role", "project", "skill", "years"]), label: line(120), detail: z.string().trim().max(300).nullish() })).max(80),
+  mode: z.enum(["merge", "replace"]).optional(),
   industry: z.string().trim().max(100).optional(),
   years: z.coerce.number().int().min(0).max(60).optional(),
 });
+
+/**
+ * The signed-in user's CURRENT profile as chips, same shape as parseResumeToProfile: { chips, suggestedTargetRole: null,
+ * suggestedIndustry: null, years, industry }. Roles/projects come from the resume builder entries (chip id = the entry id),
+ * skills from User.skills, plus a years chip from User.experience. Existing data has no quotes, so every chip has source: null.
+ * Returns { error, code: NOT_FOUND | FAILED } on failure.
+ */
+export async function getProfileChips() {
+  const { user } = await requireUser();
+  if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
+  try {
+    const me = await db.user.findUnique({ where: { id: user.id }, select: { skills: true, experience: true, industry: true } });
+    const resume = await db.resume.findUnique({ where: { userId: user.id }, select: { experience: true, projects: true } });
+    const chips = [];
+    const entries = (list, kind, section) => {
+      const withIds = assignEntryIds(Array.isArray(list) ? list : [], section);
+      for (const e of withIds) {
+        const label = String(e?.title ?? "").trim().slice(0, 120);
+        if (!label) continue;
+        const detail = String((kind === "role" ? e.organization : e.description) ?? "").trim().slice(0, 300);
+        chips.push({ id: e.id, kind, label, ...(detail ? { detail } : {}), source: null });
+      }
+    };
+    entries(resume?.experience, "role", "exp");
+    entries(resume?.projects, "project", "proj");
+    const seen = new Set();
+    for (const s of me?.skills ?? []) {
+      const label = String(s ?? "").trim();
+      if (!label || label.length > 50 || seen.has(label.toLowerCase())) continue;
+      seen.add(label.toLowerCase());
+      chips.push({ id: chipId("skill", label), kind: "skill", label, source: null });
+    }
+    const years = Number.isInteger(me?.experience) ? me.experience : null;
+    if (years !== null) chips.push({ id: chipId("years", String(years)), kind: "years", label: years === 1 ? "1 year" : `${years} years`, source: null });
+    return { chips, suggestedTargetRole: null, suggestedIndustry: me?.industry ? { value: me.industry, source: null } : null, years, industry: me?.industry ?? null };
+  } catch (error) {
+    console.error("getProfileChips failed:", safeErr(error));
+    return fail("FAILED", "We couldn't load your profile. Please try again.");
+  }
+}
 
 const keyOf = (e) => `${String(e?.title ?? "").trim().toLowerCase()}|${String(e?.organization ?? "").trim().toLowerCase()}`;
 
 /**
  * Saves confirmed chips: roles and projects become resume builder entries (with stable ids, existing entries are
  * kept), skills and years go to the profile. Industry (inferred, editable) is optional.
+ * `mode: "replace"` (edit mode, /onboarding?edit=1): the chips are the full list. Skills not sent are removed from
+ * User.skills and Resume.skills, role/project entries whose id is not sent are removed, entries sent with their id are
+ * updated, chips without a known id are added, a missing years chip clears experience, industry "" clears industry.
  * Returns { success: true, strength } or { error, code: INVALID | NOT_FOUND | FAILED }.
  */
 export async function saveProfileChips(input) {
@@ -88,11 +132,13 @@ export async function saveProfileChips(input) {
   if (!p.success) return fail("INVALID", "Please check your details: up to 80 chips, each a single line.");
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
   const { chips, industry } = p.data;
+  const replace = p.data.mode === "replace";
   let years = p.data.years;
   if (years === undefined) {
     const y = chips.find((c) => c.kind === "years");
     const n = y ? /^\s*(\d{1,2})\b/.exec(y.label) : null;
     if (n) years = Number(n[1]);
+    else if (replace) years = null; // edit mode: the user removed the years chip
   }
   try {
     await db.$transaction(async (tx) => {
@@ -106,7 +152,11 @@ export async function saveProfileChips(input) {
         known.add(c.label.toLowerCase());
         newSkills.push(c.label);
       }
-      const skills = [...(me?.skills ?? []), ...newSkills].slice(0, 50);
+      let skills = [...(me?.skills ?? []), ...newSkills].slice(0, 50);
+      if (replace) {
+        const seenS = new Set();
+        skills = chips.filter((c) => c.kind === "skill" && c.label.length <= 50 && !seenS.has(c.label.toLowerCase()) && seenS.add(c.label.toLowerCase())).map((c) => c.label).slice(0, 50);
+      }
 
       const mk = (c, isProject) => ({
         title: c.label,
@@ -117,7 +167,16 @@ export async function saveProfileChips(input) {
         description: isProject ? c.detail ?? "" : "",
       });
       const merge = (existing, kind, isProject) => {
-        const list = Array.isArray(existing) ? [...existing] : [];
+        let list = Array.isArray(existing) ? [...existing] : [];
+        if (replace) {
+          // Entries the user removed are removed; kept ones take the edited text. Chips without a matching id are new.
+          const byId = new Map(chips.filter((c) => c.kind === kind && c.id).map((c) => [c.id, c]));
+          list = assignEntryIds(list, isProject ? "proj" : "exp").filter((e) => e && byId.has(e.id)).map((e) => {
+            const c = byId.get(e.id);
+            const m = mk(c, isProject);
+            return { ...e, title: m.title, ...(isProject ? { description: m.description } : { organization: m.organization }) };
+          });
+        }
         const have = new Set(list.map(keyOf));
         for (const c of chips) {
           if (c.kind !== kind) continue;
@@ -130,11 +189,11 @@ export async function saveProfileChips(input) {
       };
       const experience = assignEntryIds(merge(resume?.experience, "role", false), "exp");
       const projects = assignEntryIds(merge(resume?.projects, "project", true), "proj");
-      const resumeSkills = [resume?.skills, ...newSkills].filter((s) => s && String(s).trim()).join(", ") || null;
+      const resumeSkills = replace ? skills.join(", ") || null : [resume?.skills, ...newSkills].filter((s) => s && String(s).trim()).join(", ") || null;
 
       await tx.user.update({
         where: { id: user.id },
-        data: { skills, ...(years !== undefined ? { experience: years } : {}), ...(industry ? { industry } : {}) },
+        data: { skills, ...(years !== undefined ? { experience: years } : {}), ...(industry ? { industry } : replace && industry === "" ? { industry: null } : {}) },
       });
       await tx.resume.upsert({
         where: { userId: user.id },
