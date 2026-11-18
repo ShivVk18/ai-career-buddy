@@ -2,9 +2,9 @@
 
 Phase 8 review (D54, industry insights removal): see `git show 6bc3423:docs/ai/REVIEW.md`.
 
-Summary: FAIL, 3 must-fix. lint 0 errors (1 pre-existing font warning in `src/app/layout.js:22`), build OK, `npm test` 194/194 (24 files), `node scripts/selfcheck-matching.mjs` "all self-checks passed". No DB commands run, `.env` not read.
+Summary (original round): FAIL, 3 must-fix (all RESOLVED in fix round 1, see the last section). lint 0 errors (1 pre-existing font warning in `src/app/layout.js:22`), build OK, `npm test` 194/194 (24 files), `node scripts/selfcheck-matching.mjs` "all self-checks passed". No DB commands run, `.env` not read.
 
-## MUST-FIX
+## MUST-FIX (all 3 RESOLVED in fix round 1)
 
 | # | Owner | File:line | Problem | Fix |
 |---|-------|-----------|---------|-----|
@@ -16,14 +16,14 @@ Summary: FAIL, 3 must-fix. lint 0 errors (1 pre-existing font warning in `src/ap
 
 | # | Owner | File:line | Note | Fix |
 |---|-------|-----------|------|-----|
-| 1 | BACKEND | `src/actions/Resume.js:376` | Comment points to `scripts/seed-resume-templates.mjs`, which does not exist. Seeding is `seeder/seedTemplates.js` / `seeder/seed.js`. | Fix the comment (or add the script). |
-| 2 | BACKEND | `src/actions/ResumeParser.js:271` | Soft-deleting an ATS result keeps `evidence.resumeText` (a full resume) for up to 7 days, and the prune only runs when `getApplications`/dashboard load. D42's "Delete result" promised removal. | Strip `evidence.resumeText` in the same update as `deletedAt` (restore then needs a re-upload for the fix), or note it in the UI. |
-| 3 | BACKEND | `src/lib/applications/derive.js:67` and `Applications.js:141-163` | A board move to INTERVIEWING has no date, so the card says "Add the result" and there is no date prompt on the board. Undoing an interview leaves `interviewAt` set. | Label "Add interview date" (link to job page) when `interviewAt` is null; clear `interviewAt` when undoing to SAVED/APPLIED. |
+| 1 [RESOLVED] | BACKEND | `src/actions/Resume.js:376` | Comment points to `scripts/seed-resume-templates.mjs`, which does not exist. Seeding is `seeder/seedTemplates.js` / `seeder/seed.js`. | Fix the comment (or add the script). |
+| 2 [RESOLVED] | BACKEND | `src/actions/ResumeParser.js:271` | Soft-deleting an ATS result keeps `evidence.resumeText` (a full resume) for up to 7 days, and the prune only runs when `getApplications`/dashboard load. D42's "Delete result" promised removal. | Strip `evidence.resumeText` in the same update as `deletedAt` (restore then needs a re-upload for the fix), or note it in the UI. |
+| 3 [RESOLVED] | BACKEND | `src/lib/applications/derive.js:67` and `Applications.js:141-163` | A board move to INTERVIEWING has no date, so the card says "Add the result" and there is no date prompt on the board. Undoing an interview leaves `interviewAt` set. | Label "Add interview date" (link to job page) when `interviewAt` is null; clear `interviewAt` when undoing to SAVED/APPLIED. |
 | 4 | BACKEND | `Applications.js:405` (`addGapTasks`) | Undo of Closed does not remove the roadmap tasks (documented in the toast). | Accept, or store task ids and remove them on undo. |
-| 5 | FRONTEND | `src/app/(main)/(gated)/resume-parser/_components/ResumeParserForm.jsx` | With a job picked the ATS form still needs a PDF re-upload (FLOW-AUDIT §3 suggested reusing the stored resume). Roadmap modal still shows 4 fields, only pre-filled. | Offer "use my saved resume" in the ATS form (pipeline Checker already scores `resumeToText`). |
-| 6 | FRONTEND | `PipelineProgress.jsx:152` | Links to `/dashboard#needs-you` rather than `/needs-you`. | Link `/needs-you`. |
-| 7 | BACKEND | `src/lib/onboarding/chips.js:86-89` | `suggestedIndustry` is checked only for an existing quote, not that the value appears in it. It is editable and labelled inferred (D59), so low risk. | Require a word of the value in the quote, or leave as is. |
-| 8 | BACKEND | `src/lib/jobs/meta.js:28-30` | Word check is order-insensitive (a set of tokens), so a rearranged value could pass. | Also require the normalised value to be a contiguous substring of one cited line. |
+| 5 [PARTLY (PDF kept for the session, roadmap chips done; no saved-resume reuse)] | FRONTEND | `src/app/(main)/(gated)/resume-parser/_components/ResumeParserForm.jsx` | With a job picked the ATS form still needs a PDF re-upload (FLOW-AUDIT §3 suggested reusing the stored resume). Roadmap modal still shows 4 fields, only pre-filled. | Offer "use my saved resume" in the ATS form (pipeline Checker already scores `resumeToText`). |
+| 6 [RESOLVED] | FRONTEND | `PipelineProgress.jsx:152` | Links to `/dashboard#needs-you` rather than `/needs-you`. | Link `/needs-you`. |
+| 7 [RESOLVED] | BACKEND | `src/lib/onboarding/chips.js:86-89` | `suggestedIndustry` is checked only for an existing quote, not that the value appears in it. It is editable and labelled inferred (D59), so low risk. | Require a word of the value in the quote, or leave as is. |
+| 8 [RESOLVED] | BACKEND | `src/lib/jobs/meta.js:28-30` | Word check is order-insensitive (a set of tokens), so a rearranged value could pass. | Also require the normalised value to be a contiguous substring of one cited line. |
 | 9 | BACKEND | `src/lib/softDelete.js:16` | Lazy prune runs only from `getApplications`/dashboard. | Also call it from `deleteAllMyData`-free paths such as list pages, or accept. |
 | 10 | FRONTEND | `OnboardingFlow.jsx:174-180` | If the version backup succeeds but the replace-save then fails, an extra "Before profile edit" version stays. Harmless. | None needed. |
 | 11 | BACKEND | `src/actions/Resume.js` (`deleteResume`) and `CareerRoadmap.js` (`deleteCareerRoadmap`) | Still hard deletes (pre-existing, outside D60 scope). | Soft delete in a later pass. |
@@ -48,12 +48,12 @@ Summary: FAIL, 3 must-fix. lint 0 errors (1 pre-existing font warning in `src/ap
 |---|---|---|
 | Onboarding | `/onboarding` drop PDF -> `parseResumeToProfile` -> chips (`EditableChips`) -> `saveProfileChips` -> 2 taps -> `saveOnboardingAnswers` -> ring (`getProfileStrength`) -> `/dashboard`. Gate: `(gated)/layout.jsx` + `getUserOnboardingStatus` (D59 rule) | OK. "No resume" path via manual chips |
 | Home: job text | `/dashboard` input -> `intakeJob` -> `{kind:"job"}` -> `/jobs/[id]` | OK |
-| Home: URL | same -> `fetchPublicPage` | BROKEN in real runtime (must-fix #1). Fallback `PASTE_NEEDED`/`URL_BLOCKED` UI and saved-URL-on-paste work |
+| Home: URL | same -> `fetchPublicPage` | OK (pinnedLookup handles `{all:true}`; local TLS tests). Fallback `PASTE_NEEDED`/`URL_BLOCKED` UI and saved-URL-on-paste work |
 | Home: question | `intakeJob` -> `{kind:"question"}` -> chat opens with text | OK (D62; no records created) |
 | Job page pipeline | `/jobs/[id]` -> `getJob` + `getPipeline` -> `drive()` loops `runNextStep` (Checker, Tailor, Writer, Connector), resumes on return, Retry on failure | OK |
 | Needs you | `/needs-you` -> `getNeedsYou` -> `TailorReview` (`getTailorDraft`, tracked changes, inline edit, Accept all -> `saveTailoredVersion`, version only per D63), `LetterReview` (inline save on blur, shorter / more formal / warmer, 5 s Undo via `undoLetterChange`), approve + Undo (`approveNeedsYou`/`unapproveNeedsYou`) | OK |
 | Apply and track | Job page: Copy job text / letter, Letter PDF, Resume PDF (`/resume`), Open job page (`rel=noopener`); Mark applied (`markApplied`); `/applications` board with drag and a per-card "Move to" menu (44 px target); follow-up item -> `createFollowUpDraft` (no AI, no recipient) | OK |
-| Interview | Job page "I got an interview" -> date -> `setInterviewDate` (creates prep session) -> practice | BROKEN at the last hop (must-fix #2 and #3) |
+| Interview | Job page "I got an interview" -> date -> `setInterviewDate` (creates prep session, `prepSessionId` exposed) -> toast "Practice" or button "Practice for this interview" -> `/interview/practice?session=id` (`getOpenSession`, resumes at first unscored question) -> `scoreOpenAnswer` -> review page "Continue practising". Board move to Interviewing: date prompt (no prep created); card nextAction "Prepare for your interview" -> job page "Prepare practice questions" (`createInterviewPrep`) or needs-you "Prepare questions". Needs-you item switches to "Practice for this interview" once a session exists and stays until one answer is scored | OK |
 | Result | Job page Offer (celebration card), dashboard night scene (`hasOffer`); Closed -> `closeApplication` -> gap tasks (`gapTasksAddedAt` once) toast shows count | OK. Offer celebration is only on the job page and home, not on the board (acceptable) |
 | Deferred (D58) | Gmail, GitHub, Scout, daily digest, away notifications, Monday plans, proof uploads, offer negotiation draft | Not present, as planned |
 
@@ -100,3 +100,21 @@ Summary: FAIL, 3 must-fix. lint 0 errors (1 pre-existing font warning in `src/ap
 ## Replace-mode save and Undo ordering (`OnboardingFlow.jsx:170-225`, `Onboarding.js:132`)
 
 Safe. `saveResumeVersion({label:"Before profile edit"})` runs first; any failure other than `NOT_FOUND` (no resume yet, nothing to lose) sets an error and returns before `saveProfileChips` runs, so no entry is removed. Legacy entries get deterministic ids (`legacyEntryId`), so chip ids match on replace. Undo restores the version first, then re-saves the original chips with their ids; if either fails the user is told the earlier version is in resume versions. Residual risk: skills removed by replace are only recovered by the second save (they are not in a version).
+
+
+## Fix round 1 (re-review, `git diff 4d33aba..HEAD`)
+
+Result: PASS, 0 must-fix. lint 0 errors (same pre-existing font warning), build OK, `npm test` 198/198 (24 files), `node scripts/selfcheck-matching.mjs` all passed. No DB commands, `.env` not read.
+
+- MUST-FIX 1 resolved: `pinnedLookup` (`src/lib/jobs/fetch.js:171`) handles `(host, cb)`, `(host, opts, cb)` and `{all:true}`. New tests run `httpsRequest` against a local openssl-signed TLS server on 127.0.0.1 (no external network), skip via `it.runIf(hasOpenssl)`, and a second test proves the remoteAddress guard still rejects. The `tls`/`isBlocked` options are test-only and `fetchPublicPage` never passes them. SSRF checks (URL, DNS vetting, redirects, caps) unchanged.
+- MUST-FIX 2 resolved: `prepSessionId` in `APPLICATION_SELECT`, `publicJob`, `outApplication`, `publicApplication`; nextAction href `/interview/practice?session=<id>`; PREP_INTERVIEW item stays until a scored `InterviewAnswer` exists (query scoped by `userId`). Contract 11.9 matches.
+- MUST-FIX 3 resolved: practice page loads `?session=` through `getOpenSession` (owner-checked), restores scored answers, starts at first unscored question, and has loading and not-found/error states. Review page shows "Continue practising". Job page, toast (8 s with Undo) and needs-you link to it.
+- Board move to INTERVIEWING does NOT create a prep session (`setApplicationStatus` never calls prep). Not a must-fix: the card shows an optional date prompt, then nextAction "Prepare for your interview" (job page "Prepare practice questions" button) and a PREP_INTERVIEW needs-you item with a one-tap "Prepare questions". Nice-to-have only: the board date prompt could offer prep in the same step.
+- Undo restores `previousInterviewAt` (null clears) on job page and board; board date prompt added (Skip, Esc).
+
+New nit/should-fix (none blocking):
+| Severity | File:line | Problem | Fix |
+|---|---|---|---|
+| nit | `src/actions/Applications.js:176` | Undo of an interview move leaves `prepSessionId` linked (harmless; reused on next date). Board date toast has no Practice action when no session exists. | Accept, or create prep when the board saves a date. |
+| nit | `ResumeParserForm.jsx:127` | PDF is kept only in memory for the session; no "use my saved resume". | Later. |
+| nit | `src/lib/jobs/fetch.js:167` | Doc comment for `httpsRequest` is now split by the `pinnedLookup` block. | Move the comment. |
