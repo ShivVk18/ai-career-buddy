@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "seed:demo": "node --env-file-if-exists=.env scripts/seed-demo.mjs",
     "test:ai": "node --env-file-if-exists=.env scripts/test-ai-providers.js"
   },
   "dependencies": {
