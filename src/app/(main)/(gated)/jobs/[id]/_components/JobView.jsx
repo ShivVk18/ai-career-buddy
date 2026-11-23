@@ -293,6 +293,21 @@ export default function JobView({ id, notice }) {
         </div>
       </section>
 
+      <nav aria-label="Tools for this job" className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs text-muted">tools for this job</span>
+        {[
+          ["resume tailor", `/resume?job=${job.id}`],
+          ["cover letter", `/cover-letter/new?job=${job.id}`],
+          ["cold email", `/cold-email/new?job=${job.id}`],
+          ["interview prep", "/interview"],
+          ["ats check", `/resume-parser?job=${job.id}`],
+        ].map(([label, href]) => (
+          <Link key={label} href={href} className="inline-flex min-h-11 items-center rounded-full border border-line bg-panel px-4 text-xs text-text transition hover:border-brand/50 sm:min-h-9">
+            {label}
+          </Link>
+        ))}
+      </nav>
+
       {job.application ? (
         <>
           <PipelineProgress

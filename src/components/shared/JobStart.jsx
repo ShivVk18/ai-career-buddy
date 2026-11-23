@@ -53,6 +53,16 @@ export default function JobStart({ onPick, onClear, hasErrors = false, children,
     }
   };
 
+  // Contextual links from a job page (?job=<id>) start the tool with that job already picked.
+  const [autoDone, setAutoDone] = useState(false);
+  useEffect(() => {
+    if (autoDone || jobs === null) return;
+    setAutoDone(true);
+    const id = new URLSearchParams(window.location.search).get("job");
+    if (id && jobs.some((a) => a.job?.id === id)) choose(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, autoDone]);
+
   const clear = () => {
     setPicked(null);
     onClear?.();

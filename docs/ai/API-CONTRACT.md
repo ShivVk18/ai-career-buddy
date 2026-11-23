@@ -821,3 +821,7 @@ Server actions (Clerk session required; signed-out throws "Unauthorized"):
 
 Route: `GET|POST /api/cron/pipeline` with `Authorization: Bearer $CRON_SECRET` (401 otherwise, also when CRON_SECRET is unset).
 Resumes stalled runs for all users (10 per call). Not in `vercel.json` (sub-daily crons need Vercel Pro); point any scheduler at it every 5 to 10 minutes.
+
+## Requests from frontend
+- `startIntake` chips: add optional `employmentType` (e.g. "full-time") and `experience` (e.g. "0-2 yrs") to `chips` when the job text has them (home job card shows them if present; for pasted text the client sniffs them itself).
+- `getHomeState`: optionally include `targets` (the "other targets from your documents" list) and `dueFollowUps`, so home needs one call. Home currently also calls `getDashboardData` for these.
