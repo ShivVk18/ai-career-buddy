@@ -8,8 +8,10 @@ import { fail, requireUser, NO_PROFILE_MSG, APPLICATION_SELECT, iso } from "@/li
 import { normalizePipeline } from "@/lib/jobs/pipeline";
 import { pruneDeleted } from "@/lib/softDelete";
 import {
-  DAY_MS, FOLLOW_UP_DAYS, MAX_FOLLOW_UPS, STATUSES, followUpDueAt, gapSteps, parseDateInput, publicApplication, uniqueSkills,
+  DAY_MS, FOLLOW_UP_DAYS, MAX_FOLLOW_UPS, STATUSES, followUpDueAt, gapSteps, parseDateInput, publicApplication, quietInfo, uniqueSkills,
 } from "@/lib/applications/derive";
+import { nextMondayAt9 } from "@/lib/applications/schedule";
+import { makeUndoToken } from "@/lib/undo";
 import { computeNeedsYou } from "@/lib/applications/needsYou";
 import { generateOpenQuestions } from "@/actions/Practice";
 
@@ -29,7 +31,7 @@ async function loadApp(id, userDbId) {
 const freshApplication = (id, userDbId) => db.application.findFirst({ where: { id, userId: userDbId, deletedAt: null }, select: APPLICATION_SELECT });
 const outApplication = (a) => ({
   id: a.id, status: a.status, appliedAt: iso(a.appliedAt), interviewAt: iso(a.interviewAt), prepSessionId: a.prepSessionId ?? null, nextActionAt: iso(a.nextActionAt),
-  followUpCount: a.followUpCount ?? 0, closedReason: a.closedReason ?? null,
+  followUpCount: a.followUpCount ?? 0, closedReason: a.closedReason ?? null, ...quietInfo(a),
 });
 
 /** Opens a request: input check, then the caller. Returns { err } or { user }. */
@@ -143,12 +145,13 @@ function statusData(app, status, now) {
   if (status !== "CLOSED") Object.assign(data, { closedAt: null, closedReason: null });
   switch (status) {
     case "SAVED":
-      Object.assign(data, { appliedAt: null, nextActionAt: null });
+      Object.assign(data, { appliedAt: null, nextActionAt: null, lastActivityAt: null });
       break;
     case "APPLIED": {
       const appliedAt = app.status === "SAVED" || !app.appliedAt ? now : app.appliedAt;
       data.appliedAt = appliedAt;
       if (app.status !== "APPLIED") {
+        data.lastActivityAt = appliedAt;
         data.nextActionAt = (app.followUpCount ?? 0) < MAX_FOLLOW_UPS ? new Date(appliedAt.getTime() + FOLLOW_UP_DAYS * DAY_MS) : null;
       }
       break;
@@ -170,10 +173,23 @@ async function changeStatus(app, userDbId, status, extra = {}) {
 }
 
 /**
- * Moves an application to a status. Returns { application, previousStatus }: call it again with previousStatus
- * to Undo. Errors: INVALID | NOT_FOUND | FAILED.
+ * Moves an application to a status. Returns { application, previousStatus, previousInterviewAt, undoToken? }: call it
+ * again with previousStatus to Undo, or pass `undoToken` to `undo()` (src/actions/Undo.js; present when the status changed).
+ * Errors: INVALID | NOT_FOUND | FAILED.
  */
 export async function setApplicationStatus(id, status, interviewAt) {
+  const r = await setApplicationStatusImpl(id, status, interviewAt);
+  if (r && !r.error && r.application && r.previousStatus && r.previousStatus !== r.application.status) {
+    try {
+      return { ...r, undoToken: makeUndoToken("status_move", r.application.id, { s: r.previousStatus, i: r.previousInterviewAt ?? null }) };
+    } catch {
+      return r;
+    }
+  }
+  return r;
+}
+
+async function setApplicationStatusImpl(id, status, interviewAt) {
   const b = await begin(id);
   if (b.err) return b.err;
   const st = statusSchema.safeParse(status);
@@ -210,7 +226,11 @@ export async function setApplicationStatus(id, status, interviewAt) {
   }
 }
 
-/** One tap "I applied": APPLIED + appliedAt (the follow-up clock starts). Same return shape as setApplicationStatus. */
+/**
+ * One tap "I applied": APPLIED + appliedAt (the follow-up clock and the quiet counter start). Fast (no AI), so the UI
+ * can update optimistically. Same return shape as setApplicationStatus: { application (with quietDays/isQuiet),
+ * previousStatus, previousInterviewAt, undoToken }; undo(undoToken) moves it back.
+ */
 export async function markApplied(id) {
   return setApplicationStatus(id, "APPLIED");
 }
@@ -416,7 +436,44 @@ async function closeWithGaps(app, userDbId, extra) {
   } catch (err) {
     console.error("gap tasks failed:", safeErr(err)); // the application is closed either way
   }
-  return { application: outApplication((await freshApplication(app.id, userDbId)) ?? fresh), previousStatus: app.status, tasksAdded };
+  let weekTasksAdded = 0;
+  try {
+    weekTasksAdded = await addGapWeekTasks(app, userDbId);
+  } catch (err) {
+    console.error("gap week tasks failed:", safeErr(err));
+  }
+  return { application: outApplication((await freshApplication(app.id, userDbId)) ?? fresh), previousStatus: app.status, tasksAdded, weekTasksAdded };
+}
+
+/**
+ * Rejection/close: the gap requirements of THIS job's ATS results (missing skills) also become dated tasks for next
+ * Monday (shown in getHomeState tasks), whether or not the user has a roadmap. Idempotent per application + skill
+ * (Task.key), so closing twice or Undo + close adds nothing twice. Returns the number of NEW tasks.
+ */
+async function addGapWeekTasks(app, userDbId) {
+  const scores = await db.aTSScore.findMany({
+    where: { userId: userDbId, jobId: app.jobId, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { missingSkills: true },
+  });
+  const skills = uniqueSkills(scores.map((s) => s.missingSkills), MAX_GAP_TASKS);
+  if (skills.length === 0) return 0;
+  const where = [app.job?.title, app.job?.company].filter(Boolean).join(" at ");
+  const dueAt = nextMondayAt9();
+  const res = await db.task.createMany({
+    data: skills.map((skill) => ({
+      userId: userDbId,
+      applicationId: app.id,
+      title: `Work on ${skill}`,
+      note: `This requirement was missing from your resume in your ATS check${where ? ` for ${where}` : ""}.`,
+      source: "rejection_gap",
+      key: `gap:${app.id}:${skill.toLowerCase()}`,
+      dueAt,
+    })),
+    skipDuplicates: true,
+  });
+  return res.count;
 }
 
 async function addGapTasks(app, userDbId) {

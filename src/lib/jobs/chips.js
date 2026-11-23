@@ -26,8 +26,41 @@ export function countRequirements(jdText) {
   return Math.min(inReqCount > 0 ? inReqCount : allBullets, 50);
 }
 
+const EMPLOYMENT = [
+  [/\bfull[\s-]?time\b/i, "full-time"],
+  [/\bpart[\s-]?time\b/i, "part-time"],
+  [/\b(?:internship|intern)\b/i, "internship"],
+  [/\b(?:contract(?:or)?|fixed[\s-]term)\b/i, "contract"],
+  [/\bfreelance\b/i, "freelance"],
+  [/\btemporary\b/i, "temporary"],
+];
+
+/** Employment type exactly as the posting words it (first match, in a fixed order), or null. No guessing. */
+export function sniffEmploymentType(jdText) {
+  const t = String(jdText ?? "");
+  for (const [re, label] of EMPLOYMENT) if (re.test(t)) return label;
+  return null;
+}
+
+/** Years of experience the posting asks for: "3-5 yrs" or "3+ yrs" (first mention), or null. */
+export function sniffExperience(jdText) {
+  const t = String(jdText ?? "");
+  const range = /\b(\d{1,2})\s*(?:-|–|—|to)\s*(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b/i.exec(t);
+  if (range && Number(range[1]) < Number(range[2])) return `${Number(range[1])}-${Number(range[2])} yrs`;
+  const plus = /\b(\d{1,2})\s*\+\s*(?:years?|yrs?)\b/i.exec(t) ?? /\b(?:at least|minimum(?: of)?|min\.?)\s*(\d{1,2})\s*(?:years?|yrs?)\b/i.exec(t);
+  if (plus) return `${Number(plus[1])}+ yrs`;
+  return null;
+}
+
+/** employmentType and experience are present only when the job text has them. */
 export function intakeChips(job, jdText) {
-  return { company: job?.company ?? null, role: job?.title ?? null, location: job?.location ?? null, requirementCount: countRequirements(jdText) };
+  const employmentType = sniffEmploymentType(jdText);
+  const experience = sniffExperience(jdText);
+  return {
+    company: job?.company ?? null, role: job?.title ?? null, location: job?.location ?? null, requirementCount: countRequirements(jdText),
+    ...(employmentType ? { employmentType } : {}),
+    ...(experience ? { experience } : {}),
+  };
 }
 
 const META = {

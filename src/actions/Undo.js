@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { makeUndoToken, parseUndoToken } from "@/lib/undo";
 import { restoreResumeVersion, restoreDeletedResume } from "@/actions/Resume";
 import { restoreCareerRoadmap } from "@/actions/CareerRoadmap";
+import { setApplicationStatus } from "@/actions/Applications";
 
 const fail = (code, error) => ({ error, code });
 
@@ -51,6 +52,15 @@ export async function undo(token) {
     case "roadmap_delete": {
       const r = await restoreCareerRoadmap(t.id);
       return r?.error ? r : { success: true, kind: t.kind };
+    }
+    case "status_move": {
+      // Moves the application back to the status it had (and its interview date); the same call is its own redo.
+      const prev = t.data?.s;
+      const when = typeof t.data?.i === "string" ? t.data.i : null;
+      if (typeof prev !== "string") return fail("INVALID", "Nothing to undo.");
+      const r = await setApplicationStatus(t.id, prev, when);
+      if (r?.error) return r;
+      return { success: true, kind: t.kind, application: r.application, redoToken: r.undoToken };
     }
     default:
       return fail("INVALID", "Nothing to undo.");

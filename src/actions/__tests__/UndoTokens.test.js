@@ -7,6 +7,8 @@ const restoreCareerRoadmap = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("@/actions/Resume", () => ({ restoreResumeVersion, restoreDeletedResume }));
 vi.mock("@/actions/CareerRoadmap", () => ({ restoreCareerRoadmap }));
+const setApplicationStatus = vi.fn();
+vi.mock("@/actions/Applications", () => ({ setApplicationStatus }));
 
 const { acceptTailoredVersion, undo } = await import("../Undo.js");
 
@@ -48,5 +50,19 @@ describe("accept then undo", () => {
     expect((await undo(makeUndoToken("resume_delete", "v1"))).success).toBe(true);
     expect((await undo(makeUndoToken("roadmap_delete", "p1"))).success).toBe(true);
     expect(restoreCareerRoadmap).toHaveBeenCalledWith("p1");
+  });
+});
+
+describe("status_move tokens", () => {
+  it("carries the previous state and undo moves the application back", async () => {
+    const tok = makeUndoToken("status_move", "app1", { s: "SAVED", i: null });
+    expect(parseUndoToken(tok)).toEqual({ kind: "status_move", id: "app1", data: { s: "SAVED", i: null } });
+    setApplicationStatus.mockResolvedValueOnce({ application: { id: "app1", status: "SAVED" }, undoToken: "redo" });
+    const u = await undo(tok);
+    expect(setApplicationStatus).toHaveBeenCalledWith("app1", "SAVED", null);
+    expect(u).toMatchObject({ success: true, kind: "status_move", redoToken: "redo" });
+  });
+  it("rejects a status token without a status", async () => {
+    expect((await undo(makeUndoToken("status_move", "app1"))).code).toBe("INVALID");
   });
 });

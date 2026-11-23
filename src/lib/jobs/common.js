@@ -56,4 +56,5 @@ export const APPLICATION_SELECT = {
   nextActionAt: true,
   followUpCount: true,
   closedReason: true,
+  lastActivityAt: true,
 };

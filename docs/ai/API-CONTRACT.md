@@ -718,7 +718,7 @@ Pipeline = {
 ```ts
 NeedsYouItem = {
   id: string,                                   // stable: "<type>:<refId>"
-  type: "TAILOR_DRAFT" | "COVER_LETTER" | "COLD_EMAIL" | "ATS_FIX" | "FOLLOW_UP" | "PREP_INTERVIEW",
+  type: "TAILOR_DRAFT" | "COVER_LETTER" | "COLD_EMAIL" | "ATS_FIX" | "FOLLOW_UP" | "FOLLOW_UP_DRAFT" | "PREP_INTERVIEW",
   applicationId: string | null, jobId: string | null,
   title: string,                                // e.g. "Review resume edits for Acme"
   company: string | null, jobTitle: string | null,
@@ -822,6 +822,34 @@ Server actions (Clerk session required; signed-out throws "Unauthorized"):
 Route: `GET|POST /api/cron/pipeline` with `Authorization: Bearer $CRON_SECRET` (401 otherwise, also when CRON_SECRET is unset).
 Resumes stalled runs for all users (10 per call). Not in `vercel.json` (sub-daily crons need Vercel Pro); point any scheduler at it every 5 to 10 minutes.
 
+## Task 9: track, interview, offer support
+
+Migration `20261123172838_task_offer_activity` (additive): `Application.lastActivityAt`, `Application.offer` (Json), `User.targetBase` (Int), new `Task` table (`userId`, `applicationId?`, `title`, `note?`, `source`, `key` unique per user, `dueAt`, `doneAt?`). All actions: signed-out throws "Unauthorized"; errors are `{ error, code }`.
+
+**Quiet flag.** Every application object from `getApplications`, `getHomeState().applications`, `getDashboardData().applications` and the status actions has `quietDays: number | null` and `isQuiet: boolean`. Only APPLIED applications get a number: whole days since the later of `appliedAt` and the last activity (a follow-up the user approved); `isQuiet` is `quietDays >= 5`. Marking applied starts the counter; approving a follow-up resets it.
+
+**Mark applied + undo (`src/actions/Applications.js`, `src/actions/Undo.js`).**
+- `markApplied(applicationId)` is `setApplicationStatus(id, "APPLIED")` (no AI, 3 quick queries, safe to call optimistically). Returns `{ application, previousStatus, previousInterviewAt, undoToken? }`; `undoToken` is present only when the status actually changed.
+- `setApplicationStatus` (any status) now also returns `undoToken` when the status changed. `undo(undoToken)` handles the new kind `status_move` and returns `{ success: true, kind: "status_move", application, redoToken }` (redo = undo again). Undoing back to INTERVIEWING with a date re-runs the existing prep step (one AI action), as before.
+
+**Follow-up approve and copy (`src/actions/Track.js`).** A written follow-up draft (`createFollowUpDraft`, a cold-email row with `template: "follow_up"`) appears as a needs-you item `{ id: "FOLLOW_UP_DRAFT:<coldEmailId>", type: "FOLLOW_UP_DRAFT", refId: coldEmailId, href: "/cold-email/<id>", draft: { subject, text }, ... }` while the application is APPLIED and the draft is unapproved.
+- `approveAndCopy(itemId)` takes that item id. Sets the draft's status to `sent` (sources.sentByUser = true; the USER sends it, nothing is sent by the app), resets the quiet counter, and returns `{ success: true, itemId, text, subject, applicationId, approvedAt, alreadyApproved }`. Idempotent (`alreadyApproved: true`, same text). Errors `INVALID` (not a FOLLOW_UP_DRAFT id) | `NOT_FOUND` | `FAILED`. Copy `text` to the clipboard client-side.
+
+**Interview questions and weak spots.**
+- `generateOpenQuestions` now also uses the projects on the user's resume as sources (`proj:<id>`); the prompt asks for at least one project question when a project fits the job. Input and output are unchanged; questions still cite only real sources.
+- `saveWeakSpot({ applicationId?, skill, note?, timeZone? })` (`Track.js`): skill 1-80 chars, note up to 500, `timeZone` an IANA name (invalid or missing = server zone). Creates a task "Practise <skill>" due next Monday 09:00 in that zone (strictly after today, even on a Monday). Same skill and same Monday returns the existing task. Returns `{ task: { taskId, title, note, dueAt, applicationId }, created }` or `INVALID | NOT_FOUND | FAILED`.
+- `completeTask(taskId, done = true)` returns `{ success: true }` or `INVALID | NOT_FOUND | FAILED`.
+- `getHomeState().tasks[]` now lists open dated tasks first (soonest first), then roadmap steps (max 7 total). Each has `kind: "task" | "roadmap"` and `dueAt: ISO | null`; tasks add `taskId, applicationId, note, source ("weak_spot" | "rejection_gap")`, with `roadmapId/roadmapTitle/stepId` null. Existing roadmap entries keep their fields.
+
+**Rejection.** `closeApplication` and `setApplicationStatus(id, "CLOSED")` still add the gap skills to the roadmap (unchanged). They now ALSO create one task per gap skill ("Work on <skill>", source `rejection_gap`) due next Monday 09:00 (server zone), even with no roadmap; idempotent per application + skill. The result gains `weekTasksAdded: number` next to `tasksAdded`. Gaps are the missing skills of that job's ATS results; none means no tasks.
+
+**Offer (`src/actions/Offer.js`).** Only for applications in OFFER status (else `NOT_OFFER`). No market data exists in the app and none is invented.
+- `compareOffer(applicationId, { base?, bonus?, equity?, other?, currency? })`: numbers 0 to 100,000,000 (yearly, as the user enters them); `currency` is a label up to 8 chars. When any amount is given it replaces the saved offer; with `{}` it compares the saved one. Returns `{ applicationId, offer: { base, bonus, equity, other, currency, total }, vsTarget: { targetBase, diff, pct, meets } | null, others: [{ applicationId, company, title, base, bonus, equity, other, currency, total, baseDiff, totalDiff }], marketData: null, notes: string[] }`. `total` is the sum of the parts entered. `vsTarget` is null when no target or no base; `notes` always says there is no market data and explains empty comparisons (show them). `diff` values are other minus this offer for `others` and offer minus target for `vsTarget`. Errors `INVALID | NOT_FOUND | NOT_OFFER | FAILED`.
+- `setTargetSalary(targetBase: number | null)` sets or clears the user's target base pay (whole number). Returns `{ targetBase }`.
+- `draftNegotiation(applicationId)` returns `{ subject, text, basedOn: { hasOffer, hasTarget, otherOffers }, notes }`: an editable template (no AI) using only the saved amounts, the target and the job; it says nothing about market rates, and mentions another offer only if one is saved. Without saved amounts the text has no numbers and `notes[0]` says so. Nothing is sent.
+
+**Intake chips.** `startIntake().chips` (and `intakeChips`) now include `employmentType` ("full-time", "part-time", "internship", "contract", "freelance", "temporary") and `experience` ("3-5 yrs" or "3+ yrs") only when the job text states them (pattern match, no AI, nothing guessed). Keys are absent otherwise.
+
 ## Requests from frontend
-- `startIntake` chips: add optional `employmentType` (e.g. "full-time") and `experience` (e.g. "0-2 yrs") to `chips` when the job text has them (home job card shows them if present; for pasted text the client sniffs them itself).
-- `getHomeState`: optionally include `targets` (the "other targets from your documents" list) and `dueFollowUps`, so home needs one call. Home currently also calls `getDashboardData` for these.
+- RESOLVED (Task 9): `startIntake` chips now include optional `employmentType` and `experience` (see Task 9 below).
+- `getHomeState`: optionally include `targets` (the "other targets from your documents" list) and `dueFollowUps`, so home needs one call. Home currently also calls `getDashboardData` for these. (Still open.)

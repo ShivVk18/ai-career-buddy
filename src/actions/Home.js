@@ -13,13 +13,17 @@ const MAX_APPS = 20;
 const MAX_TASKS = 7;
 
 /** Incomplete steps of active roadmaps that are due this week (no due dates exist, so: the next ones, newest roadmap first). */
-function weekTasks(roadmaps) {
-  const out = [];
+function weekTasks(roadmaps, dated = []) {
+  // Dated tasks (weak spots, rejection gaps) come first, soonest first; then roadmap steps.
+  const out = dated.slice(0, MAX_TASKS).map((t) => ({
+    kind: "task", taskId: t.id, applicationId: t.applicationId ?? null, title: t.title, note: t.note ?? null, source: t.source, dueAt: iso(t.dueAt),
+    roadmapId: null, roadmapTitle: null, stepId: null, category: t.source === "weak_spot" ? "Weak spot" : "Skill gap", priority: "", href: t.source === "weak_spot" ? "/interview/practice" : "/applications",
+  }));
   for (const rm of roadmaps) {
     for (const st of Array.isArray(rm.steps) ? rm.steps : []) {
       if (out.length >= MAX_TASKS) return out;
       if (!st || st.completed || typeof st.title !== "string") continue;
-      out.push({ roadmapId: rm.id, roadmapTitle: rm.targetRole, stepId: Number(st.id), title: st.title, category: typeof st.category === "string" ? st.category : "", priority: typeof st.priority === "string" ? st.priority : "", href: `/roadmap/${rm.id}` });
+      out.push({ kind: "roadmap", dueAt: null, roadmapId: rm.id, roadmapTitle: rm.targetRole, stepId: Number(st.id), title: st.title, category: typeof st.category === "string" ? st.category : "", priority: typeof st.priority === "string" ? st.priority : "", href: `/roadmap/${rm.id}` });
     }
   }
   return out;
@@ -30,8 +34,8 @@ function weekTasks(roadmaps) {
  * Returns {
  *   stage: "dawn"|"noon"|"sunset"|"night",
  *   needsYou: { count, items[] },
- *   applications: [{ id, status, job:{id,company,title,location,url}, appliedAt, interviewAt, prepSessionId, nextActionAt, nextAction:{label,href}|null, updatedAt, bot:{state,step,completedCount,total} }],
- *   tasks: [{ roadmapId, roadmapTitle, stepId, title, category, priority, href }],
+ *   applications: [{ id, status, job:{id,company,title,location,url}, appliedAt, interviewAt, prepSessionId, nextActionAt, nextAction:{label,href}|null, quietDays:number|null, isQuiet:boolean, updatedAt, bot:{state,step,completedCount,total} }],
+ *   tasks: [{ kind:"task"|"roadmap", dueAt:ISO|null, taskId?, applicationId?, note?, source?, roadmapId, roadmapTitle, stepId, title, category, priority, href }],
  *   bots: { running, failed, needsYou, done, items:[{ applicationId, company, title, state, step, completedCount, total }] },
  *   unreadNotifications: number,
  *   generatedAt: ISO string
@@ -43,7 +47,7 @@ export async function getHomeState() {
   const uid = user.id;
   try {
     const now = Date.now();
-    const [rows, statusGroups, needsYou, roadmaps, unread] = await Promise.all([
+    const [rows, statusGroups, needsYou, roadmaps, unread, datedTasks] = await Promise.all([
       db.application.findMany({
         where: { userId: uid, deletedAt: null, job: { deletedAt: null } },
         orderBy: { updatedAt: "desc" },
@@ -54,6 +58,7 @@ export async function getHomeState() {
       computeNeedsYou(uid, now),
       db.careerPath.findMany({ where: { userId: uid, status: "active", deletedAt: null }, orderBy: { updatedAt: "desc" }, select: { id: true, targetRole: true, steps: true } }),
       db.notification.count({ where: { userId: uid, readAt: null } }),
+      db.task.findMany({ where: { userId: uid, doneAt: null }, orderBy: { dueAt: "asc" }, take: MAX_TASKS }),
     ]);
     // Resume-on-visit (D-HF1): a run that stalled (restart, timeout) continues in the background after this response.
     if (rows.some((r) => r.status !== "CLOSED" && isStalled(r, now))) {
@@ -72,7 +77,7 @@ export async function getHomeState() {
       stage: progressStage(statusGroups.map((g) => g.status)),
       needsYou,
       applications,
-      tasks: weekTasks(roadmaps),
+      tasks: weekTasks(roadmaps, datedTasks),
       bots: summarizeBots(botItems),
       unreadNotifications: unread,
       generatedAt: iso(new Date(now)),

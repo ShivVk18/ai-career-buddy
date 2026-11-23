@@ -40,6 +40,20 @@ export function parseDateInput(input) {
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
+export const QUIET_DAYS = 5;
+
+/**
+ * Quiet flag: an APPLIED application with no activity (applying, or a follow-up the user sent) for 5+ days.
+ * Returns { quietDays, isQuiet }; quietDays is null when it does not apply (not APPLIED or no date).
+ */
+export function quietInfo(row, now = Date.now()) {
+  if (row.status !== "APPLIED") return { quietDays: null, isQuiet: false };
+  const t = [row.lastActivityAt, row.appliedAt].filter(Boolean).map((d) => new Date(d).getTime()).filter(Number.isFinite);
+  if (!t.length) return { quietDays: null, isQuiet: false };
+  const quietDays = Math.max(0, Math.floor((now - Math.max(...t)) / DAY_MS));
+  return { quietDays, isQuiet: quietDays >= QUIET_DAYS };
+}
+
 const jobHref = (jobId) => `/jobs/${jobId}`;
 
 /**
@@ -90,6 +104,7 @@ export function publicApplication(row, now = Date.now()) {
     prepSessionId: row.prepSessionId ?? null,
     nextActionAt: iso(row.nextActionAt),
     nextAction: nextAction(row, now),
+    ...quietInfo(row, now),
     updatedAt: iso(row.updatedAt),
   };
 }

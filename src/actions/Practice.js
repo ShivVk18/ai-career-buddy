@@ -111,7 +111,10 @@ async function generateOpenQuestionsImpl(input) {
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     // D28: only job description lines and profile skills can source a question.
-    const catalog = buildSources({ profile: { skills: user.skills }, jobDescription });
+    // Projects on the user's resume are a source too, so questions can ask about what they built (never invented).
+    const resume = await db.resume.findUnique({ where: { userId: user.id }, select: { projects: true, deletedAt: true } }).catch(() => null);
+    const projects = resume && !resume.deletedAt && Array.isArray(resume.projects) ? resume.projects : [];
+    const catalog = buildSources({ profile: { skills: user.skills }, resume: projects.length ? { projects } : undefined, jobDescription });
     if (catalog.length === 0) return fail("NO_SOURCES");
 
     const prompt = `
@@ -125,6 +128,7 @@ ${formatCatalogForPrompt(catalog)}
 RULES:
 - Every question MUST cite one or more ids copied exactly from the SOURCES list in "sourceIds" (job description lines or the profile skills).
 - Ask about skills and responsibilities that appear in the SOURCES. Do not assume the candidate has any employer, project, title, degree or number that is not in the SOURCES.
+- When the SOURCES include the candidate's projects (ids starting "proj:"), make at least one question ask about a project that fits the job, citing that project id. Only use what the project entry says.
 - Mix behavioural ("tell me about a time...") and practical/scenario questions.
 - "topic" is a short label (1-3 words) naming the skill area, for example "React" or "System design". Reuse the same label for related questions.
 - "timeLimitSec" is a sensible answer time in seconds (between 60 and 300).

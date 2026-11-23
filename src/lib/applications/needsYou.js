@@ -74,7 +74,8 @@ export async function deriveNeedsYou(userDbId, now = Date.now()) {
   });
   const prepIds = apps.filter((a) => a.prepSessionId).map((a) => a.prepSessionId);
 
-  const [drafts, letters, emails, scores, preps] = await Promise.all([
+  const followUpJobIds = apps.map((a) => a.jobId);
+  const [drafts, letters, emails, scores, preps, followDrafts] = await Promise.all([
     ids.draft.length
       ? db.resumeVersion.findMany({
           where: { id: { in: ids.draft }, resume: { userId: userDbId }, tailoredContent: { startsWith: DRAFT_PREFIX }, createdAt: { gte: new Date(now - DRAFT_TTL_MS) } },
@@ -93,7 +94,16 @@ export async function deriveNeedsYou(userDbId, now = Date.now()) {
       : [],
     // A prep session stops being a to-do once at least one of its answers is scored.
     prepIds.length ? db.interviewAnswer.findMany({ where: { sessionId: { in: prepIds }, userId: userDbId, overall: { not: null } }, select: { sessionId: true }, distinct: ["sessionId"] }) : [],
+    // Follow-up drafts (createFollowUpDraft): waiting for the user to approve and copy (they send it themselves).
+    db.coldEmail.findMany({
+      where: { userId: userDbId, deletedAt: null, status: "draft", jobId: { in: followUpJobIds }, sources: { path: ["template"], equals: "follow_up" } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, jobId: true, subject: true, content: true, createdAt: true },
+    }),
   ]);
+  const followByJob = new Map();
+  for (const f of followDrafts) if (!followByJob.has(f.jobId)) followByJob.set(f.jobId, f); // newest per job
   const byId = (rows) => new Map(rows.map((r) => [r.id, r]));
   const draftMap = byId(drafts);
   const letterMap = byId(letters);
@@ -127,6 +137,11 @@ export async function deriveNeedsYou(userDbId, now = Date.now()) {
     const latest = latestScore.get(a.jobId);
     if (ck.status === "done" && ck.fixDismissed !== true && latest && latest.id === ck.ids?.atsScoreId && hasFixableWeakness(latest.evidence, latest.createdAt, now)) {
       items.push({ ...base(a), id: `ATS_FIX:${latest.id}`, type: "ATS_FIX", title: `Fix resume gaps found for ${label(a)}`, refId: latest.id, href: "/resume-parser", createdAt: iso(latest.createdAt) });
+    }
+
+    const fd = followByJob.get(a.jobId);
+    if (fd && a.status === "APPLIED") {
+      items.push({ ...base(a), id: `FOLLOW_UP_DRAFT:${fd.id}`, type: "FOLLOW_UP_DRAFT", title: `Send your follow-up to ${label(a)}`, refId: fd.id, href: `/cold-email/${fd.id}`, draft: { subject: fd.subject ?? "", text: fd.content }, createdAt: iso(fd.createdAt) });
     }
 
     const due = followUpDueAt(a);

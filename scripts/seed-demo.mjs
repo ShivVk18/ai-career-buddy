@@ -33,12 +33,16 @@ const finishedPipeline = {
 const jobs = [
   { id: "demo-job-1", company: "Lumen Labs", title: "Frontend Engineer", location: "Remote", status: "SAVED", pipeline: finishedPipeline,
     jd: "We build accessible data tools. You will ship React and TypeScript interfaces, work with designers, and own testing. 3+ years of frontend experience." },
-  { id: "demo-job-2", company: "Northwind Co", title: "Full-stack Developer", location: "Berlin", status: "APPLIED", appliedAt: ago(6), followUpCount: 0,
+  { id: "demo-job-2", company: "Northwind Co", title: "Full-stack Developer", location: "Berlin", status: "APPLIED", appliedAt: ago(6), followUpCount: 0, // quiet: 6 days, no activity
     jd: "Join a small team building logistics software. Node.js, React and PostgreSQL. You will work across the stack." },
   { id: "demo-job-3", company: "Parcel", title: "Software Engineer", location: "London", status: "INTERVIEWING", appliedAt: ago(14), interviewAt: ahead(3),
     jd: "Backend-leaning role on a payments team. Strong fundamentals, TypeScript, and clear communication." },
   { id: "demo-job-4", company: "Fernwood", title: "Product Engineer", location: "Remote", status: "OFFER", appliedAt: ago(30), interviewAt: ago(8),
     jd: "Product engineering at an early-stage climate startup. React, Node.js, ownership from idea to launch." },
+  { id: "demo-job-5", company: "Quill", title: "Web Developer", location: "Remote", status: "CLOSED", appliedAt: ago(20), closedReason: "They went with another candidate",
+    jd: "Part-time web developer. Full-time hours possible. Requires 2-4 years of experience with TypeScript, GraphQL and Docker." },
+  { id: "demo-job-6", company: "Harbor", title: "UI Engineer", location: "Remote", status: "APPLIED", appliedAt: ago(8), lastActivityAt: ago(1), followUpCount: 1,
+    jd: "UI engineer for a design systems team. React and CSS. Full-time. 3+ years of experience." },
 ];
 
 async function main() {
@@ -69,6 +73,9 @@ async function main() {
   await db.job.deleteMany({ where: { id: { startsWith: "demo-" }, userId: user.id } }); // cascades applications
   await db.careerPath.deleteMany({ where: { id: { startsWith: "demo-" }, userId: user.id } });
   await db.notification.deleteMany({ where: { id: { startsWith: "demo-" }, userId: user.id } });
+  await db.coldEmail.deleteMany({ where: { id: { startsWith: "demo-" }, userId: user.id } });
+  await db.task.deleteMany({ where: { id: { startsWith: "demo-" }, userId: user.id } });
+  await db.aTSScore.deleteMany({ where: { id: { startsWith: "demo-" }, userId: user.id } });
 
   for (const j of jobs) {
     await db.job.create({ data: { id: j.id, userId: user.id, company: j.company, title: j.title, location: j.location, jdText: j.jd, createdAt: ago(20) } });
@@ -76,9 +83,39 @@ async function main() {
       data: {
         id: `demo-app-${j.id.slice(-1)}`, userId: user.id, jobId: j.id, status: j.status, appliedAt: j.appliedAt ?? null, interviewAt: j.interviewAt ?? null,
         followUpCount: j.followUpCount ?? 0, pipeline: j.pipeline ?? undefined,
+        lastActivityAt: j.lastActivityAt ?? (j.status === "APPLIED" ? j.appliedAt : null),
+        ...(j.status === "CLOSED" ? { closedAt: ago(3), closedReason: j.closedReason, gapTasksAddedAt: ago(3) } : {}),
+        // Offer the user typed in (offer screen: compare + negotiation draft).
+        ...(j.status === "OFFER" ? { offer: { base: 88000, bonus: 4000, equity: null, other: null, currency: "EUR", savedAt: ago(7).toISOString() } } : {}),
       },
     });
   }
+  await db.user.update({ where: { id: user.id }, data: { targetBase: 95000 } });
+
+  // Follow-up draft waiting in needs-you (Harbor, applied 8 days ago, one follow-up already written, not yet approved).
+  await db.coldEmail.create({
+    data: {
+      id: "demo-followup-1", userId: user.id, jobId: "demo-job-6", companyName: "Harbor", jobTitle: "UI Engineer", status: "draft", subject: "Following up on the UI Engineer role at Harbor",
+      content: "Hi there,\n\nI applied for the UI Engineer role at Harbor and wanted to follow up on my application. I'm still very interested and would be glad to share anything else that would help.\n\nThank you for your time.\n\nBest regards",
+      sources: { version: 1, template: "follow_up", paragraphs: [] },
+    },
+  });
+  // Rejection (Quill): the gaps from the ATS check, as ATS result + the next-week tasks closing would have made.
+  await db.aTSScore.create({
+    data: { id: "demo-ats-5", userId: user.id, jobId: "demo-job-5", atsScore: 61, strengths: [], weaknesses: [], improvements: [], relevantSkills: ["TypeScript"], missingSkills: ["GraphQL", "Docker"], recommendations: [], finalSummary: "Demo result.", jobTitle: "Web Developer", companyName: "Quill" },
+  });
+  const nextMonday = new Date(now);
+  nextMonday.setDate(nextMonday.getDate() + (((8 - nextMonday.getDay()) % 7) || 7));
+  nextMonday.setHours(9, 0, 0, 0);
+  for (const [i, skill] of ["GraphQL", "Docker"].entries()) {
+    await db.task.create({
+      data: { id: `demo-task-gap-${i + 1}`, userId: user.id, applicationId: "demo-app-5", title: `Work on ${skill}`, note: "This requirement was missing from your resume in your ATS check for Web Developer at Quill.", source: "rejection_gap", key: `gap:demo-app-5:${skill.toLowerCase()}`, dueAt: nextMonday },
+    });
+  }
+  // A weak spot saved from practice.
+  await db.task.create({
+    data: { id: "demo-task-weak-1", userId: user.id, applicationId: "demo-app-3", title: "Practise System design", note: "Got stuck explaining caching.", source: "weak_spot", key: `weak:system design:${nextMonday.toISOString().slice(0, 10)}`, dueAt: nextMonday },
+  });
   await db.coverLetter.create({
     data: { id: "demo-letter-1", userId: user.id, jobId: "demo-job-1", companyName: "Lumen Labs", jobTitle: "Frontend Engineer", status: "draft",
       content: "Hello Lumen Labs team,\n\nI build React interfaces and care about accessibility. At Brightside I built a dashboard used by 40 support agents.\n\nThanks for reading." },
@@ -96,7 +133,7 @@ async function main() {
   await db.notification.create({
     data: { id: "demo-note-1", userId: user.id, type: "BOT_DONE", title: "Your drafts for Lumen Labs are ready", body: "Review the cover letter.", href: "/needs-you" },
   });
-  console.log(`seed:demo done (${created ? "created" : "reused"} user ${clerkUserId}). 4 applications, 1 finished run, 1 follow-up due, 1 offer.`);
+  console.log(`seed:demo done (${created ? "created" : "reused"} user ${clerkUserId}). 6 applications: 1 finished run, 1 quiet (6 days), 1 follow-up draft waiting, 1 offer (with typed amounts and a target), 1 rejection with next-week gap tasks, 1 weak-spot task.`);
 }
 
 main().catch((e) => { console.error("seed:demo failed:", e?.message ?? e); process.exitCode = 1; }).finally(() => db.$disconnect());

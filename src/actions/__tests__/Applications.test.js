@@ -1,6 +1,7 @@
+import { parseUndoToken } from "@/lib/undo";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-let app, path, scores;
+let app, path, scores, madeTasks;
 const db = {
   user: { findUnique: vi.fn(async () => ({ id: "u1", name: "Sam" })) },
   application: {
@@ -17,6 +18,7 @@ const db = {
     updateMany: vi.fn(async ({ data }) => (Object.assign(path, data), { count: 1 })),
   },
   aTSScore: { findMany: vi.fn(async () => scores) },
+  task: { createMany: vi.fn(async ({ data }) => { const fresh = data.filter((d) => !madeTasks.some((t) => t.key === d.key)); madeTasks.push(...fresh); return { count: fresh.length }; }) },
 };
 vi.mock("@/lib/prisma", () => ({ db }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
@@ -33,6 +35,7 @@ beforeEach(() => {
     updatedAt: new Date(1), job: { id: "j1", title: "Dev", company: "Acme", jdText: "x" },
   };
   path = { id: "p1", steps: [{ id: 1, title: "Learn Go", completed: true }], updatedAt: new Date(1) };
+  madeTasks = [];
   scores = [{ missingSkills: ["Docker", "docker", "Kafka"] }];
 });
 
@@ -46,6 +49,20 @@ describe("application actions", () => {
     const undo = await setApplicationStatus("a1", "SAVED");
     expect(undo.previousStatus).toBe("APPLIED");
     expect(app.appliedAt).toBeNull();
+  });
+  it("markApplied returns an undo token that restores the previous status, plus quiet fields", async () => {
+    const r = await markApplied("a1");
+    expect(r.application).toMatchObject({ status: "APPLIED", quietDays: 0, isQuiet: false });
+    expect(app.lastActivityAt).toBeInstanceOf(Date);
+    expect(parseUndoToken(r.undoToken)).toEqual({ kind: "status_move", id: "a1", data: { s: "SAVED", i: null } });
+    const again = await markApplied("a1");
+    expect(again.undoToken).toBeUndefined(); // no change, nothing to undo
+  });
+  it("an application applied 6 days ago is quiet", async () => {
+    app.status = "APPLIED";
+    app.appliedAt = new Date(Date.now() - 6 * 86400000);
+    const r = await setApplicationStatus("a1", "APPLIED");
+    expect(r.application).toMatchObject({ quietDays: 6, isQuiet: true });
   });
   it("rejects bad input and other users' applications", async () => {
     expect((await setApplicationStatus("a1", "WON")).code).toBe("INVALID");
@@ -63,6 +80,16 @@ describe("application actions", () => {
   it("closing without a roadmap is not an error", async () => {
     path = null;
     expect((await closeApplication("a1", "")).tasksAdded).toBe(0);
+  });
+  it("closing also makes next-week tasks from the gaps, once, even with no roadmap", async () => {
+    path = null;
+    const r = await closeApplication("a1", "no reply");
+    expect(r.weekTasksAdded).toBe(2);
+    expect(madeTasks.map((t) => t.title)).toEqual(["Work on Docker", "Work on Kafka"]);
+    expect(madeTasks[0]).toMatchObject({ source: "rejection_gap", applicationId: "a1", userId: "u1" });
+    expect(madeTasks[0].dueAt.getTime()).toBeGreaterThan(Date.now());
+    expect(new Date(madeTasks[0].dueAt).getDay()).toBe(1);
+    expect((await closeApplication("a1", "no reply")).weekTasksAdded).toBe(0);
   });
   it("approving clears needsYou once", async () => {
     expect(await approveNeedsYou("a1", "WRITER")).toEqual({ success: true });
