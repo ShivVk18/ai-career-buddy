@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const BADGE = {
@@ -13,11 +13,78 @@ const BADGE = {
  * columns: [{ id, title }]
  * cards: [{ id, col, title, sub?, badge?: { text, tone } }]
  * onMove(cardId, toColId, fromColId)
- * Mouse: drag a card onto a column. Touch / keyboard: tap (or Enter) a card to pick it up, then tap a column.
+ * Mouse: drag a card onto a column. Touch: press and hold a card, then drag it onto a column. Touch / keyboard: tap
+ * (or Enter) a card to pick it up, then tap a column.
+ * renderCard(card, { dragging }) (optional) renders the card body yourself (links, buttons, menus); the card is then
+ * a draggable wrapper only, and tap-to-pick-up is left to your own controls.
  */
-export default function KanbanBoard({ columns, cards, onMove, className }) {
+export default function KanbanBoard({ columns, cards, onMove, renderCard, className }) {
   const [picked, setPicked] = useState(null);
   const [over, setOver] = useState(null);
+  const [touching, setTouching] = useState(null);
+  const live = useRef({ cards, onMove });
+  live.current = { cards, onMove };
+  const root = useRef(null);
+
+  // Touch drag: hold a card for 300 ms, then drag it over a column and lift. Scroll stays free until the hold fires.
+  useEffect(() => {
+    const el = root.current;
+    if (!el || !renderCard) return;
+    let timer = 0;
+    let id = null;
+    let sx = 0;
+    let sy = 0;
+    let active = false;
+    const colAt = (t) => document.elementFromPoint(t.clientX, t.clientY)?.closest("[data-kanban-col]")?.dataset.kanbanCol ?? null;
+    const reset = () => {
+      clearTimeout(timer);
+      id = null;
+      active = false;
+      setTouching(null);
+      setOver(null);
+    };
+    const start = (e) => {
+      const card = e.target.closest?.("[data-kanban-card]");
+      if (!card || e.touches.length !== 1 || e.target.closest("button, input, [role=menuitem]")) return;
+      id = card.dataset.kanbanCard;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      timer = window.setTimeout(() => {
+        active = true;
+        setTouching(id);
+        navigator.vibrate?.(8);
+      }, 300);
+    };
+    const mv = (e) => {
+      const t = e.touches[0];
+      if (!active) {
+        if (Math.hypot(t.clientX - sx, t.clientY - sy) > 8) clearTimeout(timer);
+        return;
+      }
+      e.preventDefault();
+      setOver(colAt(t));
+    };
+    const end = (e) => {
+      if (active) {
+        if (e.cancelable) e.preventDefault(); // no link tap after a drag
+        const to = colAt(e.changedTouches[0]);
+        const c = live.current.cards.find((x) => x.id === id);
+        if (to && c && c.col !== to) live.current.onMove?.(id, to, c.col);
+      }
+      reset();
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", mv, { passive: false });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", reset);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", mv);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", reset);
+    };
+  }, [renderCard]);
 
   const move = (id, to) => {
     const c = cards.find((x) => x.id === id);
@@ -27,13 +94,14 @@ export default function KanbanBoard({ columns, cards, onMove, className }) {
   };
 
   return (
-    <div className={cn("flex snap-x gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible", className)}>
+    <div ref={root} className={cn("flex snap-x gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible", className)}>
       {columns.map((col) => {
         const items = cards.filter((c) => c.col === col.id);
         const canDrop = picked && cards.find((c) => c.id === picked)?.col !== col.id;
         return (
           <section
             key={col.id}
+            data-kanban-col={col.id}
             aria-label={col.title}
             onDragOver={(e) => {
               e.preventDefault();
@@ -51,7 +119,24 @@ export default function KanbanBoard({ columns, cards, onMove, className }) {
           >
             <h4 className="mb-2 px-1 font-doc text-base normal-case tracking-normal text-muted">{col.title}</h4>
             <div className="space-y-2">
-              {items.map((c) => (
+              {items.map((c) =>
+                renderCard ? (
+                  <div
+                    key={c.id}
+                    data-kanban-card={c.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", c.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    className={cn(
+                      "select-none rounded-[14px] bg-panel px-3.5 py-3 shadow-card transition-all duration-200 [-webkit-touch-callout:none] md:cursor-grab",
+                      touching === c.id && "-translate-y-0.5 scale-[1.02] ring-2 ring-brand",
+                    )}
+                  >
+                    {renderCard(c, { dragging: touching === c.id })}
+                  </div>
+                ) : (
                 <div
                   key={c.id}
                   role="button"
@@ -84,7 +169,8 @@ export default function KanbanBoard({ columns, cards, onMove, className }) {
                     </span>
                   )}
                 </div>
-              ))}
+                ),
+              )}
               {canDrop && (
                 <button
                   type="button"

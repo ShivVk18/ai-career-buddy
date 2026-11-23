@@ -10,12 +10,14 @@ import { generationErrorMessage } from "@/components/shared/generationError";
 import EmptyState from "@/components/shared/EmptyState";
 import LetterReview from "./LetterReview";
 import TailorReview from "./TailorReview";
+import FollowUpCard from "../../applications/_components/FollowUpCard";
 
 const TYPES = {
   TAILOR_DRAFT: { label: "resume edits", icon: ScrollText, step: "TAILOR" },
   COVER_LETTER: { label: "cover letter", icon: FileText, step: "WRITER" },
   COLD_EMAIL: { label: "cold email", icon: Mail, step: "CONNECTOR" },
   ATS_FIX: { label: "ats fix", icon: ClipboardCheck, step: "CHECKER" },
+  FOLLOW_UP_DRAFT: { label: "follow-up draft", icon: MessageSquareReply, step: null },
   FOLLOW_UP: { label: "follow up", icon: MessageSquareReply, step: null },
   PREP_INTERVIEW: { label: "interview prep", icon: CalendarClock, step: null },
 };
@@ -214,7 +216,7 @@ export default function NeedsYouQueue({ focus }) {
               </button>
               {open && (
                 <div id={`ny-panel-${item.id}`} className="border-t border-line px-4 py-4">
-                  <ItemBody item={item} busy={busyId === item.id} onApprove={() => approve(item)} removeOptimistic={removeOptimistic} />
+                  <ItemBody item={item} busy={busyId === item.id} onApprove={() => approve(item)} removeOptimistic={removeOptimistic} setItems={setItems} />
                 </div>
               )}
             </li>
@@ -225,7 +227,7 @@ export default function NeedsYouQueue({ focus }) {
   );
 }
 
-function ItemBody({ item, busy, onApprove, removeOptimistic }) {
+function ItemBody({ item, busy, onApprove, removeOptimistic, setItems }) {
   const router = useRouter();
   switch (item.type) {
     case "COVER_LETTER":
@@ -247,6 +249,15 @@ function ItemBody({ item, busy, onApprove, removeOptimistic }) {
             </button>
           </div>
         </div>
+      );
+    case "FOLLOW_UP_DRAFT":
+      return (
+        <FollowUpCard
+          item={item}
+          className="border-0 p-0 shadow-none"
+          onDone={(it) => setItems((cur) => (cur || []).filter((i) => i.id !== it.id))}
+          onRestore={(it) => setItems((cur) => ((cur || []).some((i) => i.id === it.id) ? cur : [it, ...(cur || [])]))}
+        />
       );
     case "FOLLOW_UP":
       return (

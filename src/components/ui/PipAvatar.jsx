@@ -16,6 +16,7 @@ export default function PipAvatar({ outfit = "coffee", size = "md", working = fa
         width={px}
         height={px}
         unoptimized
+        loading="eager"
         className="size-full object-contain"
         style={{ imageRendering: "pixelated" }}
       />
