@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { authUser } from "@/lib/runAsUser";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { buildSources, formatCatalogForPrompt } from "@/lib/ai/sources";
@@ -118,7 +119,7 @@ export async function generateCoverLetter(data) {
 }
 
 async function generateCoverLetterImpl(data) {
-  const { userId } = await auth();
+  const { userId } = await authUser();
   if (!userId) throw new Error("Unauthorized");
 
   const input = inputSchema.safeParse(data ?? {});

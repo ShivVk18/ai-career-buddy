@@ -803,3 +803,21 @@ All five requests from the UX flow pass (frontend tasks 10-12) are RESOLVED. Exa
 5. **RESOLVED `unapproveNeedsYou(applicationId, step)`** (`src/actions/Applications.js`), the Undo of `approveNeedsYou`. `step` as in `approveNeedsYou` (`CHECKER | TAILOR | WRITER | CONNECTOR`). TAILOR/WRITER/CONNECTOR set `needsYou: true` again (only when that step is `done`; otherwise a no-op); CHECKER clears the dismissal so the ATS_FIX item returns. Idempotent. Returns `{ success: true }` or `{ error, code: INVALID | NOT_FOUND | FAILED }`.
 
 Also changed (item 6 of the follow-up): **`setApplicationStatus(id, "CLOSED")` now behaves like `closeApplication`** (the board drop and the job-page Closed agree). It sets CLOSED and runs the same gap-task logic (no AI, once via `gapTasksAddedAt`, skills of the job's ATS results added to the most recently updated active roadmap; no active roadmap leaves `gapTasksAddedAt` unset so a later close still adds them). For CLOSED the return gains `tasksAdded: number`: `{ application, previousStatus, tasksAdded }` (other statuses are unchanged and have no `tasksAdded`). Calling it on an already CLOSED application retries only the gap tasks. No `closedReason` is set by the board move (use `closeApplication` for a reason). Moving back out of CLOSED (Undo) clears `closedReason` but does NOT remove tasks already added; closing again adds nothing twice.
+
+## Task 5: intake + server runner (D-HF1)
+
+Server actions (Clerk session required; signed-out throws "Unauthorized"):
+- `startIntake({ input, url?, asJob? })` in `src/actions/Intake.js`. Returns `{ kind:"question", text }` (open chat; nothing stored) or
+  `{ kind:"job", jobId, applicationId, job, notice, chips:{ company, role, location, requirementCount } }` or `{ error, code }`
+  (INVALID | NOT_FOUND | URL_BLOCKED | FETCH_FAILED | PASTE_NEEDED | NOT_A_JOB | FAILED). Ids return before the slow AI work:
+  `notice:"PENDING"` means missing company/role/location are still being filled (poll `getJob`). The run then continues on the server
+  after the response (Next `after()`), survives a closed tab, and writes a Notification (`pipeline_done` / `pipeline_failed`, href `/jobs/:id`).
+- `getPipelineStatus(applicationId)` returns `{ applicationId, jobId, run:"idle|running|needs_you|done|failed", completedCount, total,
+  steps:[{ id:"checker|tailor|writer|connector", step, label, task, status:"pending|running|done|skipped|failed",
+  chips:[{ label, value, tone:"neutral|good|warn|bad" }], ids, needsYou, error, startedAt, finishedAt }] }`. Tailor chips include
+  `Invented` (numberCheck count). Polling this also resumes a stalled run in the background.
+- `retryPipeline(applicationId)` returns `{ started }`; use after a failed step (failed steps are never auto-retried).
+- `getHomeState()` now also resumes the user's stalled runs in the background. `intakeJob`, `runNextStep`, `getPipeline` unchanged.
+
+Route: `GET|POST /api/cron/pipeline` with `Authorization: Bearer $CRON_SECRET` (401 otherwise, also when CRON_SECRET is unset).
+Resumes stalled runs for all users (10 per call). Not in `vercel.json` (sub-daily crons need Vercel Pro); point any scheduler at it every 5 to 10 minutes.

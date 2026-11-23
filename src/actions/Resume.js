@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { authUser } from "@/lib/runAsUser";
 import { revalidatePath } from "next/cache";
 import { runAIText, runAIStructured, withAiAction } from "@/lib/ai";
 import { tailorSchema } from "@/lib/ai/schemas";
@@ -678,7 +679,7 @@ export async function tailorResume(input) {
 }
 
 async function tailorResumeImpl(input) {
-  const { userId } = await auth();
+  const { userId } = await authUser();
   if (!userId) throw new Error("Unauthorized");
   const parsed = tailorInput.safeParse(input ?? {});
   if (!parsed.success) return fail("INVALID", "Paste the job description (up to 20,000 characters) to tailor your resume.");

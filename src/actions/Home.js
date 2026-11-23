@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { db } from "@/lib/prisma";
 import { safeErr } from "@/lib/utils";
 import { fail, requireUser, iso } from "@/lib/jobs/common";
 import { publicApplication } from "@/lib/applications/derive";
 import { computeNeedsYou } from "@/lib/applications/needsYou";
+import { isStalled, resumeStalledForUser } from "@/lib/jobs/runner";
 import { progressStage, botStatusFor, summarizeBots } from "@/lib/home/state";
 
 const MAX_APPS = 20;
@@ -36,7 +38,7 @@ function weekTasks(roadmaps) {
  * } or { error, code }. Signed-out throws "Unauthorized".
  */
 export async function getHomeState() {
-  const { user } = await requireUser();
+  const { clerkUserId, user } = await requireUser();
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
   const uid = user.id;
   try {
@@ -53,6 +55,14 @@ export async function getHomeState() {
       db.careerPath.findMany({ where: { userId: uid, status: "active", deletedAt: null }, orderBy: { updatedAt: "desc" }, select: { id: true, targetRole: true, steps: true } }),
       db.notification.count({ where: { userId: uid, readAt: null } }),
     ]);
+    // Resume-on-visit (D-HF1): a run that stalled (restart, timeout) continues in the background after this response.
+    if (rows.some((r) => r.status !== "CLOSED" && isStalled(r, now))) {
+      try {
+        after(() => resumeStalledForUser({ user, clerkUserId }));
+      } catch (e) {
+        console.error("resume schedule failed:", safeErr(e));
+      }
+    }
     const live = rows.filter((r) => r.status !== "CLOSED");
     const applications = rows.map((r) => ({ ...publicApplication(r, now), bot: botStatusFor(r, now) }));
     const botItems = live

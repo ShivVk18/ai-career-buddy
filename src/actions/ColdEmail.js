@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { authUser } from "@/lib/runAsUser";
 
 import { z } from "zod";
 import { withAiAction } from "@/lib/ai";
@@ -80,7 +81,7 @@ export async function generateColdEmail(data) {
 }
 
 async function generateColdEmailImpl(data) {
-  const { userId } = await auth();
+  const { userId } = await authUser();
   if (!userId) throw new Error("Unauthorized");
 
   const input = inputSchema.safeParse(data ?? {});
