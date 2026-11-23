@@ -11,6 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover",
         glow: "bg-primary text-primary-foreground shadow-[0_0_0_1px_var(--primary),0_8px_28px_-6px_var(--glow)] hover:bg-primary-hover hover:shadow-[0_0_0_1px_var(--primary),0_10px_34px_-4px_var(--glow)]",
+        ink: "bg-ink text-ink-foreground shadow-soft hover:opacity-90",
         lime: "bg-lime text-lime-foreground shadow-sm hover:brightness-95",
         destructive: "bg-destructive text-destructive-foreground hover:brightness-110",
         outline: "border border-line bg-panel text-foreground hover:bg-soft hover:border-primary/40",

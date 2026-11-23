@@ -30,6 +30,17 @@
   --color-sky-tint: var(--sky-tint);
   --color-sky-tint-line: var(--sky-tint-line);
 
+  /* design system v2 (happy flow) */
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-ink: var(--warn-ink);
+  --color-gap-soft: var(--gap-soft);
+  --color-gap-ink: var(--gap-ink);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+
   --color-pastel-pink: #F6B9CB;
   --color-pastel-lemon: #FFE48A;
   --color-pastel-lavender: #BCAEF2;
@@ -59,6 +70,9 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
   --radius-2xl: 24px;
+  --radius-panel: 20px;
+  --radius-chip: 9px;
+  --shadow-soft: var(--shadow-soft);
 
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
@@ -70,13 +84,24 @@
 
 /* Tokens: see docs/ai/DESIGN.md. Lime is a fill/glow only, never text on light. */
 :root {
-  --bg: #F8FAFC;
+  --bg: #FBFAF7;
   --panel: #FFFFFF;
-  --line: #E4E4EC;
-  --soft: #F1F2F8;
-  --text: #14141F;
-  --muted: #5A5A6E;
-  --faint: #6E6E82;
+  --line: #ECEAE4;
+  --soft: #F4F2EC;
+  --text: #23222B;
+  --muted: #6D6B75;
+  --faint: #A8A6AE;
+
+  --brand: #2F9E77;
+  --brand-soft: #E3F4EC;
+  --brand-ink: #1E7356;
+  --warn-soft: #FFF4CC;
+  --warn-ink: #8A6A00;
+  --gap-soft: #FDE7EE;
+  --gap-ink: #B23A62;
+  --ink: #23222B;
+  --ink-foreground: #FBFAF7;
+  --shadow-soft: 0 30px 60px -24px rgba(35, 34, 43, 0.28);
 
   --primary: #4F46E5;
   --primary-ink: #4F46E5;
@@ -120,6 +145,17 @@
   --text: #F4F4F8;
   --muted: #A3A3B5;
   --faint: #8C8CA0;
+
+  --brand: #3DBE91;
+  --brand-soft: #123226;
+  --brand-ink: #7EE0B9;
+  --warn-soft: #3A3011;
+  --warn-ink: #F3D56B;
+  --gap-soft: #3A1A27;
+  --gap-ink: #F59BBB;
+  --ink: #F4F4F8;
+  --ink-foreground: #0A0A0F;
+  --shadow-soft: 0 30px 60px -24px rgba(0, 0, 0, 0.8);
 
   --primary: #5B52EC;
   --primary-ink: #A5B4FC;
@@ -495,3 +531,37 @@
 }
 .bt-done .bt-num { opacity: 0; }
 .bt-badge.bt-done { background-color: var(--lime); }
+
+/* ---- design system v2 helpers ---- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sweepIn {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
+@keyframes spinRing {
+  to { transform: rotate(360deg); }
+}
+@keyframes confettiFall {
+  from { transform: translate3d(0, -20px, 0); opacity: 1; }
+  to { transform: translate3d(var(--dx, 0px), 110vh, 0); opacity: 1; }
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.fade-up { animation: fadeUp 300ms ease both; }
+.skeleton-pulse { animation: skeletonPulse 1.4s ease-in-out infinite; }
+.btn-ink {
+  background: var(--ink);
+  color: var(--ink-foreground);
+  border-radius: 9999px;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.btn-ink:hover { opacity: 0.88; }
+.btn-ink:active { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .skeleton-pulse, .pip-hop { animation: none !important; }
+}
