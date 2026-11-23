@@ -1,5 +1,8 @@
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Chip } from "@/components/ui/Chip";
+
+const TONE = { good: "brand", warn: "warn", bad: "gap", neutral: "neutral" };
 
 function Dot({ status }) {
   if (status === "done")
@@ -26,23 +29,33 @@ function Dot({ status }) {
 
 /**
  * steps: [{ id, label, detail, status: "waiting"|"running"|"done"|"error", result }]
- * result is a short string shown as a chip once done.
+ * result is a short string shown as a chip once done. Optional chips: [{ label, value, tone }] (read-only) and footer (node under the row).
  */
 export default function BotStepList({ steps, className }) {
   return (
     <ol className={cn("divide-y divide-line", className)}>
       {steps.map((s) => (
-        <li key={s.id} className="flex items-center gap-4 py-4" aria-current={s.status === "running" ? "step" : undefined}>
-          <Dot status={s.status} />
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-lg", s.status === "waiting" ? "text-faint" : "text-text")}>{s.label}</p>
-            {s.detail && <p className="truncate text-sm text-muted">{s.detail}</p>}
+        <li key={s.id} className="py-[11px]" aria-current={s.status === "running" ? "step" : undefined}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Dot status={s.status} />
+            <div className="min-w-0 flex-1 basis-40">
+              <p className={cn("text-xl", s.status === "waiting" ? "text-faint" : "text-text")}>{s.label}</p>
+              {s.detail && <p className="text-sm text-muted sm:truncate">{s.detail}</p>}
+            </div>
+            <span className="sr-only">{s.status}</span>
+            {s.result && s.status === "done" && (
+              <span className="fade-up rounded-[9px] bg-brand-soft px-3 py-1 text-sm text-brand-ink">{s.result}</span>
+            )}
+            {s.chips?.length > 0 && (
+              <div className="flex w-full flex-wrap justify-end gap-1.5 pl-11 sm:w-auto sm:pl-0">
+                {s.chips.map((c) => (
+                  <Chip key={c.label} editable={false} tone={TONE[c.tone] || "neutral"} value={[c.label, c.value].filter(Boolean).join(" ").toLowerCase()} />
+                ))}
+              </div>
+            )}
+            {s.status === "error" && !s.footer && <span className="rounded-[9px] bg-gap-soft px-3 py-1 text-sm text-gap-ink">failed</span>}
           </div>
-          <span className="sr-only">{s.status}</span>
-          {s.result && s.status === "done" && (
-            <span className="fade-up rounded-[9px] bg-brand-soft px-3 py-1 text-sm text-brand-ink">{s.result}</span>
-          )}
-          {s.status === "error" && <span className="rounded-[9px] bg-gap-soft px-3 py-1 text-sm text-gap-ink">failed</span>}
+          {s.footer && <div className="mt-2 space-y-1 pl-11">{s.footer}</div>}
         </li>
       ))}
     </ol>

@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Copy, Download, ExternalLink, FileText, RotateCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getJob, updateJobField, deleteJob, restoreJob } from "@/actions/Jobs";
-import { getPipeline, runNextStep } from "@/actions/Pipeline";
 import { getCoverLetter } from "@/actions/CoverLetter";
 import { EditableChip } from "@/components/shared/EditableChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import PipelineProgress from "./PipelineProgress";
+import usePipelineStatus from "./usePipelineStatus";
 import StatusActions from "./StatusActions";
 
 const FIELDS = [
@@ -20,16 +20,9 @@ const FIELDS = [
   { key: "location", placeholder: "add location" },
 ];
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 export default function JobView({ id, notice }) {
   const router = useRouter();
   const [state, setState] = useState({ status: "loading", job: null, error: null, code: null });
-  const [pipeline, setPipeline] = useState(null);
-  const [driving, setDriving] = useState(false);
-  const [callError, setCallError] = useState(null);
-  const runningRef = useRef(false);
-  const aliveRef = useRef(true);
   const jobRef = useRef(null);
 
   const setJob = useCallback((fn) => {
@@ -38,44 +31,6 @@ export default function JobView({ id, notice }) {
       jobRef.current = job;
       return { ...s, job };
     });
-  }, []);
-
-  useEffect(() => {
-    aliveRef.current = true;
-    return () => {
-      aliveRef.current = false;
-    };
-  }, []);
-
-  // Runs the pipeline one step at a time until complete, a step fails, or the page is left.
-  const drive = useCallback(async (applicationId) => {
-    if (runningRef.current) return;
-    runningRef.current = true;
-    setDriving(true);
-    setCallError(null);
-    try {
-      while (aliveRef.current) {
-        let res;
-        try {
-          res = await runNextStep(applicationId);
-        } catch {
-          setCallError("We lost the connection. Retry to carry on where pip left off.");
-          break;
-        }
-        if (!res) break;
-        if (res.steps) setPipeline(res);
-        if (res.error && !res.steps) {
-          setCallError(generationErrorMessage(res, "We couldn't run the next step."));
-          break;
-        }
-        if (res.error && res.step) break; // a step failed: shown on its row with Retry
-        if (res.complete) break;
-        if (res.busy && !res.ran) await sleep(2000);
-      }
-    } finally {
-      runningRef.current = false;
-      if (aliveRef.current) setDriving(false);
-    }
   }, []);
 
   const load = useCallback(async () => {
@@ -93,23 +48,15 @@ export default function JobView({ id, notice }) {
     }
     jobRef.current = job;
     setState({ status: "ready", job, error: null, code: null });
-    if (job.application) {
-      const p = await getPipeline(job.application.id).catch(() => null);
-      if (p && !p.error) {
-        setPipeline(p);
-        // Resume on load only if it is incomplete and nothing failed before (a failure waits for the user's Retry).
-        if (!p.complete && !p.steps.some((s) => s.status === "failed")) drive(job.application.id);
-      } else {
-        setCallError(generationErrorMessage(p, "We couldn't load pip's progress."));
-      }
-    }
-  }, [id, drive]);
+  }, [id]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const job = state.job;
+  const bots = usePipelineStatus(job?.application?.id, null);
+  const pipeline = bots.status;
 
   const saveField = async (field, value) => {
     const before = jobRef.current;
@@ -138,7 +85,7 @@ export default function JobView({ id, notice }) {
     }
   };
 
-  const letterId = pipeline?.steps?.find((s) => s.step === "WRITER" && s.status === "done")?.ids?.coverLetterId;
+  const letterId = pipeline?.steps?.find((s) => s.id === "writer" && s.status === "done")?.ids?.coverLetterId;
 
   const copyLetter = async () => {
     try {
@@ -311,10 +258,11 @@ export default function JobView({ id, notice }) {
       {job.application ? (
         <>
           <PipelineProgress
-            pipeline={pipeline}
-            driving={driving}
-            callError={callError}
-            onRetry={() => (pipeline ? drive(job.application.id) : load())}
+            status={bots.status}
+            loading={bots.loading}
+            error={bots.error}
+            retrying={bots.retrying}
+            onRetry={bots.retry}
           />
           <StatusActions
             application={job.application}
