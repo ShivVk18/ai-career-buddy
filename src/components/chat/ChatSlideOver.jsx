@@ -30,7 +30,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
     {
       id: "welcome",
       role: "assistant",
-      content: "hey there! i'm pip. i can look through your saved ats scores, roadmaps, cover letters and cold emails. what are you working on today? ask me about your own scores, roadmap or documents.",
+      content: "hey, i'm pip. i can look through your ats scores, roadmaps, letters and emails. what are you working on?",
       outfit: "coffee",
     },
   ]);
@@ -175,7 +175,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
       {/* Header */}
       <div className="px-5 py-4 bg-panel border-b border-line flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-pip-soft flex items-center justify-center p-1 pip-hop">
+          <div className="w-8 h-8 rounded-full bg-brand-soft flex items-center justify-center p-1">
             <Image
               src="/pip/pip-detective.svg"
               alt="pip"
@@ -189,8 +189,8 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
             <h2 className="text-sm font-semibold tracking-tight text-text">
               chat with pip
             </h2>
-            <span className="font-pixel text-[11px] text-pip-ink">
-              ai career companion • read-only
+            <span className="font-pixel text-[11px] text-brand-ink">
+              read-only. reads your records
             </span>
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
         {!embedded && (
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:bg-soft transition"
+            className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-muted hover:bg-soft transition"
             aria-label="close chat"
           >
             <X className="w-4 h-4" />
@@ -230,14 +230,14 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
       {messages.length <= 2 && (
         <div className="px-4 py-2 border-t border-line bg-panel/50">
           <span className="font-pixel text-[10px] uppercase text-muted block mb-2 tracking-wider">
-            suggested prompts:
+            try asking
           </span>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED_PROMPTS.map((promptText, i) => (
               <button
                 key={i}
                 onClick={() => handleSend(promptText)}
-                className="text-[11px] font-sans px-2.5 py-1 rounded-full bg-panel border border-line text-text hover:border-pip hover:text-pip transition text-left"
+                className="text-xs min-h-8 px-3 py-1 rounded-[var(--radius-chip)] bg-panel border border-line text-text hover:border-brand hover:text-brand-ink transition text-left"
               >
                 {promptText}
               </button>
@@ -261,12 +261,12 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
             onChange={(e) => setInput(e.target.value)}
             placeholder="ask pip about your scores, roadmap or documents…"
             disabled={isWorking}
-            className="flex-1 min-w-0 bg-soft text-text placeholder:text-faint text-xs sm:text-sm px-4 py-2.5 rounded-full border border-transparent focus:border-pip focus:bg-panel outline-none transition"
+            className="flex-1 min-w-0 bg-soft text-text placeholder:text-faint text-xs sm:text-sm px-4 py-2.5 rounded-full border border-transparent focus:border-brand focus:bg-panel outline-none transition"
           />
           <button
             type="submit"
             disabled={isWorking || !input.trim()}
-            className="btn-pill-primary w-10 h-10 p-0 rounded-full shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center bg-ink text-ink-foreground hover:opacity-90 transition w-11 h-11 p-0 rounded-full shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="send message"
           >
             <Send className="w-4 h-4" />
@@ -283,8 +283,8 @@ export default function ChatSlideOver({ isOpen, onClose, embedded = false, initi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md h-full shadow-pop transition-transform animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 z-50 flex justify-end bg-ink/40" onClick={onClose} onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <div role="dialog" aria-label="chat with pip" onClick={(e) => e.stopPropagation()} className="h-full w-full max-w-md overflow-hidden shadow-soft animate-in slide-in-from-right duration-200 md:m-3 md:h-[calc(100%-1.5rem)] md:rounded-[var(--radius-panel)] md:border md:border-line">
         {content}
       </div>
     </div>

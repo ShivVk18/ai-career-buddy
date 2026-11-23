@@ -6,6 +6,10 @@ import { useTheme } from "next-themes";
 import {
   Briefcase,
   BrainCircuit,
+  Gift,
+  Home,
+  Mic,
+  User,
   ClipboardCheck,
   FileText,
   Inbox,
@@ -19,19 +23,26 @@ import {
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { getApplications } from "@/actions/Applications";
 
+// Offer helper is not built yet; flip when /offers ships.
+const OFFER_ROUTE_PRESENT = false;
+
 const STATIC_ITEMS = [
+  { id: "home", group: "flow", label: "home", href: "/dashboard", icon: Home },
+  { id: "onboarding", group: "flow", label: "onboarding / profile", href: "/onboarding?edit=1", icon: User },
+  { id: "apps", group: "flow", label: "applications / track", href: "/applications", icon: Briefcase },
+  { id: "needs", group: "flow", label: "needs you", href: "/needs-you", icon: Inbox },
+  { id: "interview-flow", group: "flow", label: "interview", href: "/interview", icon: Mic },
+  { id: "offer", group: "flow", label: "offer helper", href: "/offers", icon: Gift, when: OFFER_ROUTE_PRESENT },
   { id: "resume", group: "tools", label: "resume builder", href: "/resume", icon: ScrollText },
-  { id: "ats", group: "tools", label: "ats checker", href: "/resume-parser", icon: ClipboardCheck },
   { id: "interview", group: "tools", label: "interview prep", href: "/interview", icon: Sparkles },
   { id: "cover", group: "tools", label: "cover letter", href: "/cover-letter", icon: FileText },
   { id: "cold", group: "tools", label: "cold email", href: "/cold-email", icon: Mail },
   { id: "roadmap", group: "tools", label: "career roadmap", href: "/roadmap", icon: BrainCircuit },
-  { id: "apps", group: "go to", label: "applications", href: "/applications", icon: Briefcase },
-  { id: "needs", group: "go to", label: "needs you", href: "/needs-you", icon: Inbox },
+  { id: "ats", group: "tools", label: "resume parser / ats checker", href: "/resume-parser", icon: ClipboardCheck },
   { id: "settings", group: "go to", label: "settings", href: "/settings", icon: Settings },
   { id: "theme", group: "go to", label: "toggle light / dark theme", action: "theme", icon: Sparkles },
   { id: "chat", group: "go to", label: "open chat with pip", action: "chat", icon: MessageSquare },
-];
+].filter((i) => i.when !== false);
 
 /**
  * Cmd/Ctrl+K command menu for the app shell. Arrow keys move, Enter picks, Esc closes (Radix dialog).
