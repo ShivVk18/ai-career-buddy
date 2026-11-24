@@ -118,6 +118,9 @@ export default function StatusActions({ application, onChange }) {
               <PartyPopper className="h-4 w-4 text-pip" aria-hidden="true" /> You got an offer. Congratulations!
             </p>
             <p className="text-xs text-muted">Take a moment to enjoy this one. You earned it.</p>
+            <Link href={`/offers/${application.id}`} className="mt-1 inline-flex min-h-11 items-center text-xs font-medium text-pip-ink underline underline-offset-2">
+              open the offer helper
+            </Link>
           </div>
         </div>
       )}

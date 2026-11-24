@@ -1,14 +1,10 @@
 import AppWindow from "@/components/ui/AppWindow";
-import PixelScene from "@/components/ui/PixelScene";
+import SceneScreen from "@/components/ui/SceneScreen";
 import Skeleton from "@/components/ui/Skeleton";
 
 export default function ApplicationsLoading() {
   return (
-    <div className="relative min-h-full" aria-busy="true" aria-label="loading applications">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <PixelScene variant="sea" seed={505} />
-      </div>
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-3 pb-10 pt-4 sm:px-8 sm:pt-16">
+    <SceneScreen variant="sea" seed={505} as="div" innerClassName="max-w-6xl" label="loading applications">
         <AppWindow title="ascendai · applications" bodyClassName="p-3 sm:p-6">
           <div className="flex gap-3 overflow-hidden">
             {[0, 1, 2, 3].map((i) => (
@@ -19,7 +15,6 @@ export default function ApplicationsLoading() {
             ))}
           </div>
         </AppWindow>
-      </div>
-    </div>
+    </SceneScreen>
   );
 }

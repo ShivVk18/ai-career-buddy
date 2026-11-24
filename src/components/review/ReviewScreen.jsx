@@ -3,8 +3,7 @@
 import { useRef, useState } from "react";
 import { Check, Loader2, RotateCw } from "lucide-react";
 import AppWindow from "@/components/ui/AppWindow";
-import PixelScene from "@/components/ui/PixelScene";
-import StepCaption from "@/components/ui/StepCaption";
+import SceneScreen from "@/components/ui/SceneScreen";
 import TrackedChangeDoc from "@/components/ui/TrackedChangeDoc";
 import UndoToast from "@/components/ui/UndoToast";
 import PipStatus from "@/components/ui/PipStatus";
@@ -194,18 +193,17 @@ export default function ReviewScreen({ status, error, onRetry, data, onCommit, o
     </AppWindow>
   );
 
-  return (
-    <section aria-label="review resume edits" className={cn("relative", scene && "flex min-h-screen flex-col justify-center overflow-hidden px-3 py-6 sm:px-8 sm:py-10")}>
-      {scene && (
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-          <PixelScene variant="lemon" seed={404} />
-        </div>
-      )}
-      <div className="relative mx-auto w-full max-w-[1040px]">
-        <StepCaption n={4} className="mb-4 text-base sm:text-lg">you review. every line has a source.</StepCaption>
-        {windowEl}
-      </div>
+  const inner = (
+    <>
+      {windowEl}
       <UndoToast open={!!toast} message={toast?.message} onUndo={undo} onClose={close} duration={8000} />
-    </section>
+    </>
+  );
+
+  if (!scene) return <section aria-label="review resume edits" className="relative"><div className="relative mx-auto w-full max-w-[1040px]">{inner}</div></section>;
+  return (
+    <SceneScreen variant="lemon" seed={404} center label="review resume edits">
+      {inner}
+    </SceneScreen>
   );
 }

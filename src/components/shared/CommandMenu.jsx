@@ -23,8 +23,8 @@ import {
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { getApplications } from "@/actions/Applications";
 
-// Offer helper is not built yet; flip when /offers ships.
-const OFFER_ROUTE_PRESENT = false;
+// Offer helper lives at /offers (opens the offer directly when there is just one).
+const OFFER_ROUTE_PRESENT = true;
 
 const STATIC_ITEMS = [
   { id: "home", group: "flow", label: "home", href: "/dashboard", icon: Home },

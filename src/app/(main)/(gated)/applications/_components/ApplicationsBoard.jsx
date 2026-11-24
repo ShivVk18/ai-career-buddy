@@ -12,9 +12,8 @@ import { generationErrorMessage } from "@/components/shared/generationError";
 import AppWindow from "@/components/ui/AppWindow";
 import EmptyState from "@/components/ui/EmptyState";
 import KanbanBoard from "@/components/ui/KanbanBoard";
-import PixelScene from "@/components/ui/PixelScene";
+import SceneScreen from "@/components/ui/SceneScreen";
 import Skeleton from "@/components/ui/Skeleton";
-import StepCaption from "@/components/ui/StepCaption";
 import UndoToast from "@/components/ui/UndoToast";
 import FollowUpCard from "./FollowUpCard";
 import {
@@ -123,6 +122,15 @@ function CardBody({ app, onMove, onMark, onAskDate, askDate, onPickDate, onSkipD
           mark applied
         </button>
       )}
+      {(app.status === "OFFER" || app.status === "CLOSED") && (
+        <Link
+          href={`/offers/${app.id}`}
+          className="mt-2 inline-flex min-h-9 items-center gap-1 rounded-full bg-pip-soft px-3 text-xs font-medium text-pip-ink outline-none hover:bg-pip-soft/70 focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {app.status === "OFFER" ? "offer helper" : "next week's tasks"}
+          <ArrowRight className="size-3" aria-hidden="true" />
+        </Link>
+      )}
       {app.nextAction && (
         <Link
           href={app.nextAction.href}
@@ -136,20 +144,14 @@ function CardBody({ app, onMove, onMark, onAskDate, askDate, onPickDate, onSkipD
   );
 }
 
-function Shell({ children, caption = true, title = "ascendai · applications" }) {
+function Shell({ children, title = "ascendai · applications" }) {
   return (
-    <div className="relative min-h-full">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <PixelScene variant="sea" seed={505} />
-      </div>
-      <div className="relative z-10 mx-auto w-full max-w-6xl space-y-4 px-3 pb-10 pt-4 sm:px-8 sm:pt-8">
-        <h1 className="sr-only">applications</h1>
-        {caption && <StepCaption>you apply. pip tracks and follows up.</StepCaption>}
-        <AppWindow title={title} className="relative" bodyClassName="p-3 sm:p-6">
-          {children}
-        </AppWindow>
-      </div>
-    </div>
+    <SceneScreen variant="sea" seed={505} as="div" innerClassName="max-w-6xl space-y-4">
+      <h1 className="sr-only">applications</h1>
+      <AppWindow title={title} className="relative" bodyClassName="p-3 sm:p-6">
+        {children}
+      </AppWindow>
+    </SceneScreen>
   );
 }
 
@@ -300,7 +302,7 @@ export default function ApplicationsBoard({ actions = DEFAULT_ACTIONS }) {
 
   if (error) {
     return (
-      <Shell caption={false}>
+      <Shell>
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[14px] bg-gap-soft px-4 py-3 text-sm text-gap-ink">
           <span className="min-w-0 flex-1 font-doc text-base">{error}</span>
           <button type="button" onClick={() => load()} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-5 text-sm text-ink-foreground">
@@ -329,7 +331,7 @@ export default function ApplicationsBoard({ actions = DEFAULT_ACTIONS }) {
 
   if (apps.length === 0) {
     return (
-      <Shell caption={false}>
+      <Shell>
         <EmptyState
           outfit="detective"
           title="no applications yet"

@@ -9,9 +9,8 @@ import { useVoiceAnswer } from "@/hooks/use-voice-answer";
 import AppWindow from "@/components/ui/AppWindow";
 import PipAvatar from "@/components/ui/PipAvatar";
 import PipStatus from "@/components/ui/PipStatus";
-import PixelScene from "@/components/ui/PixelScene";
+import SceneScreen from "@/components/ui/SceneScreen";
 import Skeleton from "@/components/ui/Skeleton";
-import StepCaption from "@/components/ui/StepCaption";
 import Wave from "./Wave";
 import RubricDots from "./RubricDots";
 
@@ -229,13 +228,8 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
   const recording = voice.isRecording;
 
   return (
-    <div className="relative min-h-full">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <PixelScene variant="peaks" seed={606} />
-      </div>
-      <div className="relative z-10 mx-auto w-full max-w-6xl space-y-4 px-3 pb-10 pt-4 sm:px-8 sm:pt-8">
+    <SceneScreen variant="peaks" seed={606} as="div" innerClassName="max-w-6xl space-y-4">
         <h1 className="sr-only">interview practice</h1>
-        <StepCaption n={6}>practise for that exact interview.</StepCaption>
         <div className="relative flex flex-col gap-3">
           {toastOpen && (
             <div role="status" className="fade-up z-20 flex w-fit max-w-full items-center gap-3 rounded-[14px] bg-ink py-2.5 pl-3 pr-5 font-doc text-sm text-ink-foreground shadow-soft sm:absolute sm:left-1/2 sm:top-3.5 sm:-translate-x-1/2">
@@ -436,7 +430,6 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
             )}
           </AppWindow>
         </div>
-      </div>
-    </div>
+    </SceneScreen>
   );
 }
