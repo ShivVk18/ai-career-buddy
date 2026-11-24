@@ -1,6 +1,6 @@
 // Generic undo tokens. Not a "use server" file; pure (no I/O). A token names an undo operation and its target id;
 // the server action that runs it (src/actions/Undo.js) re-checks ownership, so a forged token can only touch the caller's own rows.
-export const UNDO_KINDS = ["resume_restore", "resume_delete", "roadmap_delete", "status_move"];
+export const UNDO_KINDS = ["resume_restore", "resume_delete", "roadmap_delete", "status_move", "followup_approve", "roadmap_gap"];
 
 /**
  * `data` is optional small extra state (status_move: { s: previousStatus, i: previousInterviewAt | null }).

@@ -9,6 +9,8 @@ import { undoCutoff } from "@/lib/softDelete";
 import { z } from "zod";
 import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
 import { countGaps, deriveStepTargets } from "@/lib/roadmap/derive";
+import { gapSteps } from "@/lib/applications/derive";
+import { makeUndoToken } from "@/lib/undo";
 
 const NO_SOURCES_MSG =
   "We couldn't ground a roadmap in your details. Add skills or experience to your profile or resume, then try again.";
@@ -539,5 +541,94 @@ export async function getStepTargets(roadmapId) {
   } catch (error) {
     console.error("getStepTargets failed:", safeErr(error));
     return fail("FAILED", "Failed to load targets.");
+  }
+}
+
+const addGapSchema = z.object({
+  skill: z.string().trim().min(1).max(80),
+  applicationId: z.string().trim().min(1).max(100).optional(),
+});
+const GAP_TRIES = 3;
+
+/**
+ * Adds one skill gap as a "Skill gap" step ("Learn <skill>") to the most recently updated active roadmap. No AI.
+ * Idempotent per skill: if a step for it already exists nothing is added (created: false, same stepId).
+ * Returns { success: true, roadmapId, stepId, roadmapItemId (= stepId), created, undoToken? } (undoToken only when created;
+ * undo(token) removes that step if it is still untouched) or { error, code: INVALID | NOT_FOUND | NO_ROADMAP | FAILED }.
+ */
+export async function addGapToRoadmap(input) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const p = addGapSchema.safeParse(input ?? {});
+  if (!p.success) return fail("INVALID", "Add the skill you want to learn (up to 80 characters).");
+  const { skill, applicationId } = p.data;
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    let job = null;
+    if (applicationId) {
+      const app = await db.application.findFirst({
+        where: { id: applicationId, userId: user.id, deletedAt: null },
+        select: { jobId: true, job: { select: { title: true, company: true } } },
+      });
+      if (!app) return fail("NOT_FOUND", "We couldn't find that application.");
+      job = { jobId: app.jobId, title: app.job?.title, company: app.job?.company };
+    }
+    for (let i = 0; i < GAP_TRIES; i++) {
+      const path = await db.careerPath.findFirst({ where: { userId: user.id, status: "active", deletedAt: null }, orderBy: { updatedAt: "desc" } });
+      if (!path) return fail("NO_ROADMAP", "You don't have an active roadmap yet. Create one first.");
+      const steps = Array.isArray(path.steps) ? path.steps : [];
+      const added = gapSteps([skill], steps, { company: job?.company, title: job?.title, jobId: job?.jobId });
+      if (added.length === 0) {
+        const k = skill.toLowerCase();
+        const existing = steps.find((st) => st && String(st.title ?? "").toLowerCase().includes(k));
+        return { success: true, roadmapId: path.id, stepId: existing?.id ?? null, roadmapItemId: existing?.id ?? null, created: false };
+      }
+      const all = [...steps, ...added];
+      const progress = stepProgress(all);
+      const res = await db.careerPath.updateMany({
+        where: { id: path.id, userId: user.id, deletedAt: null, updatedAt: path.updatedAt },
+        data: { steps: all, progress },
+      });
+      if (res.count === 1) {
+        const stepId = added[0].id;
+        return { success: true, roadmapId: path.id, stepId, roadmapItemId: stepId, created: true, undoToken: makeUndoToken("roadmap_gap", path.id, { s: stepId }) };
+      }
+    }
+    return fail("FAILED", "We couldn't save that. Please try again.");
+  } catch (error) {
+    console.error("addGapToRoadmap failed:", safeErr(error));
+    return fail("FAILED", "We couldn't save that. Please try again.");
+  }
+}
+
+/** Undo of addGapToRoadmap: removes that one "Skill gap" step if it is still not completed. Idempotent. Owner-scoped. */
+export async function removeGapFromRoadmap(roadmapId, stepId) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  if (typeof roadmapId !== "string" || !roadmapId || !Number.isInteger(stepId)) return fail("INVALID", "Nothing to undo.");
+  try {
+    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
+    for (let i = 0; i < GAP_TRIES; i++) {
+      const path = await db.careerPath.findFirst({ where: { id: roadmapId, userId: user.id, deletedAt: null } });
+      if (!path) return fail("NOT_FOUND", "Roadmap not found.");
+      const steps = Array.isArray(path.steps) ? path.steps : [];
+      const step = steps.find((st) => st && st.id === stepId);
+      if (!step) return { success: true };
+      if (step.category !== "Skill gap" || step.completed) return fail("NOT_FOUND", "That step has changed, so it was kept.");
+      const left = steps.filter((st) => st !== step);
+      const progress = stepProgress(left);
+      const next = left.find((st) => st && !st.completed);
+      const res = await db.careerPath.updateMany({
+        where: { id: path.id, userId: user.id, deletedAt: null, updatedAt: path.updatedAt },
+        data: { steps: left, progress, currentStep: next ? Number(next.id) || 0 : left.length },
+      });
+      if (res.count === 1) return { success: true };
+    }
+    return fail("FAILED", "We couldn't undo that. Please try again.");
+  } catch (error) {
+    console.error("removeGapFromRoadmap failed:", safeErr(error));
+    return fail("FAILED", "We couldn't undo that. Please try again.");
   }
 }

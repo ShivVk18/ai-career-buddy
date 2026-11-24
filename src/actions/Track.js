@@ -5,6 +5,7 @@ import { db } from "@/lib/prisma";
 import { safeErr } from "@/lib/utils";
 import { fail, requireUser, NO_PROFILE_MSG } from "@/lib/jobs/common";
 import { nextMondayAt9, validTimeZone } from "@/lib/applications/schedule";
+import { makeUndoToken } from "@/lib/undo";
 
 const NOT_FOUND = () => fail("NOT_FOUND", "We couldn't find that.");
 const FOLLOW_UP_PREFIX = "FOLLOW_UP_DRAFT:";
@@ -32,22 +33,60 @@ export async function approveAndCopy(itemId) {
     });
     const src = row?.sources && typeof row.sources === "object" ? row.sources : null;
     if (!row || src?.template !== "follow_up") return NOT_FOUND();
-    const out = (approvedAt, already) => ({ success: true, itemId: parsed.data, text: row.content, subject: row.subject ?? "", applicationId: appId ?? null, approvedAt, alreadyApproved: already });
-    const app = row.jobId ? await db.application.findFirst({ where: { jobId: row.jobId, userId: user.id, deletedAt: null }, select: { id: true } }) : null;
+    const out = (approvedAt, already, undoToken) => ({ success: true, itemId: parsed.data, text: row.content, subject: row.subject ?? "", applicationId: appId ?? null, approvedAt, alreadyApproved: already, ...(undoToken ? { undoToken } : {}) });
+    const app = row.jobId ? await db.application.findFirst({ where: { jobId: row.jobId, userId: user.id, deletedAt: null }, select: { id: true, lastActivityAt: true } }) : null;
     const appId = app?.id;
     if (row.status !== "draft") return out(typeof src.approvedAt === "string" ? src.approvedAt : null, true);
 
     const approvedAt = new Date();
     const claim = await db.coldEmail.updateMany({
       where: { id: row.id, userId: user.id, status: "draft" },
-      data: { status: "sent", sources: { ...src, approvedAt: approvedAt.toISOString(), sentByUser: true } },
+      data: { status: "sent", sources: { ...src, approvedAt: approvedAt.toISOString(), sentByUser: true, prevActivityAt: app?.lastActivityAt ? new Date(app.lastActivityAt).toISOString() : null } },
     });
     if (claim.count === 0) return out(null, true); // a double click: the other call won
     if (appId) await db.application.updateMany({ where: { id: appId, userId: user.id }, data: { lastActivityAt: approvedAt } });
-    return out(approvedAt.toISOString(), false);
+    return out(approvedAt.toISOString(), false, makeUndoToken("followup_approve", row.id));
   } catch (error) {
     console.error("approveAndCopy failed:", safeErr(error));
     return fail("FAILED", "We couldn't save that. Please try again.");
+  }
+}
+
+/**
+ * The undo of approveAndCopy for a FOLLOW_UP_DRAFT item. Puts the draft back to "draft", clears sources.approvedAt/sentByUser
+ * and restores the application's previous lastActivityAt (so the quiet counter returns). Idempotent: an item that is still a
+ * draft returns { success: true }. Returns { success: true } or { error, code: INVALID | NOT_FOUND | FAILED }.
+ */
+export async function unapproveFollowUp(itemId) {
+  const { user } = await requireUser();
+  if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
+  const parsed = itemSchema.safeParse(itemId);
+  if (!parsed.success || !parsed.data.startsWith(FOLLOW_UP_PREFIX)) return fail("INVALID", "That item can't be undone.");
+  const emailId = parsed.data.slice(FOLLOW_UP_PREFIX.length);
+  if (!emailId) return fail("INVALID", "That item can't be undone.");
+  try {
+    const row = await db.coldEmail.findFirst({
+      where: { id: emailId, userId: user.id, deletedAt: null },
+      select: { id: true, jobId: true, status: true, sources: true },
+    });
+    const src = row?.sources && typeof row.sources === "object" ? row.sources : null;
+    if (!row || src?.template !== "follow_up") return NOT_FOUND();
+    if (row.status === "draft") return { success: true };
+    if (src.sentByUser !== true) return NOT_FOUND(); // sent some other way: not ours to reverse
+    const { approvedAt: _a, sentByUser: _s, prevActivityAt, ...rest } = src;
+    const claim = await db.coldEmail.updateMany({ where: { id: row.id, userId: user.id, status: "sent" }, data: { status: "draft", sources: rest } });
+    if (claim.count === 0) return { success: true }; // a double click: the other call won
+    if (row.jobId && prevActivityAt !== undefined) {
+      const app = await db.application.findFirst({ where: { jobId: row.jobId, userId: user.id, deletedAt: null }, select: { id: true } });
+      if (app) {
+        const when = typeof prevActivityAt === "string" && !Number.isNaN(new Date(prevActivityAt).getTime()) ? new Date(prevActivityAt) : null;
+        await db.application.updateMany({ where: { id: app.id, userId: user.id }, data: { lastActivityAt: when } });
+      }
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("unapproveFollowUp failed:", safeErr(error));
+    return fail("FAILED", "We couldn't undo that. Please try again.");
   }
 }
 

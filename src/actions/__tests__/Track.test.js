@@ -12,7 +12,7 @@ const db = {
     }),
   },
   application: {
-    findFirst: vi.fn(async ({ where }) => (app && (where.id === app.id || where.jobId === app.jobId) && where.userId === "u1" ? { id: app.id } : null)),
+    findFirst: vi.fn(async ({ where }) => (app && (where.id === app.id || where.jobId === app.jobId) && where.userId === "u1" ? { id: app.id, lastActivityAt: app.lastActivityAt } : null)),
     updateMany: vi.fn(async ({ where, data }) => (where.id === app.id && where.userId === "u1" ? (Object.assign(app, data), { count: 1 }) : { count: 0 })),
   },
   task: {
@@ -29,7 +29,7 @@ const db = {
 vi.mock("@/lib/prisma", () => ({ db }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 
-const { approveAndCopy, saveWeakSpot, completeTask } = await import("../Track.js");
+const { approveAndCopy, unapproveFollowUp, saveWeakSpot, completeTask } = await import("../Track.js");
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -56,6 +56,34 @@ describe("approveAndCopy", () => {
     expect((await approveAndCopy("FOLLOW_UP_DRAFT:zzz")).code).toBe("NOT_FOUND");
     email.sources = { template: null };
     expect((await approveAndCopy("FOLLOW_UP_DRAFT:e1")).code).toBe("NOT_FOUND");
+  });
+});
+
+describe("unapproveFollowUp", () => {
+  it("reverses approveAndCopy and restores the previous last activity", async () => {
+    const before = new Date("2026-01-01T00:00:00Z");
+    app.lastActivityAt = before;
+    const a = await approveAndCopy("FOLLOW_UP_DRAFT:e1");
+    expect(typeof a.undoToken).toBe("string");
+    expect(app.lastActivityAt.getTime()).toBeGreaterThan(before.getTime());
+    expect(await unapproveFollowUp("FOLLOW_UP_DRAFT:e1")).toEqual({ success: true });
+    expect(email.status).toBe("draft");
+    expect(email.sources).toEqual({ template: "follow_up", paragraphs: [] });
+    expect(app.lastActivityAt).toEqual(before);
+    expect(await unapproveFollowUp("FOLLOW_UP_DRAFT:e1")).toEqual({ success: true }); // idempotent
+  });
+  it("restores a null last activity and can be approved again", async () => {
+    await approveAndCopy("FOLLOW_UP_DRAFT:e1");
+    await unapproveFollowUp("FOLLOW_UP_DRAFT:e1");
+    expect(app.lastActivityAt).toBeNull();
+    expect((await approveAndCopy("FOLLOW_UP_DRAFT:e1")).alreadyApproved).toBe(false);
+  });
+  it("validates, checks ownership and leaves emails not sent by the user alone", async () => {
+    expect((await unapproveFollowUp("COLD_EMAIL:e1")).code).toBe("INVALID");
+    expect((await unapproveFollowUp("FOLLOW_UP_DRAFT:zzz")).code).toBe("NOT_FOUND");
+    email.status = "sent";
+    expect((await unapproveFollowUp("FOLLOW_UP_DRAFT:e1")).code).toBe("NOT_FOUND");
+    expect(email.status).toBe("sent");
   });
 });
 

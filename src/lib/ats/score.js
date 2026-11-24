@@ -41,17 +41,22 @@ function verifyItems(items, normResume, catalog, requireQuote) {
 export const stripRec = ({ sources, ...rest }) => ({ ...rest });
 
 
-/** Requirements: "matched" needs a verified resume quote; "gap" needs a verified job description id. */
-function verifyRequirements(items, normResume, catalog) {
+/**
+ * Requirements. The model may answer "matched", "partial" (related evidence that covers only part of the requirement) or "gap".
+ * "matched" and "partial" need a verified resume quote; "gap" needs a verified job description id.
+ * Each stored row has `status` ("matched" | "gap", unchanged meaning for older readers such as AtsResult; a partial is stored as
+ * "gap" there because it is not a full match) and `match` ("have" | "partial" | "gap", the three-way answer).
+ */
+export function verifyRequirements(items, normResume, catalog) {
   const out = [];
   for (const it of items || []) {
     const requirement = String(it?.requirement ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
-    const status = String(it?.status ?? "").trim().toLowerCase();
-    if (!requirement || (status !== "matched" && status !== "gap")) continue;
+    const raw = String(it?.status ?? "").trim().toLowerCase();
+    if (!requirement || (raw !== "matched" && raw !== "gap" && raw !== "partial")) continue;
     const sources = verifySources(it.sources, normResume, catalog);
-    const ok =
-      status === "matched" ? sources.some((x) => x.type === "resume_quote") : sources.some((x) => x.type === "jd");
-    if (ok) out.push({ requirement, status, sources });
+    const ok = raw === "gap" ? sources.some((x) => x.type === "jd") : sources.some((x) => x.type === "resume_quote");
+    if (!ok) continue;
+    out.push({ requirement, status: raw === "matched" ? "matched" : "gap", match: raw === "matched" ? "have" : raw, sources });
     if (out.length >= 12) break;
   }
   return out;
@@ -161,7 +166,7 @@ EVIDENCE RULE (mandatory):
 - A source is either {"type":"resume_quote","quote":"..."} where quote is an EXACT contiguous excerpt (20-200 characters) copied verbatim from the RESUME TEXT, or {"type":"jd","id":"jd:<n>"} using an id from the job description lines above.
 - Every strength and every weakness MUST include at least one "resume_quote" (a claim about the resume must be backed by the resume). For a weakness or missing skill, cite the job description line that requires it (type "jd") AND a resume_quote showing what the resume says in that area (for example its skills line).
 - Recommendations may cite only job description lines.
-- "requirements": list up to 12 of the most important requirements from the job description. status "matched" needs a resume_quote proving it (verbatim, 20-200 characters); status "gap" needs the job description line id ("jd:<n>") that states the requirement. Use only those two statuses.
+- "requirements": list up to 12 of the most important requirements from the job description. status "matched" needs a resume_quote proving it (verbatim, 20-200 characters); status "partial" also needs a verbatim resume_quote, and means the resume shows related evidence that covers only part of the requirement (use it sparingly, never to flatter); status "gap" needs the job description line id ("jd:<n>") that states the requirement. Use only those three statuses.
 - Items without a verifiable source will be discarded. Give at least 2 items for each of those three lists when the evidence exists.
 
 OUTPUT JSON STRUCTURE:

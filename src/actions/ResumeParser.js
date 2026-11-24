@@ -227,6 +227,7 @@ export async function getUserATSScores() {
         hasResumeText: typeof ev?.resumeText === "string" && ev.resumeText.length > 0,
         resumePurged: typeof ev?.resumePurgedAt === "string",
         requirementsMatched: reqs.filter((r) => r.status === "matched").length,
+        requirementsPartial: reqs.filter((r) => r.match === "partial").length,
         requirementsTotal: reqs.length,
       };
     });

@@ -5,6 +5,8 @@ import { makeUndoToken, parseUndoToken } from "@/lib/undo";
 import { restoreResumeVersion, restoreDeletedResume } from "@/actions/Resume";
 import { restoreCareerRoadmap } from "@/actions/CareerRoadmap";
 import { setApplicationStatus } from "@/actions/Applications";
+import { unapproveFollowUp } from "@/actions/Track";
+import { removeGapFromRoadmap } from "@/actions/CareerRoadmap";
 
 const fail = (code, error) => ({ error, code });
 
@@ -61,6 +63,15 @@ export async function undo(token) {
       const r = await setApplicationStatus(t.id, prev, when);
       if (r?.error) return r;
       return { success: true, kind: t.kind, application: r.application, redoToken: r.undoToken };
+    }
+    case "followup_approve": {
+      const r = await unapproveFollowUp(`FOLLOW_UP_DRAFT:${t.id}`);
+      return r?.error ? r : { success: true, kind: t.kind };
+    }
+    case "roadmap_gap": {
+      // id = roadmap id, data.s = the step id that addGapToRoadmap created. Only removes that exact step if still untouched.
+      const r = await removeGapFromRoadmap(t.id, t.data?.s);
+      return r?.error ? r : { success: true, kind: t.kind };
     }
     default:
       return fail("INVALID", "Nothing to undo.");
