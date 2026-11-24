@@ -1,19 +1,18 @@
 import { redirect } from "next/navigation";
-import { industries } from "@/data/industries";
-import OnboardingForm from "./_components/OnboardingForm";
+import OnboardingFlow from "./_components/OnboardingFlow";
 import { getUserOnboardingStatus } from "@/actions/User";
 
-export default async function OnboardingPage() {
-  // Check if user is already onboarded
-  const { isOnboarded } = await getUserOnboardingStatus();
-
-  if (isOnboarded) {
-    redirect("/dashboard");
+export default async function OnboardingPage({ searchParams }) {
+  const { edit } = (await searchParams) || {};
+  // Onboarded users are sent home, except when they come here on purpose to add to their profile.
+  if (!edit) {
+    const { isOnboarded } = await getUserOnboardingStatus();
+    if (isOnboarded) redirect("/dashboard");
   }
 
   return (
     <main>
-      <OnboardingForm industries={industries} />
+      <OnboardingFlow editing={!!edit} />
     </main>
   );
 }

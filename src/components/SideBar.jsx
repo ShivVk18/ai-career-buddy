@@ -37,49 +37,49 @@ export default function SideNavbar() {
       label: "Dashboard",
       href: "/dashboard",
       icon: (
-        <LayoutDashboard className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <LayoutDashboard className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
     {
       label: "Resume Builder",
       href: "/resume",
       icon: (
-        <ScrollText className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <ScrollText className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
     {
       label: "Interview Prep",
       href: "/interview",
       icon: (
-        <Briefcase className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <Briefcase className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
     {
       label: "Cover Letter",
       href: "/cover-letter",
       icon: (
-        <FileText className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <FileText className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
     {
       label: "Cold Email",
       href: "/cold-email",
       icon: (
-        <Mail className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <Mail className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
     {
       label: "Career Roadmap",
       href: "/roadmap",
       icon: (
-        <BrainCircuit className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <BrainCircuit className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
     {
       label: "Resume Parser",
       href: "/resume-parser",
       icon: (
-        <ClipboardList className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-accent transition-editorial" />
+        <ClipboardList className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
       ),
     },
   ];
@@ -109,7 +109,7 @@ export default function SideNavbar() {
             {!isLoaded ? (
               <div className="w-10 h-10 rounded-sm bg-divider animate-pulse shrink-0" />
             ) : (
-              <div className="w-10 h-10 rounded-sm bg-accent flex items-center justify-center text-accent-foreground font-bold shrink-0 text-sm shadow-sm transition-editorial">
+              <div className="w-10 h-10 rounded-sm bg-primary flex items-center justify-center text-primary-foreground font-bold shrink-0 text-sm shadow-sm transition-editorial">
                 {userName.charAt(0)}
               </div>
             )}
@@ -143,7 +143,7 @@ export default function SideNavbar() {
               open ? "gap-3 px-4" : "justify-center"
             } py-3 rounded-sm text-muted-foreground hover:bg-border/20 hover:text-foreground transition-editorial group border-t border-divider pt-6`}
           >
-            <span className="shrink-0 group-hover:text-accent transition-editorial">
+            <span className="shrink-0 group-hover:text-primary-ink transition-editorial">
               <LogOut size={18} />
             </span>
             {open && (
@@ -161,7 +161,7 @@ export default function SideNavbar() {
 export const Logo = () => {
   return (
     <a href="/dashboard" className="relative z-20 flex items-center space-x-3 py-2 px-4">
-      <div className="h-2 w-2 rounded-full bg-accent" />
+      <div className="h-2 w-2 rounded-full bg-primary" />
       <span className="font-clash font-bold text-xl uppercase tracking-tighter text-foreground">
         AscendAI
       </span>
@@ -172,7 +172,7 @@ export const Logo = () => {
 export const LogoIcon = () => {
   return (
     <a href="/dashboard" className="relative z-20 flex items-center justify-center py-2">
-      <div className="h-4 w-4 rounded-full bg-accent" />
+      <div className="h-4 w-4 rounded-full bg-primary" />
     </a>
   );
 };

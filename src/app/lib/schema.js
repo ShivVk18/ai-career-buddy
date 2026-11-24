@@ -35,6 +35,7 @@ export const contactSchema = z.object({
 });
 
 export const entrySchema = z.object({
+  id: z.string().optional(),
   title: z.string().min(1, "Title is required"),
   organization: z.string().min(1, "Organization is required"),
   startDate: z.string().min(1, "Start date is required"),
@@ -82,4 +83,12 @@ export const coldEmailSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   jobTitle: z.string().min(1, "Job title is required"),
   jobDescription: z.string().min(1, "Job description is required"),
+  recipientName: z.string().max(100, "Max 100 characters").optional(),
+  recipientRole: z.string().max(150, "Max 150 characters").optional(),
+  recipientEmail: z
+    .string()
+    .trim()
+    .max(254, "Max 254 characters")
+    .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), "Enter a valid email address")
+    .optional(),
 });

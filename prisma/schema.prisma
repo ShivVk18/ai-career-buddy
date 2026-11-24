@@ -11,11 +11,10 @@ datasource db {
 model User {
   id            String    @id @default(uuid())
   clerkUserId   String    @unique 
-  email         String    @unique
+  email         String?   @unique
   name          String?
   imageUrl      String?
   industry      String?   
-  industryInsight IndustryInsight? @relation(fields: [industry], references: [industry])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -24,6 +23,8 @@ model User {
 
   skills        String[]  
   assessments   Assessment[]
+  quizSessions  QuizSession[]
+  interviewAnswers InterviewAnswer[]
   resume        Resume?
   coverLetter   CoverLetter[]
   
@@ -35,6 +36,86 @@ model User {
   mockInterviews MockInterview[]
   atsScores      ATSScore[]
   coldEmail     ColdEmail[]
+
+  // UX flow pass (D55, D59)
+  targetRole      String?
+  jobSearchStage  JobSearchStage?
+  jobs            Job[]
+  applications    Application[]
+  notifications   Notification[]
+  // Task 9: target base pay (user-entered, any currency) for the offer comparison; dated tasks.
+  targetBase      Int?
+  tasks           Task[]
+}
+
+enum JobSearchStage {
+  JUST_STARTING
+  APPLYING
+  INTERVIEWING
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFER
+  CLOSED
+}
+
+// A job the user pasted (text or URL). Soft-deleted with deletedAt (D60); hard-deleted lazily after 7 days.
+model Job {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String?   @db.Text
+  jdText    String    @db.Text
+  company   String?
+  title     String?
+  location  String?
+  // { company|title|location: [sourceId...], fieldOrigin: { company: "ai"|"user", ... } } - jd:<line> ids (D26)
+  sources   Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  application   Application?
+  coverLetters  CoverLetter[]
+  coldEmails    ColdEmail[]
+  atsScores     ATSScore[]
+  resumeVersions ResumeVersion[]
+
+  @@index([userId, deletedAt])
+}
+
+// One application per job (jobId unique). `pipeline` holds the resumable run state (D57).
+model Application {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId            String            @unique
+  job              Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status           ApplicationStatus @default(SAVED)
+  appliedAt        DateTime?
+  interviewAt      DateTime?
+  nextActionAt     DateTime?
+  followUpCount    Int               @default(0)
+  closedReason     String?
+  closedAt         DateTime?
+  // Last thing the user did on this application (applied, follow-up sent by them). Drives the quiet flag.
+  lastActivityAt   DateTime?
+  // Offer the user typed in: { base, bonus, equity, other, currency, savedAt } (Task 9).
+  offer            Json?
+  // Set once when closeApplication turned this job's ATS gaps into roadmap tasks (idempotent).
+  gapTasksAddedAt  DateTime?
+  // QuizSession id of the interview prep created from the job description (no FK; owner-checked on read).
+  prepSessionId    String?
+  pipeline         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  @@index([userId, status, deletedAt])
+  @@index([userId, nextActionAt])
 }
 
 model Assessment {
@@ -77,6 +158,7 @@ model Resume {
   
   atsScore    Float?
   feedback    String?
+  deletedAt   DateTime?
   
   // Tailored versions
   tailoredVersions ResumeVersion[]
@@ -136,10 +218,13 @@ model ResumeVersion {
   tailoredContent String  @db.Text
   atsScore       Float?
   matchPercentage Float? 
+  jobId          String?
+  job            Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   
   @@index([resumeId])
+  @@index([jobId])
 }
 
 model CoverLetter {
@@ -151,10 +236,16 @@ model CoverLetter {
   companyName     String    
   jobTitle        String    
   status          String    @default("draft") 
+  sources         Json?
+  jobId           String?
+  job             Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  deletedAt       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, deletedAt])
+  @@index([jobId])
 }
 
 model CareerPath {
@@ -173,6 +264,9 @@ model CareerPath {
   userId        String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  @@index([userId, deletedAt])
 }
 
 model SkillGapAnalysis {
@@ -289,35 +383,6 @@ model CareerGoal {
   @@index([userId, status])
 }
 
-model IndustryInsight {
-  id            String    @id @default(cuid())
-  industry      String    @unique
-
-  users         User[]
-
-  salaryRanges  Json[]
-
-  growthRate    Float
-  demandLevel   String
-  topSkills     String[]
-
-  marketOutlook String
-  keyTrends     String[]
-
-  recommendedSkills String[]
-
-  jobAvailability Json[]
-  hiringTrends   Json[]
-  
-  remoteWorkPercentage Float?
-  hybridWorkTrends     Json[]
-
-  lastUpdated   DateTime  @default(now())
-  nextUpdate    DateTime
-
-  @@index([industry])
-}
-
 model ATSScore {
   id             String   @id @default(cuid())
   userId         String
@@ -333,6 +398,7 @@ model ATSScore {
   relevantSkills String[]
   missingSkills  String[]
   recommendations Json[]
+  evidence       Json?
 
   finalSummary   String   @db.Text
   analyzedBy     String?
@@ -341,10 +407,16 @@ model ATSScore {
   companyName    String?
   jobDescription String?  @db.Text
 
+  jobId          String?
+  job            Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  deletedAt      DateTime?
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, deletedAt])
+  @@index([jobId])
 }
 
 model ColdEmail {
@@ -356,8 +428,103 @@ model ColdEmail {
   companyName     String    
   jobTitle        String    
   status          String    @default("draft") 
+  sources         Json?
+  recipientName   String?
+  recipientRole   String?
+  recipientEmail  String?
+  subject         String?
+  followUpAt      DateTime?
+  jobId           String?
+  job             Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  deletedAt       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, followUpAt])
+  @@index([userId, deletedAt])
+  @@index([jobId])
 }   
+
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String?
+  task      String
+  provider  String
+  model     String
+  ok        Boolean
+  latencyMs Int
+  errorCode String?
+  // D50: one id per user action; the daily cap counts distinct ids. Null on legacy rows (counted individually).
+  actionId  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model QuizSession {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  // [{ question, options, correctAnswer, explanation }] - never sent to the browser before submit
+  questions   Json
+  createdAt   DateTime  @default(now())
+  submittedAt DateTime?
+  answers     InterviewAnswer[]
+
+  @@index([userId])
+}
+
+// One scored open interview answer (D45). Rubric is the verified rubric; overall is recomputed on the server.
+model InterviewAnswer {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  sessionId     String
+  session       QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionIndex Int
+  question      String      @db.Text
+  topic         String
+  answerText    String      @db.Text
+  rubric        Json?
+  overall       Float?
+  createdAt     DateTime    @default(now())
+
+  @@unique([sessionId, questionIndex])
+  @@index([userId, topic])
+}
+
+// In-app notifications only (D-HF2): no email or push. Created server-side (e.g. when a bot run finishes).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+// A dated to-do (weak spot from practice, gap after a rejection). `key` makes creation idempotent per user.
+model Task {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId String?
+  title         String
+  note          String?
+  source        String
+  key           String
+  dueAt         DateTime
+  doneAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([userId, key])
+  @@index([userId, doneAt, dueAt])
+}
