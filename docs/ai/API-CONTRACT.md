@@ -817,6 +817,11 @@ Server actions (Auth.js session required; signed-out throws "Unauthorized"):
   chips:[{ label, value, tone:"neutral|good|warn|bad" }], ids, needsYou, error, startedAt, finishedAt }] }`. Tailor chips include
   `Invented` (numberCheck count). Polling this also resumes a stalled run in the background.
 - `retryPipeline(applicationId)` returns `{ started }`; use after a failed step (failed steps are never auto-retried).
+- QA fixes (checker chips, early review, rate limits):
+  - `getPipelineStatus` also returns top-level `reviewReady: boolean` and `draftId: string | null`. Once TAILOR is `done`, `reviewReady` is true and `draftId` is the id for `/review/[draftId]` (`getTailorDraft(draftId)` only needs the draft, so it works while writer/connector still run). Otherwise `false` / `null`.
+  - CHECKER chips `Match`, `ATS` and `Gaps` now all come from the one ATS analysis (match = its matchPercentage, gaps = its missing skills). A chip with no data is omitted (never a default like 100%). Old runs without the ATS source show only `ATS`.
+  - Failed step `error` is now `{ code, error, retryAfterSec }`. Provider failures use `code: "RATE_LIMITED" | "PROVIDER_DOWN"` (other failures keep `FAILED | NO_SOURCES | INVENTED_DETAIL | AI_LIMIT`). `retryAfterSec` = seconds still to wait (0 = retry now): the provider's Retry-After if sent, else 30 s doubling per failed attempt (max 600).
+  - `retryPipeline` during the backoff returns `{ error, code: "RATE_LIMITED", retryAfterSec, step }` and makes no AI call. `runNextStep` returns the pipeline plus `{ error, code: "RATE_LIMITED", retryAfterSec, step }` in the same case. The automatic resume (`advanceRun`) respects it too. After it elapses, retry works as before.
 - `getHomeState()` now also resumes the user's stalled runs in the background. `intakeJob`, `runNextStep`, `getPipeline` unchanged.
 
 Route: `GET|POST /api/cron/pipeline` with `Authorization: Bearer $CRON_SECRET` (401 otherwise, also when CRON_SECRET is unset).

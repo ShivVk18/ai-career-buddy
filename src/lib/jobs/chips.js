@@ -1,5 +1,5 @@
 // Chip-ready data for intake and pipeline steps. Pure: no I/O.
-import { normalizePipeline, STEPS, STALE_CLAIM_MS, TERMINAL } from "./pipeline.js";
+import { normalizePipeline, publicError, STEPS, STALE_CLAIM_MS, TERMINAL } from "./pipeline.js";
 
 const REQ_HEAD = /^\s*(?:#+\s*)?(?:key\s+)?(requirements?|qualifications?|what you(?:'|’)?ll (?:need|bring)|what we(?:'|’)?re looking for|must[- ]haves?|minimum qualifications?|basic qualifications?|preferred qualifications?|nice to haves?|who you are|you have|skills|your profile)\b[^\n]{0,40}:?\s*$/i;
 const ANY_HEAD = /^\s*(?:#+\s*)?[A-Z][A-Za-z '’&/-]{2,50}:?\s*$/;
@@ -82,9 +82,11 @@ export function stepChips(step, st) {
   const o = st.output ?? {};
   const out = [];
   if (step === "CHECKER") {
-    if (o.matchPercent != null) out.push(chip("Match", `${o.matchPercent}%`, o.matchPercent >= 60 ? "good" : "warn"));
-    if (o.atsScore != null) out.push(chip("ATS", o.atsScore));
-    if (Array.isArray(o.missing)) out.push(chip("Gaps", o.missing.length, o.missing.length ? "warn" : "good"));
+    // Match, ATS and Gaps all come from the one ATS analysis (output.source === "ats"); a chip with no data is omitted.
+    const fromAts = o.source === "ats";
+    if (fromAts && Number.isFinite(o.matchPercent)) out.push(chip("Match", `${Math.round(o.matchPercent)}%`, o.matchPercent >= 60 ? "good" : "warn"));
+    if (Number.isFinite(o.atsScore)) out.push(chip("ATS", o.atsScore));
+    if (fromAts && Array.isArray(o.missing)) out.push(chip("Gaps", o.missing.length, o.missing.length ? "warn" : "good"));
   } else if (step === "TAILOR") {
     if (o.proposalCount != null) out.push(chip("Edits", o.proposalCount));
     if (o.inventedCount != null) out.push(chip("Invented", o.inventedCount, o.inventedCount === 0 ? "good" : "bad"));
@@ -113,7 +115,7 @@ export function pipelineStatus(app, now = Date.now()) {
       chips: stepChips(s, { ...st, status }),
       ids: st.ids ?? {},
       needsYou: st.needsYou === true,
-      error: status === "failed" ? st.error ?? { code: "FAILED", error: "This step failed. Try again." } : null,
+      error: status === "failed" ? publicError(st, now) : null,
       startedAt: st.startedAt ?? null,
       finishedAt: st.finishedAt ?? null,
     };
@@ -123,5 +125,8 @@ export function pipelineStatus(app, now = Date.now()) {
   if (steps.some((x) => x.status === "failed")) run = "failed";
   else if (done === steps.length) run = steps.some((x) => x.needsYou) ? "needs_you" : "done";
   else if (p.run) run = "running";
-  return { applicationId: app.id, jobId: app.jobId, run, completedCount: done, total: steps.length, steps };
+  // Review can open as soon as tailor is done, while writer/connector keep running.
+  const tailor = steps.find((x) => x.step === "TAILOR");
+  const draftId = tailor?.status === "done" && typeof tailor.ids?.draftId === "string" ? tailor.ids.draftId : null;
+  return { applicationId: app.id, jobId: app.jobId, run, completedCount: done, total: steps.length, reviewReady: draftId !== null, draftId, steps };
 }

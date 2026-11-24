@@ -18,7 +18,7 @@ const DONE_CHIPS = {
 };
 
 // phase: number of finished steps (0-4). failedAt: index of a failed step.
-function build(phase, failedAt = -1) {
+function build(phase, failedAt = -1, errorCode = "AI_UNAVAILABLE") {
   const steps = META.map(([id, step, label], i) => {
     const failed = i === failedAt;
     const done = i < phase && !failed;
@@ -27,17 +27,18 @@ function build(phase, failedAt = -1) {
       status: failed ? "failed" : done ? "done" : i === phase ? "running" : "pending",
       chips: done ? DONE_CHIPS[id] : [],
       needsYou: done && id !== "checker",
-      error: failed ? { code: "AI_UNAVAILABLE", error: "" } : null,
+      error: failed ? { code: errorCode, error: "", ...(errorCode === "RATE_LIMITED" ? { retryAfterSec: 20 } : {}) } : null,
     };
   });
   const completedCount = steps.filter((s) => s.status === "done").length;
   const run = failedAt >= 0 ? "failed" : phase >= 4 ? "needs_you" : "running";
-  return { applicationId: "a1", jobId: "j1", run, completedCount, total: 4, steps };
+  const reviewReady = steps[1].status === "done";
+  return { applicationId: "a1", jobId: "j1", run, completedCount, total: 4, steps, ...(reviewReady ? { reviewReady: true, draftId: "d1" } : {}) };
 }
 
 export default function DevBots({ mode }) {
   const polls = useRef(0);
-  const fixed = { step1: build(0), step3: build(2), done: build(4), failed: build(2, 2) }[mode];
+  const fixed = { step1: build(0), step3: build(2), done: build(4), failed: build(2, 2), ready: build(2), ratelimit: build(2, 2, "RATE_LIMITED") }[mode];
   const actions = useMemo(
     () => ({
       getPipelineStatus: async () => {
@@ -47,7 +48,7 @@ export default function DevBots({ mode }) {
         polls.current += 1;
         return build(Math.min(4, Math.floor(polls.current / 2)));
       },
-      retryPipeline: async () => ({ started: true }),
+      retryPipeline: async () => (mode === "ratelimit" ? { error: "busy", code: "RATE_LIMITED", retryAfterSec: 20 } : { started: true }),
     }),
     [mode, fixed],
   );

@@ -40,7 +40,7 @@ function outputLink(s) {
 
 const linkCls = "inline-flex min-h-9 items-center gap-1 rounded text-sm text-brand-ink underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-pip/50";
 
-function PipelineBody({ status, loading, error, retrying, onRetry }) {
+function PipelineBody({ status, loading, error, retrying, onRetry, cooldown = 0 }) {
   if (loading && !status) {
     return (
       <section aria-label="Pipeline progress" aria-busy="true" className="panel-cozy border border-line bg-panel p-5 sm:p-8 space-y-4">
@@ -76,6 +76,10 @@ function PipelineBody({ status, loading, error, retrying, onRetry }) {
         ? DOING[active.id][1]
         : "waiting to start";
   const review = finished ? steps.map(outputLink).find((l, i) => l && steps[i].needsYou) : null;
+  const tailorDraftId = status.draftId || steps.find((s) => s.id === "tailor" && s.status === "done")?.ids?.draftId;
+  const reviewHref = tailorDraftId ? `/review/${encodeURIComponent(tailorDraftId)}` : null;
+  const tailorDone = steps.some((s) => s.id === "tailor" && s.status === "done");
+  const reviewReady = !finished && (status.reviewReady ?? tailorDone) && !!reviewHref;
 
   const rows = steps.map((s) => {
     const isActive = active?.id === s.id;
@@ -92,8 +96,16 @@ function PipelineBody({ status, loading, error, retrying, onRetry }) {
         <>
           {failed?.id === s.id && (
             <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-gap-ink">
-              <span className="min-w-0 flex-1">{generationErrorMessage(s.error, "This step failed. Try again.")}</span>
-              <button type="button" onClick={onRetry} disabled={retrying} className={btn}>
+              <span className="min-w-0 flex-1" role={cooldown > 0 ? "status" : undefined}>
+                {cooldown > 0 || s.error?.code === "RATE_LIMITED"
+                  ? cooldown > 0
+                    ? `pip's ai is busy, trying again in ${cooldown}s`
+                    : "pip's ai is busy. you can try again now."
+                  : s.error?.code === "PROVIDER_DOWN"
+                    ? "pip's ai is down for a moment. try again soon."
+                    : generationErrorMessage(s.error, "This step failed. Try again.")}
+              </span>
+              <button type="button" onClick={onRetry} disabled={retrying || cooldown > 0} className={btn}>
                 <RotateCw className={`size-4 ${retrying ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden="true" /> retry
               </button>
             </div>
@@ -133,8 +145,15 @@ function PipelineBody({ status, loading, error, retrying, onRetry }) {
           {finished ? (
             <>
               <p className="text-sm text-muted">everything is drafted. nothing is sent until you say so.</p>
-              <Link href={review?.href || "/needs-you"} className="btn-pill-primary inline-flex min-h-11 items-center gap-2 px-6 text-sm">
+              <Link href={reviewHref || review?.href || "/needs-you"} className="btn-pill-primary inline-flex min-h-11 items-center gap-2 px-6 text-sm">
                 review what pip made <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </>
+          ) : reviewReady ? (
+            <>
+              <p className="text-sm text-muted">{failed ? "your resume is ready. retry the other steps above." : "your resume is ready. the letter and outreach are still being written."}</p>
+              <Link href={reviewHref} className="btn-pill-primary inline-flex min-h-11 items-center gap-2 px-6 text-sm">
+                review your resume <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </>
           ) : failed ? (

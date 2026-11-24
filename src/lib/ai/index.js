@@ -33,6 +33,19 @@ function classify(err) {
   return null; // not retryable
 }
 
+/** Seconds the provider asked us to wait (Retry-After header, seconds or HTTP date), or null. */
+export function retryAfterFrom(err, now = Date.now()) {
+  const h = err?.headers ?? err?.response?.headers ?? err?.responseHeaders;
+  let v = null;
+  if (h && typeof h.get === "function") v = h.get("retry-after");
+  else if (h && typeof h === "object") v = h["retry-after"] ?? h["Retry-After"];
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  if (Number.isFinite(n)) return n >= 0 ? Math.ceil(n) : null;
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? Math.max(0, Math.ceil((t - now) / 1000)) : null;
+}
+
 function withTimeout(promise) {
   let t;
   const timeout = new Promise((_, reject) => {
@@ -72,6 +85,12 @@ export async function runAI(task, callback, { userId, temperature: tempOverride,
 
   const temperature = tempOverride ?? TASKS[task].temperature;
   const attempts = [];
+  let sawRateLimit = false;
+  let retryAfterSec = null;
+  // The runner reads this to tell "rate limited" from "provider down" (actions only return a generic code).
+  const note = () => {
+    if (action) action.lastFailure = { rateLimited: sawRateLimit, retryAfterSec };
+  };
 
   for (const { provider, model } of route) {
     if (!isSupportedProvider(provider)) {
@@ -102,7 +121,13 @@ export async function runAI(task, callback, { userId, temperature: tempOverride,
         const code = kind || (err?.name === "AIOutputError" ? "invalid_output" : "error");
         logAttempt({ userId, actionId, task, provider, model, ok: false, latencyMs: Date.now() - started, errorCode: code });
         debugLog("error", err);
+        if (kind === "rate_limited") {
+          sawRateLimit = true;
+          const ra = retryAfterFrom(err);
+          if (ra != null) retryAfterSec = Math.max(retryAfterSec ?? 0, ra);
+        }
         if (!kind) {
+          note();
           throw new AIError(`AI request failed (${provider}: ${code})`, {
             code: err?.name === "AIOutputError" ? "AI_BAD_OUTPUT" : "AI_FAILED",
             attempts: [`${provider}: ${code}`],
@@ -114,6 +139,7 @@ export async function runAI(task, callback, { userId, temperature: tempOverride,
     }
   }
 
+  note();
   throw new AIError(`All AI providers failed: ${attempts.join("; ") || "none configured"}`, { attempts });
 }
 

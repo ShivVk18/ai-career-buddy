@@ -58,6 +58,28 @@ export default function JobView({ id, notice }) {
   const bots = usePipelineStatus(job?.application?.id, null);
   const pipeline = bots.status;
 
+  // Pull fresh job fields (company, title, location) as the pipeline progresses, without a reload.
+  const progressKey = pipeline ? `${pipeline.run}:${pipeline.completedCount}` : null;
+  const lastKey = useRef(null);
+  useEffect(() => {
+    if (!progressKey) return;
+    if (lastKey.current === null) {
+      lastKey.current = progressKey;
+      if (!jobRef.current || (jobRef.current.company && jobRef.current.title)) return;
+    } else if (lastKey.current === progressKey) return;
+    lastKey.current = progressKey;
+    let alive = true;
+    getJob(id)
+      .then((fresh) => {
+        if (!alive || !fresh || fresh.error) return;
+        setJob((j) => (j ? { ...j, ...fresh, application: j.application } : j));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [progressKey, id, setJob]);
+
   const saveField = async (field, value) => {
     const before = jobRef.current;
     const next = value.trim() || null;
@@ -262,6 +284,8 @@ export default function JobView({ id, notice }) {
           loading={bots.loading}
           error={bots.error}
           retrying={bots.retrying}
+          cooldown={bots.cooldown}
+          jobId={id}
           onRetry={bots.retry}
         />
       ) : (

@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { db } from "@/lib/prisma";
 import { safeErr } from "@/lib/utils";
 import { fail, requireUser, NO_PROFILE_MSG } from "@/lib/jobs/common";
-import { publicPipeline, normalizePipeline } from "@/lib/jobs/pipeline";
+import { publicPipeline, normalizePipeline, activeBackoff } from "@/lib/jobs/pipeline";
 import { pipelineStatus } from "@/lib/jobs/chips";
 import { loadApp, runStepFor, advanceRun, isStalled } from "@/lib/jobs/runner";
 
@@ -95,6 +95,8 @@ export async function retryPipeline(applicationId) {
     const p = normalizePipeline(app.pipeline);
     const hasWork = Object.values(p.steps).some((s) => !["done", "skipped"].includes(s.status));
     if (!hasWork) return { started: false };
+    const wait = activeBackoff(p);
+    if (wait) return { ...fail("RATE_LIMITED", "The AI service is busy. Please wait a moment before retrying."), retryAfterSec: wait.retryAfterSec, step: wait.step };
     after(() => advanceRun({ applicationId: app.id, user, authUserId }));
     return { started: true };
   } catch (error) {

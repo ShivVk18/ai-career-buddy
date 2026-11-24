@@ -41,6 +41,8 @@ vi.mock("@/actions/ColdEmail", () => ({ generateColdEmail: (...a) => generateCol
 vi.mock("@/lib/ats/score", () => ({ scoreResume: (...a) => scoreResume(...a), stripRec: ({ sources, ...r }) => r }));
 
 const { advanceRun, isStalled, runStepFor } = await import("../runner.js");
+const { retryAfterFrom } = await import("@/lib/ai/index.js");
+const { currentAiAction } = await import("@/lib/ai/action.js");
 const { pipelineStatus, countRequirements } = await import("../chips.js");
 
 const user = { id: "u1", name: "Sam" };
@@ -109,5 +111,84 @@ describe("isStalled / chips", () => {
   it("counts requirement bullets under the requirements heading", () => {
     expect(countRequirements(JD)).toBe(3);
     expect(countRequirements("no bullets here")).toBe(0);
+  });
+});
+
+describe("checker chips come from one analysis", () => {
+  it("match, ATS and gaps all come from the ATS result, not the keyword matcher", async () => {
+    scoreResume.mockImplementationOnce(async () => ({
+      result: { strengths: [], weaknesses: [], recommendations: [] },
+      raw: { atsScore: 66, matchPercentage: 58, improvements: [], relevantSkills: ["React"], missingSkills: ["Go", "Kafka"], finalSummary: "ok" },
+      evidence: {},
+    }));
+    rows.ats.push({ id: "x" }); // ensure create path is used instead
+    rows.ats.length = 0;
+    db.aTSScore.create.mockImplementationOnce(async () => ({ id: "ats9", atsScore: 66, matchPercentage: 58, relevantSkills: ["React"], missingSkills: ["Go", "Kafka"] }));
+    await runStepFor({ applicationId: "a1", user, authUserId: "clerk_1" });
+    const chips = pipelineStatus(appRow).steps[0].chips;
+    expect(chips).toEqual([
+      { label: "Match", value: "58%", tone: "warn" },
+      { label: "ATS", value: "66", tone: "neutral" },
+      { label: "Gaps", value: "2", tone: "warn" },
+    ]);
+  });
+  it("omits chips with no data instead of defaulting", () => {
+    const app = { id: "a", jobId: "j", pipeline: { v: 1, run: {}, steps: { CHECKER: { status: "done", output: { source: "ats", atsScore: 66, matchPercent: null, missing: null } } } } };
+    expect(pipelineStatus(app).steps[0].chips).toEqual([{ label: "ATS", value: "66", tone: "neutral" }]);
+    const old = { ...app, pipeline: { v: 1, run: {}, steps: { CHECKER: { status: "done", output: { matchPercent: 100, missing: [], atsScore: 66 } } } } };
+    expect(pipelineStatus(old).steps[0].chips).toEqual([{ label: "ATS", value: "66", tone: "neutral" }]);
+  });
+});
+
+describe("reviewReady", () => {
+  it("is true with draftId as soon as tailor is done while later steps are pending", async () => {
+    await runStepFor({ applicationId: "a1", user, authUserId: "clerk_1" });
+    expect(pipelineStatus(appRow)).toMatchObject({ reviewReady: false, draftId: null });
+    await runStepFor({ applicationId: "a1", user, authUserId: "clerk_1" });
+    const st = pipelineStatus(appRow);
+    expect(st).toMatchObject({ reviewReady: true, draftId: "d1", run: "running" });
+    expect(st.steps[2].status).toBe("pending");
+  });
+});
+
+describe("rate limit backoff", () => {
+  const limited = () => {
+    generateCoverLetter.mockImplementationOnce(async () => {
+      const ctx = currentAiAction();
+      ctx.lastFailure = { rateLimited: true, retryAfterSec: 45 };
+      return { error: "AI is temporarily unavailable.", code: "AI_UNAVAILABLE" };
+    });
+  };
+  it("marks the step RATE_LIMITED with retryAfterSec and refuses to call again until it elapses", async () => {
+    limited();
+    await advanceRun({ applicationId: "a1", user, authUserId: "clerk_1" });
+    const w = pipelineStatus(appRow).steps[2];
+    expect(w.status).toBe("failed");
+    expect(w.error).toMatchObject({ code: "RATE_LIMITED" });
+    expect(w.error.retryAfterSec).toBeGreaterThan(40);
+    expect(generateCoverLetter).toHaveBeenCalledTimes(1);
+    const r = await runStepFor({ applicationId: "a1", user, authUserId: "clerk_1" });
+    expect(r).toMatchObject({ code: "RATE_LIMITED", step: "WRITER" });
+    expect(r.retryAfterSec).toBeGreaterThan(0);
+    await advanceRun({ applicationId: "a1", user, authUserId: "clerk_1" });
+    expect(generateCoverLetter).toHaveBeenCalledTimes(1); // no extra call
+  });
+  it("grows 30 s per attempt without a header and reports PROVIDER_DOWN for outages", async () => {
+    generateCoverLetter.mockImplementationOnce(async () => ({ error: "x", code: "AI_UNAVAILABLE" }));
+    await advanceRun({ applicationId: "a1", user, authUserId: "clerk_1" });
+    const e = pipelineStatus(appRow).steps[2].error;
+    expect(e.code).toBe("PROVIDER_DOWN");
+    expect(e.retryAfterSec).toBeLessThanOrEqual(30);
+    expect(e.retryAfterSec).toBeGreaterThan(25);
+    appRow.pipeline.steps.WRITER.error.retryAt = new Date(Date.now() - 1000).toISOString(); // backoff elapsed
+    generateCoverLetter.mockImplementationOnce(async () => ({ error: "x", code: "AI_UNAVAILABLE" }));
+    await advanceRun({ applicationId: "a1", user, authUserId: "clerk_1" });
+    const e2 = pipelineStatus(appRow).steps[2].error;
+    expect(e2.retryAfterSec).toBeGreaterThan(55); // 60 s on the 2nd failure
+  });
+  it("reads Retry-After from headers", () => {
+    expect(retryAfterFrom({ headers: { "retry-after": "12" } })).toBe(12);
+    expect(retryAfterFrom({ response: { headers: new Headers({ "retry-after": "7" }) } })).toBe(7);
+    expect(retryAfterFrom({})).toBeNull();
   });
 });
