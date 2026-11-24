@@ -91,7 +91,7 @@ export async function requestPasswordReset(input) {
 /**
  * Sets a new password from an emailed token. Single use, 30 min. For an existing (Clerk-era) user this is how the account
  * is claimed: proving email ownership attaches the password to that same user row, so all their data is kept.
- * Returns { success: true } or { error, code: INVALID | INVALID_TOKEN | RATE_LIMITED | FAILED }. The UI then sends them to sign in.
+ * Returns { success: true, email } or { error, code: INVALID | INVALID_TOKEN | RATE_LIMITED | FAILED }. The UI signs them in with that email.
  */
 export async function resetPassword(input) {
   const parsed = resetSchema.safeParse(input ?? {});
@@ -107,12 +107,13 @@ export async function resetPassword(input) {
       // Atomic claim: only one caller can flip usedAt from null while the token is unexpired.
       const claimed = await tx.passwordResetToken.updateMany({ where: { id: row.id, usedAt: null, expiresAt: { gt: now } }, data: { usedAt: now } });
       if (claimed.count !== 1) return false;
-      await tx.user.update({ where: { id: row.userId }, data: { passwordHash } });
+      const user = await tx.user.update({ where: { id: row.userId }, data: { passwordHash }, select: { email: true } });
       await tx.passwordResetToken.updateMany({ where: { userId: row.userId, usedAt: null }, data: { usedAt: now } });
-      return true;
+      return user;
     });
     if (!ok) return fail("INVALID_TOKEN", "This link is invalid or has expired. Request a new one.");
-    return { success: true };
+    // The token proved ownership, so returning the email lets the page sign in without asking for it again.
+    return { success: true, email: ok.email };
   } catch (e) {
     console.error("resetPassword failed:", safeErr(e));
     return fail("FAILED", "We couldn't set your password. Please try again.");

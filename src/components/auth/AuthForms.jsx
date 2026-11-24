@@ -252,7 +252,6 @@ export function ForgotForm() {
 
 export function ResetForm({ token }) {
   const uid = useId();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError, errorRef] = useFormError();
@@ -271,10 +270,10 @@ export function ResetForm({ token }) {
         if (res.code === "INVALID_TOKEN") setDead(true);
         else setError(res.error);
       } else {
-        // The link doesn't carry the email, so the form asks for it to sign in right after.
-        const signedIn = await signInWithPassword({ email, password });
+        // resetPassword returns the account's email (the token proved ownership), so we sign in without asking for it.
+        const signedIn = res?.email ? await signInWithPassword({ email: res.email, password }) : null;
         if (signedIn?.success) return await goAfterSignIn(null);
-        setError("your password is set, but that email didn't match the account. sign in from the sign-in page.");
+        setError("your password is set. sign in from the sign-in page.");
       }
     } catch {
       setError("we couldn't reach the server. check your connection and try again.");
@@ -294,11 +293,8 @@ export function ResetForm({ token }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <ErrorLine id={`${uid}-err`} errorRef={errorRef}>{error}</ErrorLine>
-      <Field id={`${uid}-email`} label="email">
-        <Input id={`${uid}-email`} type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus required maxLength={254} />
-      </Field>
       <Field id={`${uid}-pw`} label="new password" hint={<p id={`${uid}-hint`} className={`text-xs ${hint.tone}`} aria-live="polite">{hint.label}</p>}>
-        <PasswordInput id={`${uid}-pw`} value={password} onChange={setPassword} autoComplete="new-password" describedBy={`${uid}-hint`} />
+        <PasswordInput id={`${uid}-pw`} value={password} onChange={setPassword} autoComplete="new-password" describedBy={`${uid}-hint`} autoFocus />
       </Field>
       <Submit busy={busy} busyText="saving...">set password</Submit>
     </form>
