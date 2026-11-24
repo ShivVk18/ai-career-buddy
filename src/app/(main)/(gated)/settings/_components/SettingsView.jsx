@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeSelect } from "@/components/ThemeToggle";
 import { deleteAllMyData, deleteAccount } from "@/actions/Account";
+import { signOutAction } from "@/actions/Auth";
 
 const DANGER = {
   data: {
@@ -28,7 +28,6 @@ const DANGER = {
 
 function DangerDialog({ kind, onClose }) {
   const router = useRouter();
-  const { signOut } = useClerk();
   const cfg = DANGER[kind];
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,15 +43,13 @@ function DangerDialog({ kind, onClose }) {
       const res = await (kind === "data" ? deleteAllMyData({ confirmation: typed.trim() }) : deleteAccount({ confirmation: typed.trim() }));
       if (!res || res.error) {
         setError(
-          res?.code === "CLERK_FAILED"
-            ? "Your data is deleted, but we couldn't remove your login yet. Press the button again to retry just that step."
-            : res?.error || "That didn't work. Nothing else was changed. Please try again."
+          res?.error || "That didn't work. Nothing else was changed. Please try again."
         );
         return;
       }
       if (kind === "account") {
         toast.success("Your account was deleted. Goodbye, and good luck.");
-        await signOut({ redirectUrl: "/" });
+        await signOutAction();
       } else {
         toast.success("All your data was deleted.");
         onClose();

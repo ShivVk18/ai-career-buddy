@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { pruneOldSessions } from "@/lib/interview/prune";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { runAIStructured, runAIText, withAiAction } from "@/lib/ai";
 import { quizSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
@@ -39,7 +39,7 @@ async function generateQuizImpl(skills) {
 
     // Fetch user industry + skills from DB
     const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
+      where: { id: userId },
       select: {
         id: true,
         industry: true,
@@ -153,7 +153,7 @@ async function submitQuizImpl(quizId, answers) {
     const parsedInput = submitSchema.safeParse({ quizId, answers });
     if (!parsedInput.success) return fail("INVALID");
 
-    const user = await db.user.findUnique({ where: { clerkUserId: userId } });
+    const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) return fail("NOT_FOUND", "User not found.");
 
     const session = await db.quizSession.findFirst({
@@ -241,7 +241,7 @@ export async function getAssessments() {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");

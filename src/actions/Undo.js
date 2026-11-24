@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { makeUndoToken, parseUndoToken } from "@/lib/undo";
 import { restoreResumeVersion, restoreDeletedResume } from "@/actions/Resume";
 import { restoreCareerRoadmap } from "@/actions/CareerRoadmap";

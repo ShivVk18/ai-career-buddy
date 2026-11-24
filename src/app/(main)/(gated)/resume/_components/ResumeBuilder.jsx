@@ -45,7 +45,7 @@ import { EntryForm } from "./EntryForm";
 import ResumeToolsPanel from "./ResumeToolsPanel";
 import { AITextarea } from "./AITextarea";
 import useFetch from "@/hooks/use-fetch";
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 
 import {
   ModernProTemplate,
@@ -148,7 +148,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   const [contactEditing, setContactEditing] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
   const router = useRouter();
-  const { user } = useUser();
+  const user = useSession().data?.user;
 
   const {
     control,
@@ -163,8 +163,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     resolver: zodResolver(resumeSchema),
     defaultValues: {
       contactInfo: {
-        fullName: initialResume?.contactInfo?.fullName || user?.fullName || "",
-        email: initialResume?.contactInfo?.email || user?.emailAddresses?.[0]?.emailAddress || "",
+        fullName: initialResume?.contactInfo?.fullName || user?.name || "",
+        email: initialResume?.contactInfo?.email || user?.email || "",
         mobile: initialResume?.contactInfo?.mobile || "",
         linkedin: initialResume?.contactInfo?.linkedin || "",
         twitter: initialResume?.contactInfo?.twitter || "",
@@ -243,8 +243,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   const resetToEmpty = () => {
     reset({
       contactInfo: {
-        fullName: user?.fullName || "",
-        email: user?.emailAddresses?.[0]?.emailAddress || "",
+        fullName: user?.name || "",
+        email: user?.email || "",
         mobile: "",
         linkedin: "",
         twitter: "",

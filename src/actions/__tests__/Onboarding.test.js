@@ -5,7 +5,7 @@ const db = { user: { findUnique: vi.fn() }, resume: { findUnique: vi.fn() }, $tr
 vi.mock("@/lib/prisma", () => ({ db }));
 vi.mock("@/lib/jobs/common", async () => ({
   fail: (code, error) => ({ error, code }),
-  requireUser: async () => ({ clerkUserId: "c1", user: { id: "u1" } }),
+  requireUser: async () => ({ authUserId: "c1", user: { id: "u1" } }),
   NO_PROFILE_MSG: "x", AI_LIMIT_MSG: "x", AI_UNAVAILABLE_MSG: "x",
 }));
 vi.mock("@/lib/ai", () => ({ runAIStructured: vi.fn(), withAiAction: (f) => f() }));

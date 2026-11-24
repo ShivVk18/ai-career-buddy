@@ -4,7 +4,7 @@ import { makeUndoToken, parseUndoToken } from "@/lib/undo";
 const restoreResumeVersion = vi.fn();
 const restoreDeletedResume = vi.fn();
 const restoreCareerRoadmap = vi.fn();
-vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
+vi.mock("@/lib/session", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("@/actions/Resume", () => ({ restoreResumeVersion, restoreDeletedResume }));
 vi.mock("@/actions/CareerRoadmap", () => ({ restoreCareerRoadmap }));
 const setApplicationStatus = vi.fn();

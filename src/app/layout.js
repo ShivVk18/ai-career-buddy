@@ -1,6 +1,6 @@
 import "./globals.css";
 import { Geist, Newsreader, Pixelify_Sans } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/Theme-Provider";
 
@@ -19,7 +19,6 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider afterSignOutUrl="/">
       <html lang="en" suppressHydrationWarning className={`${geist.variable} ${newsreader.variable} ${pixelify.variable}`}>
         <body className="bg-bg text-text font-sans antialiased selection:bg-lime selection:text-lime-foreground min-h-screen">
           <ThemeProvider
@@ -28,11 +27,10 @@ export default function RootLayout({ children }) {
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <SessionProvider>{children}</SessionProvider>
             <Toaster position="top-center" />
           </ThemeProvider>
         </body>
       </html>
-    </ClerkProvider>
   );
 }

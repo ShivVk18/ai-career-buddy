@@ -34,6 +34,12 @@ export function nextStep(pipeline, now = Date.now()) {
   return { complete: true };
 }
 
+/** Failed-step error for the browser: { code, error, retryAfterSec } (seconds still to wait, 0 = retry now). */
+export function publicError(st, now = Date.now()) {
+  const e = st.error ?? { code: "FAILED", error: "This step failed. Try again." };
+  return { code: e.code, error: e.error, retryAfterSec: retryWaitSec(st, now) };
+}
+
 /** Browser shape. A stale "running" claim is shown as "pending" (call runNextStep again). */
 export function publicPipeline(app, pipelineRaw, now = Date.now()) {
   const p = normalizePipeline(pipelineRaw);
@@ -44,7 +50,7 @@ export function publicPipeline(app, pipelineRaw, now = Date.now()) {
       step: s,
       status,
       reason: st.reason ?? null,
-      error: status === "failed" ? st.error ?? { code: "FAILED", error: "This step failed. Try again." } : null,
+      error: status === "failed" ? publicError(st) : null,
       output: st.output ?? null,
       ids: st.ids ?? {},
       needsYou: st.needsYou === true,
@@ -62,4 +68,29 @@ export function publicPipeline(app, pipelineRaw, now = Date.now()) {
     complete: nxt.complete === true,
     completedCount: steps.filter((x) => TERMINAL.has(x.status)).length,
   };
+}
+
+export const BACKOFF_BASE_SEC = 30;
+export const BACKOFF_MAX_SEC = 600;
+
+/** Wait before the next try: the provider's Retry-After if it sent one, else 30 s doubling per failed attempt (max 10 min). */
+export function backoffSec(attempts, providerSec = null) {
+  if (Number.isFinite(providerSec) && providerSec > 0) return Math.min(Math.ceil(providerSec), BACKOFF_MAX_SEC);
+  return Math.min(BACKOFF_BASE_SEC * 2 ** Math.max(0, attempts - 1), BACKOFF_MAX_SEC);
+}
+
+/** Seconds left of a step's backoff (0 when none or elapsed). */
+export function retryWaitSec(step, now = Date.now()) {
+  if (step?.status !== "failed") return 0;
+  const at = Date.parse(step.error?.retryAt ?? "");
+  return Number.isFinite(at) && at > now ? Math.ceil((at - now) / 1000) : 0;
+}
+
+/** First failed step still inside its backoff: { step, retryAfterSec } or null. */
+export function activeBackoff(pipeline, now = Date.now()) {
+  for (const s of STEPS) {
+    const w = retryWaitSec(pipeline.steps[s], now);
+    if (w > 0) return { step: s, retryAfterSec: w };
+  }
+  return null;
 }

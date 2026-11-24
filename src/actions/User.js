@@ -1,10 +1,9 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { safeErr } from "@/lib/utils";
-import { primaryEmail } from "@/lib/clerkEmail";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -34,7 +33,7 @@ export async function updateUser(data) {
   const input = parsed.data;
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please sign in again.");
@@ -69,26 +68,12 @@ export async function getUserOnboardingStatus() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  let user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+  const user = await db.user.findUnique({
+    where: { id: userId },
   });
 
-  // 👇 auto-create user record if it doesn't exist
-  if (!user) {
-    const client = await clerkClient();  // ✅ Call clerkClient as a function
-    const clerkUser = await client.users.getUser(userId);
-
-    user = await db.user.create({
-      data: {
-        clerkUserId: userId,
-        email: primaryEmail(clerkUser),
-        industry: null,
-        experience: null,
-        bio: "",
-        skills: [],
-      },
-    });
-  }
+  // The DB user is created by signUp; a valid session whose row is gone (deleted account) is signed out.
+  if (!user) throw new Error("Unauthorized");
 
   // D59: onboarded = has an industry (existing users), OR a resume, OR both onboarding answers.
   let isOnboarded = !!user.industry || (!!user.targetRole && !!user.jobSearchStage);

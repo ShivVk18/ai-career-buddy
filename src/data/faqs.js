@@ -12,7 +12,7 @@ export const faqs = [
   {
     question: "Is my data secure with AscendAI?",
     answer:
-      "Absolutely. We prioritize the security of your professional information. All data is encrypted and securely stored using industry-standard practices. We use Clerk for authentication and never share your personal information with third parties.",
+      "Absolutely. We prioritize the security of your professional information. All data is encrypted and securely stored using industry-standard practices. You sign in with your email and a password. Passwords are stored only as a salted hash, so nobody on our side can read them. We never share your personal information with third parties.",
   },
   {
     question: "How can I track my interview preparation progress?",

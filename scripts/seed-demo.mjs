@@ -1,8 +1,9 @@
 // Demo data for the happy-flow redesign. Dev database only; idempotent.
 // Run: npm run seed:demo   (loads .env via node --env-file-if-exists, like test:ai)
-// Optional: SEED_DEMO_CLERK_USER_ID=<your dev Clerk user id> to seed onto your own sign-in (an existing resume is left alone).
+// Demo sign-in: demo@ascendai.local with password SEED_DEMO_PASSWORD (default "demo-password-local", local DB only; the guard below enforces that).
 // Only rows with ids starting "demo-" (and the demo user) are written or replaced; nothing else is touched.
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { checkSeedTarget } from "../src/lib/seed/guard.js";
 
 const guard = checkSeedTarget(process.env);
@@ -16,7 +17,8 @@ const DAY = 24 * 60 * 60 * 1000;
 const now = Date.now();
 const ago = (d) => new Date(now - d * DAY);
 const ahead = (d) => new Date(now + d * DAY);
-const clerkUserId = process.env.SEED_DEMO_CLERK_USER_ID || "demo_seed_user";
+const DEMO_EMAIL = "demo@ascendai.local";
+const passwordHash = await bcrypt.hash(process.env.SEED_DEMO_PASSWORD || "demo-password-local", 12);
 
 const doneStep = (extra = {}) => ({ status: "done", startedAt: ago(1).toISOString(), finishedAt: ago(1).toISOString(), ...extra });
 const finishedPipeline = {
@@ -46,11 +48,13 @@ const jobs = [
 ];
 
 async function main() {
-  let user = await db.user.findUnique({ where: { clerkUserId } });
+  // Also adopts the demo user an earlier seed made under the Clerk-era id/email.
+  let user = (await db.user.findUnique({ where: { email: DEMO_EMAIL } })) ?? (await db.user.findUnique({ where: { clerkUserId: "demo_seed_user" } }));
   const created = !user;
+  if (user) user = await db.user.update({ where: { id: user.id }, data: { email: DEMO_EMAIL, passwordHash } });
   user ??= await db.user.create({
     data: {
-      clerkUserId, email: "demo@example.invalid", name: "Demo User", industry: "Software", experience: 3,
+      email: DEMO_EMAIL, passwordHash, name: "Demo User", industry: "Software", experience: 3,
       bio: "Frontend-leaning engineer who likes small, well-tested tools.",
       skills: ["JavaScript", "React", "Node.js", "SQL"], targetRole: "Frontend Engineer", jobSearchStage: "APPLYING",
     },
@@ -133,7 +137,7 @@ async function main() {
   await db.notification.create({
     data: { id: "demo-note-1", userId: user.id, type: "BOT_DONE", title: "Your drafts for Lumen Labs are ready", body: "Review the cover letter.", href: "/needs-you" },
   });
-  console.log(`seed:demo done (${created ? "created" : "reused"} user ${clerkUserId}). 6 applications: 1 finished run, 1 quiet (6 days), 1 follow-up draft waiting, 1 offer (with typed amounts and a target), 1 rejection with next-week gap tasks, 1 weak-spot task.`);
+  console.log(`seed:demo done (${created ? "created" : "reused"} user ${DEMO_EMAIL}). 6 applications: 1 finished run, 1 quiet (6 days), 1 follow-up draft waiting, 1 offer (with typed amounts and a target), 1 rejection with next-week gap tasks, 1 weak-spot task.`);
 }
 
 main().catch((e) => { console.error("seed:demo failed:", e?.message ?? e); process.exitCode = 1; }).finally(() => db.$disconnect());

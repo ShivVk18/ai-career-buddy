@@ -44,8 +44,8 @@ export function NeedsYou({ needsYou, followUps = [] }) {
   return (
     <Section title="needs you" hint={count} action={<Link href="/needs-you" className={textLink}>see all <ChevronRight className="size-3.5" aria-hidden="true" /></Link>}>
       <ul className="space-y-2">
-        {rows.slice(0, 4).map((it) => (
-          <li key={it.id}>
+        {rows.slice(0, 4).map((it, i) => (
+          <li key={`${it.id}:${it.href}:${i}`}>
             <Link href={it.href} className={rowLink}>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-text">{it.title}</span>

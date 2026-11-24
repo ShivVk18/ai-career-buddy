@@ -1,6 +1,6 @@
 "use client";
 
-import OnboardingFlow from "@/app/(main)/onboarding/_components/OnboardingFlow";
+import OnboardingFlow from "@/app/onboarding/_components/OnboardingFlow";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const chip = (kind, label, detail) => ({ kind, label, ...(detail ? { detail } : {}) });

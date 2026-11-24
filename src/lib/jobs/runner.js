@@ -3,11 +3,11 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/prisma";
 import { currentAiAction, withAiAction } from "@/lib/ai/action";
-import { matchText, resumeToText } from "@/lib/match";
+import { resumeToText } from "@/lib/match";
 import { scoreResume, stripRec } from "@/lib/ats/score";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { safeErr } from "@/lib/utils";
-import { STEPS, normalizePipeline, nextStep, publicPipeline, TERMINAL } from "@/lib/jobs/pipeline";
+import { STEPS, normalizePipeline, nextStep, publicPipeline, TERMINAL, backoffSec, activeBackoff } from "@/lib/jobs/pipeline";
 import { runAsUser } from "@/lib/runAsUser";
 import { createNotification } from "@/lib/notifications/create";
 import { tailorResume } from "@/actions/Resume";
@@ -42,12 +42,23 @@ async function finishStep(applicationId, userDbId, step, claimId, result, capChe
     if (p.steps[step].claimId !== claimId || p.steps[step].status !== "running") return false;
     const now = new Date().toISOString();
     const { claimId: _drop, ...keep } = p.steps[step];
+    const attempts = result.status === "failed" ? (keep.attempts ?? 0) + 1 : 0;
+    let error = result.status === "failed" ? result.error : null;
+    if (error && (error.code === "RATE_LIMITED" || error.code === "PROVIDER_DOWN")) {
+      const sec = backoffSec(attempts, error.providerRetryAfterSec);
+      const { providerRetryAfterSec: _p, ...rest } = error;
+      error = { ...rest, retryAfterSec: sec, retryAt: new Date(Date.now() + sec * 1000).toISOString() };
+    } else if (error) {
+      const { providerRetryAfterSec: _p, ...rest } = error;
+      error = rest;
+    }
     p.steps[step] = {
       ...keep,
+      attempts,
       status: result.status,
       finishedAt: now,
       reason: result.reason ?? null,
-      error: result.status === "failed" ? result.error : null,
+      error,
       output: result.output ?? null,
       ids: result.ids ?? {},
       needsYou: result.status === "done" && result.needsYou === true,
@@ -63,26 +74,41 @@ async function finishStep(applicationId, userDbId, step, claimId, result, capChe
 
 const ok = (status, extra = {}) => ({ status, ...extra });
 const skipped = (reason) => ok("skipped", { reason });
-const failed = (code, error) => ok("failed", { error: { code, error } });
+const failed = (code, error, extra = {}) => ok("failed", { error: { code, error, ...extra } });
 const fromError = (e) => failed(e.code ?? "FAILED", e.error ?? "This step failed. Try again.");
+
+const RATE_MSG = "The AI service is busy right now. We'll be able to retry shortly.";
+const DOWN_MSG = "The AI service is temporarily unavailable. Please try again in a moment.";
+
+/** Maps a provider outage (AI_UNAVAILABLE) to RATE_LIMITED or PROVIDER_DOWN using what runAI noted; other codes pass through. */
+function classifyFailure(result, lastFailure) {
+  if (result.status !== "failed" || result.error?.code !== "AI_UNAVAILABLE") return result;
+  const limited = lastFailure?.rateLimited === true;
+  return failed(limited ? "RATE_LIMITED" : "PROVIDER_DOWN", limited ? RATE_MSG : DOWN_MSG, { providerRetryAfterSec: lastFailure?.retryAfterSec ?? null });
+}
 
 // Step bodies. Each returns { status, output?, ids?, reason?, error?, needsYou? } and never throws for expected cases.
 
-async function stepChecker({ user, job, clerkUserId }) {
+async function stepChecker({ user, job, authUserId }) {
   const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
   const resumeText = resume ? resumeToText(resume).slice(0, 30000) : "";
   if (!resume || resumeText.trim().length < MIN_RESUME_TEXT) {
     return skipped("NO_RESUME");
   }
   const jdText = job.jdText.slice(0, 20000);
-  const match = matchText(jdText, resumeText); // no AI, same function computeMatch uses
-  const summary = { matchPercent: match.percent, matched: match.matched.slice(0, 12), missing: match.missing.slice(0, 12), termCount: match.termCount };
+  // Match %, ATS score and gaps all come from the ONE ATS analysis (never the keyword matcher), so the chips agree.
+  const summaryOf = (a) => ({
+    source: "ats",
+    matchPercent: Number.isFinite(a.matchPercentage) ? Math.round(a.matchPercentage) : null,
+    matched: Array.isArray(a.relevantSkills) ? a.relevantSkills.slice(0, 12) : [],
+    missing: Array.isArray(a.missingSkills) ? a.missingSkills.slice(0, 12) : null,
+  });
 
   // Adopt an ATS score already linked to this job (a crash after creating it, or the user ran the ATS tool for it).
-  const existing = await db.aTSScore.findFirst({ where: { userId: user.id, jobId: job.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { id: true, atsScore: true } });
-  if (existing) return ok("done", { output: { ...summary, atsScore: existing.atsScore, atsScoreId: existing.id }, ids: { atsScoreId: existing.id } });
+  const existing = await db.aTSScore.findFirst({ where: { userId: user.id, jobId: job.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { id: true, atsScore: true, matchPercentage: true, relevantSkills: true, missingSkills: true } });
+  if (existing) return ok("done", { output: { ...summaryOf(existing), atsScore: existing.atsScore, atsScoreId: existing.id }, ids: { atsScoreId: existing.id } });
 
-  const scored = await scoreResume({ userId: clerkUserId, resumeText, jobDescription: jdText, jobTitle: job.title ?? "", companyName: job.company ?? "" });
+  const scored = await scoreResume({ userId: authUserId, resumeText, jobDescription: jdText, jobTitle: job.title ?? "", companyName: job.company ?? "" });
   if (scored.empty) return failed("NO_SOURCES", "We couldn't back the analysis with evidence from your resume and this job description.");
   const { result, raw, evidence } = scored;
   const row = await db.aTSScore.create({
@@ -104,9 +130,9 @@ async function stepChecker({ user, job, clerkUserId }) {
       companyName: job.company ?? "",
       jobDescription: jdText,
     },
-    select: { id: true, atsScore: true },
+    select: { id: true, atsScore: true, matchPercentage: true, relevantSkills: true, missingSkills: true },
   });
-  return ok("done", { output: { ...summary, atsScore: row.atsScore, atsScoreId: row.id }, ids: { atsScoreId: row.id } });
+  return ok("done", { output: { ...summaryOf(row), atsScore: row.atsScore, atsScoreId: row.id }, ids: { atsScoreId: row.id } });
 }
 
 const inputFor = (job) => ({ jobTitle: job.title ?? "", companyName: job.company ?? "", jobDescription: job.jdText.slice(0, 20000), jobId: job.id });
@@ -152,19 +178,26 @@ const withState = (app, raw, extra = {}) => ({ ...publicPipeline(app, raw), ...e
  * Returns the pipeline state plus `ran: step | null` (and `error`, `code`, `step` when the step failed), `busy: true`
  * when another worker holds a fresh claim, or null when the application is gone.
  */
-export async function runStepFor({ applicationId, user, clerkUserId }) {
+export async function runStepFor({ applicationId, user, authUserId }) {
   const app = await loadApp(applicationId, user.id);
   if (!app) return null;
   const p = normalizePipeline(app.pipeline);
   const nxt = nextStep(p);
   if (nxt.complete || nxt.busy) return withState(app, app.pipeline, { ran: null, busy: nxt.busy === true });
 
+  // A provider failure sets a backoff; do not burn another call until it has elapsed.
+  const wait = activeBackoff(p);
+  if (wait) {
+    const e = p.steps[wait.step].error;
+    return { ...withState(app, app.pipeline, { ran: null }), error: e.error, code: "RATE_LIMITED", retryAfterSec: wait.retryAfterSec, step: wait.step };
+  }
+
   const step = nxt.step;
   const claimId = randomUUID();
   const now = new Date().toISOString();
   p.run = p.run ?? { actionId: randomUUID(), capChecked: false, startedAt: now };
   if (p.run.finishedAt) delete p.run.finishedAt; // retry after a failure re-opens the run
-  p.steps[step] = { status: "running", claimId, startedAt: now };
+  p.steps[step] = { status: "running", claimId, startedAt: now, attempts: p.steps[step].attempts ?? 0 };
   if (!(await casPipeline(app, user.id, p))) {
     const fresh = (await loadApp(applicationId, user.id)) ?? app;
     return withState(fresh, fresh.pipeline, { ran: null, busy: true });
@@ -172,12 +205,18 @@ export async function runStepFor({ applicationId, user, clerkUserId }) {
 
   let result;
   let capChecked = false;
+  let failure = null;
   try {
-    const out = await runAsUser(clerkUserId, () =>
+    const out = await runAsUser(authUserId, () =>
       withAiAction(
         async () => {
-          const r = await RUNNERS[step]({ user, clerkUserId, job: app.job });
-          return { r, capChecked: currentAiAction()?.capChecked === true };
+          const ctx = currentAiAction();
+          try {
+            const r = await RUNNERS[step]({ user, authUserId, job: app.job });
+            return { r: classifyFailure(r, ctx?.lastFailure), capChecked: ctx?.capChecked === true };
+          } finally {
+            failure = ctx?.lastFailure ?? null; // also when the step throws
+          }
         },
         p.run
       )
@@ -190,13 +229,15 @@ export async function runStepFor({ applicationId, user, clerkUserId }) {
       e?.code === "AI_LIMIT"
         ? failed("AI_LIMIT", "Daily AI limit reached. Please try again tomorrow.")
         : e?.code === "AI_UNAVAILABLE"
-          ? failed("AI_UNAVAILABLE", "AI is temporarily unavailable. Please try again later.")
+          ? classifyFailure(failed("AI_UNAVAILABLE", ""), failure)
           : failed("FAILED", "This step failed. Please try again.");
   }
   await finishStep(app.id, user.id, step, claimId, result, capChecked);
   const after = (await loadApp(applicationId, user.id)) ?? app;
   const state = withState(after, after.pipeline, { ran: step });
-  return result.status === "failed" ? { ...state, error: result.error.error, code: result.error.code, step } : state;
+  if (result.status !== "failed") return state;
+  const retryAfterSec = state.steps.find((x) => x.step === step)?.error?.retryAfterSec;
+  return { ...state, error: result.error.error, code: result.error.code, step, ...(retryAfterSec > 0 ? { retryAfterSec } : {}) };
 }
 
 const hasFailed = (p) => STEPS.some((s) => p.steps[s].status === "failed");
@@ -239,12 +280,12 @@ const RUN_BUDGET_MS = 240 * 1000; // stop starting new steps after this; the nex
  * another worker holds the claim, or the time budget is spent. Idempotent: finished steps never run again.
  * Never throws.
  */
-export async function advanceRun({ applicationId, user, clerkUserId, budgetMs = RUN_BUDGET_MS }) {
+export async function advanceRun({ applicationId, user, authUserId, budgetMs = RUN_BUDGET_MS }) {
   const started = Date.now();
   try {
     for (let i = 0; i < STEPS.length + 1; i++) {
       if (Date.now() - started > budgetMs) break;
-      const r = await runStepFor({ applicationId, user, clerkUserId });
+      const r = await runStepFor({ applicationId, user, authUserId });
       if (!r || r.busy || r.complete || r.ran === null || r.error) break;
     }
     return await notifyIfSettled({ applicationId, user });
@@ -266,7 +307,7 @@ export function isStalled(app, now = Date.now()) {
 }
 
 /** Continues this user's stalled runs (resume-on-visit). Call inside after(). Never throws. */
-export async function resumeStalledForUser({ user, clerkUserId, limit = 3 }) {
+export async function resumeStalledForUser({ user, authUserId, limit = 3 }) {
   try {
     const apps = await db.application.findMany({
       where: { userId: user.id, deletedAt: null, job: { deletedAt: null }, pipeline: { not: null }, status: { not: "CLOSED" } },
@@ -275,7 +316,7 @@ export async function resumeStalledForUser({ user, clerkUserId, limit = 3 }) {
       select: { id: true, updatedAt: true, pipeline: true },
     });
     const todo = apps.filter((a) => isStalled(a)).slice(0, limit);
-    for (const a of todo) await advanceRun({ applicationId: a.id, user, clerkUserId });
+    for (const a of todo) await advanceRun({ applicationId: a.id, user, authUserId });
     return todo.length;
   } catch (e) {
     console.error("resumeStalledForUser failed:", safeErr(e));
@@ -294,12 +335,12 @@ export async function resumeStalledAll({ limit = 10 } = {}) {
     ORDER BY "updatedAt" ASC LIMIT 200`;
   const rows = await db.application.findMany({
     where: { id: { in: ids.map((r) => r.id) }, job: { deletedAt: null } },
-    select: { id: true, updatedAt: true, pipeline: true, user: { select: { id: true, name: true, clerkUserId: true } } },
+    select: { id: true, updatedAt: true, pipeline: true, user: { select: { id: true, name: true } } },
   });
-  const todo = rows.filter((a) => a.user?.clerkUserId && isStalled(a)).slice(0, limit);
+  const todo = rows.filter((a) => a.user && isStalled(a)).slice(0, limit);
   let n = 0;
   for (const a of todo) {
-    await advanceRun({ applicationId: a.id, user: { id: a.user.id, name: a.user.name }, clerkUserId: a.user.clerkUserId });
+    await advanceRun({ applicationId: a.id, user: { id: a.user.id, name: a.user.name }, authUserId: a.user.id });
     n++;
   }
   return n;

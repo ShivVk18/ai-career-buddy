@@ -10,7 +10,7 @@ const db = {
   $executeRaw: vi.fn(),
 };
 vi.mock("@/lib/prisma", () => ({ db }));
-vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }), currentUser: async () => ({ firstName: "A", lastName: "B", emailAddresses: [] }) }));
+vi.mock("@/lib/session", () => ({ auth: async () => ({ userId: "clerk_1" }), currentUser: async () => ({ firstName: "A", lastName: "B", emailAddresses: [] }) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/ai", () => ({ runAIStructured: vi.fn(), withAiAction: (f) => f() }));
 vi.mock("@/lib/ats/score", () => ({ scoreResume: (...a) => scoreResume(...a), stripRec: (r) => r }));

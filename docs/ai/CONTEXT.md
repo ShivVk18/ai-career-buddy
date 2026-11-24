@@ -1,11 +1,11 @@
 # CONTEXT: ai-career-buddy (AscendAI)
 
-Scout map, 2026-11-23, branch `redesign-happy-flow` (HEAD `abf93fc`). Read-only pass. Paths are repo-relative. `.env`, `node_modules`, `.next`, `.clerk`, lockfile not read.
+Scout map, 2026-11-23, branch `redesign-happy-flow` (HEAD `abf93fc`). Read-only pass. Paths are repo-relative. `.env`, `node_modules`, `.next`, lockfile not read.
 Untracked: `design/ascendai-happy-flow.html` (the target scenes). Also in `design/`: `ascendai-pixel.html`.
 
 ## 1. Stack
 - **Framework:** Next.js ^15.5.9 App Router, JavaScript (no TS), `output: "standalone"`, Turbopack for dev and build (`next.config.mjs`). React 19.1.10.
-- **Auth:** Clerk `@clerk/nextjs` ^6.31.10. Middleware `src/middleware.js:4-20` protects listed routes; `src/app/api/chat/route.js:27` calls `auth()` itself.
+- **Auth:** Auth.js v5 credentials (email + password, JWT session). Middleware `src/middleware.js` protects listed routes; `src/app/api/chat/route.js` calls `auth()` itself. Server actions in `src/actions/Auth.js`; pages `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`.
 - **DB:** PostgreSQL via Prisma ^6.16.2. Schema `prisma/schema.prisma`, 14 migration folders in `prisma/migrations/`. Client singleton `src/lib/prisma.js`.
 - **AI:** `@langchain/core` ^1.4.1 + `@langchain/google-genai` ^2.3.6. Gemini only. Layer in `src/lib/ai/` (see §5).
 - **Forms and validation:** react-hook-form ^7.62 + `@hookform/resolvers`, zod ^4.1.5 (client `src/app/lib/schema.js`, server `src/lib/ai/schemas.js`).
@@ -20,11 +20,11 @@ Untracked: `design/ascendai-happy-flow.html` (the target scenes). Also in `desig
 - **Commands** (`package.json` scripts): `npm run dev` (next dev --turbopack), `npm run build`, `npm start`, `npm run lint` (eslint ^9), `npm test` (vitest run; 26 test files under `__tests__/`), `npm run test:ai` (live provider check, `scripts/test-ai-providers.js`).
 - **Playwright:** NOT installed (no dependency, no config). `scripts/capture_via_cdp.js` drives a local Chrome over DevTools for screenshots.
 - **Seed data:** no npm script. `seeder/seed.js` and `seeder/seedTemplates.js` upsert only `ResumeTemplate` rows (no npm script; run directly with node after migrations, not verified here). No demo user, jobs or applications exist; `dummy_test_data.md` is a manual test handbook.
-- **Env names** (values never read): `DATABASE_URL`, Clerk keys, `GEMINI_API_KEYS` / `GEMINI_API_KEY`, `AI_ROUTE_FAST`, `AI_ROUTE_WRITE` (format `provider:model`, `src/lib/ai/tasks.js:8-26`), `AI_DAILY_LIMIT`, `AI_DEBUG`, Sentry vars. Source: `.env.example`.
+- **Env names** (values never read): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `GEMINI_API_KEYS` / `GEMINI_API_KEY`, `AI_ROUTE_FAST`, `AI_ROUTE_WRITE` (format `provider:model`, `src/lib/ai/tasks.js:8-26`), `AI_DAILY_LIMIT`, `AI_DEBUG`, Sentry vars. Source: `.env.example`.
 
 ## 2. Folder map
 - `src/app/page.js`: public landing (241 lines). Sections in `src/components/landingPage/` (Sections, HeroWindow, SampleDemo, LandingNav, Reveal).
-- `src/app/(auth)/`: Clerk `SignIn` / `SignUp` catch-all pages.
+- `src/app/(auth)/`: email + password pages (sign-in, sign-up, forgot-password, reset-password); old `/sign-in/*` and `/sign-up/*` catch-alls redirect.
 - `src/app/(main)/layout.jsx`: app shell (AppSidebar + `<main>`). `loading.jsx`, `error.jsx` at this level.
 - `src/app/(main)/(gated)/`: onboarding gate `layout.jsx:5-15`. Feature routes below.
 - `src/app/(main)/onboarding/`: profile setup (`OnboardingFlow.jsx`, 558 lines).
@@ -63,7 +63,7 @@ Untracked: `design/ascendai-happy-flow.html` (the target scenes). Also in `desig
 Removed: industry insights (migration `20261117060000`). Not built: notifications, email, background runs, offer comparison, negotiation draft.
 
 ## 4. Prisma models (`prisma/schema.prisma`)
-- `User` (:11): clerkUserId unique, email, industry, bio, experience, skills[], targetRole, jobSearchStage (enum). Owns almost every row.
+- `User` (:11): email (unique), passwordHash, industry, bio, experience, skills[], targetRole, jobSearchStage (enum). Owns almost every row.
 - `Job` (:62): url, jdText, company, title, location, `sources` JSON (field origin), soft delete. Has `Application` (1:1), CoverLetter, ColdEmail, ATSScore, ResumeVersion.
 - `Application` (:87): one per Job (jobId unique), status enum SAVED|APPLIED|INTERVIEWING|OFFER|CLOSED, appliedAt, interviewAt, nextActionAt, followUpCount, closedReason, gapTasksAddedAt, prepSessionId (no FK), `pipeline` JSON (4 bot steps).
 - `Resume` (:127, one per user, JSON `content`, contact/summary/experience/education/projects columns). `ResumeTemplate` (:162). `ResumeVersion` (:202): saved or tailored versions; optional job link.
@@ -120,7 +120,7 @@ Provider: Gemini only (`src/lib/ai/providers.js:3-12`). Model names come from en
 - **Duplicated forms:** cold email and cover letter generators share the same JD/company/title shape (`ColdEmailGen.jsx`, `CoverLetterGen.jsx`).
 
 ## 8. Backend notes
-- **Server actions** are the main API (14 modules, `"use server"`). The only route handler is `/api/chat`. Auth pattern: `auth()` from Clerk, or `requireUser()` (`src/lib/jobs/common.js`) which returns `{ clerkUserId, user }`.
+- **Server actions** are the main API (14 modules, `"use server"`). The only route handler is `/api/chat`. Auth pattern: `auth()` from `src/lib/session.js` (returns `{ userId }`), or `requireUser()` (`src/lib/jobs/common.js`).
 - **Result shape:** actions return `{ error, code }` objects for expected failures, mapped on the client by `components/shared/generationError.js`.
 - **Patterns:** soft delete with `deletedAt` and 7-day purge (`src/lib/softDelete.js`, D60). Compare-and-swap on `updatedAt` for pipeline claims (`Pipeline.js:28-34`) and follow-up counts (`Applications.js:370`). One `actionId` per user action for the AI cap (`src/lib/ai/action.js`).
 - **Job intake:** `intakeJob` (`Jobs.js:83-163`) classifies input (question → chat, URL → fetch, text → use). Fetch is SSRF-guarded: https only, every address must be public, IP pinned (`src/lib/jobs/fetch.js:3-5`). Creates Job and Application(SAVED) in one write (`Jobs.js:145-157`).

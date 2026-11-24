@@ -26,7 +26,7 @@ const db = {
   },
 };
 vi.mock("@/lib/prisma", () => ({ db }));
-vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
+vi.mock("@/lib/session", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/ai", () => ({ runAIText: vi.fn(), runAIStructured: vi.fn(), runAI: vi.fn(), withAiAction: (f) => f() }));
 vi.mock("@/lib/jobs/common", async (orig) => ({ ...(await orig()), requireUser: async () => ({ user: { id: "u1" } }) }));

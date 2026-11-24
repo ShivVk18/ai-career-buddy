@@ -3,7 +3,7 @@
 
 
 import { db } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createHmac, createHash, timingSafeEqual, randomBytes } from "node:crypto";
@@ -11,7 +11,6 @@ import { runAIStructured, withAiAction } from "@/lib/ai";
 import { inventedNumbers } from "@/lib/ai/numberCheck";
 import { validateAndExtractPdf, INVALID_FILE_MSG } from "@/lib/ai/pdf";
 import { buildSources, formatCatalogForPrompt, snapshot, normalizeText, validateSourceIds } from "@/lib/ai/sources";
-import { primaryEmail } from "@/lib/clerkEmail";
 import { atsFixSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
 import { scoreResume, stripRec } from "@/lib/ats/score";
@@ -99,8 +98,6 @@ async function createATSAnalysisImpl(formData) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const clerkUser = await currentUser();
-  if (!clerkUser) throw new Error("User not found");
 
   const failure = (code, message) => ({ success: false, message, error: message, code });
 
@@ -119,7 +116,7 @@ async function createATSAnalysisImpl(formData) {
     const resumeSource = useSavedResume ? "saved" : "pdf";
     if (useSavedResume) {
       // The user's builder resume, as text (the same resumeToText the pipeline CHECKER uses). Owner-scoped, not deleted.
-      const me = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+      const me = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
       const saved = me ? await db.resume.findUnique({ where: { userId: me.id, deletedAt: null } }) : null;
       resumeText = saved ? resumeToText(saved).slice(0, 30000) : "";
       if (!resumeText.trim()) return failure("NO_RESUME", "You don't have a saved resume yet. Add one in the resume builder or upload a PDF.");
@@ -129,16 +126,9 @@ async function createATSAnalysisImpl(formData) {
       if (pdf.error) return failure(pdf.code, pdf.error);
       resumeText = pdf.text.slice(0, 30000);
     }
-    // Ensure user exists (never writes a placeholder email)
-    const email = primaryEmail(clerkUser);
-    const name = clerkUser.firstName
-      ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim()
-      : null;
-    const dbUser = await db.user.upsert({
-      where: { clerkUserId: userId },
-      update: { ...(email ? { email } : {}), name },
-      create: { clerkUserId: userId, email, name, skills: [] },
-    });
+    // The user row is created at sign-up; a session without one is not valid.
+    const dbUser = await db.user.findUnique({ where: { id: userId } });
+    if (!dbUser) throw new Error("User not found");
     await purgeOldResumeText(dbUser.id);
 
     if (jobId) {
@@ -154,7 +144,7 @@ async function createATSAnalysisImpl(formData) {
     // Plain text goes to the existing columns so older readers keep working.
     const atsAnalysis = await db.aTSScore.create({
       data: {
-        user: { connect: { clerkUserId: userId } },
+        user: { connect: { id: userId } },
         atsScore: raw.atsScore,
         matchPercentage: raw.matchPercentage,
         strengths: result.strengths.map((x) => x.text),
@@ -190,7 +180,7 @@ export async function getUserATSScores() {
   if (!userId) throw new Error("Unauthorized");
 
   try {
-    const me = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true, experience: true } });
+    const me = await db.user.findUnique({ where: { id: userId }, select: { id: true, experience: true } });
     if (!me) return [];
     await purgeOldResumeText(me.id);
     await pruneDeleted(me.id);
@@ -248,7 +238,7 @@ export async function getATSScoreById(scoreId) {
         id: scoreId,
         deletedAt: null,
         user: {
-          clerkUserId: userId
+          id: userId
         }
       },
       include: { user: { select: { experience: true } } },
@@ -279,7 +269,7 @@ export async function deleteATSScore(scoreId) {
   if (!id.success) return { error: "We couldn't find that result.", code: "INVALID" };
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return { error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
     const row = await db.aTSScore.findFirst({ where: { id: id.data, userId: user.id, deletedAt: null }, select: { evidence: true } });
@@ -310,7 +300,7 @@ export async function restoreATSScore(scoreId) {
   if (!id.success) return { error: "We couldn't find that result.", code: "INVALID" };
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return { error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
     const res = await db.aTSScore.updateMany({
@@ -337,7 +327,7 @@ export async function getATSAnalytics() {
       where: { 
         deletedAt: null,
         user: {
-          clerkUserId: userId
+          id: userId
         }
       },
       select: {
@@ -395,7 +385,7 @@ export async function updateATSScore(scoreId, updateData) {
   }
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true, experience: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, experience: true } });
     if (!user) return { success: false, error: "We couldn't find your profile.", code: "NOT_FOUND" };
 
     const result = await db.aTSScore.updateMany({
@@ -524,7 +514,7 @@ async function proposeAtsFixImpl(scoreId, weaknessIndex) {
 
   try {
     if (!signingKey()) return fixFail("FIX_UNAVAILABLE", FIX_UNAVAILABLE_MSG);
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fixFail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const score = await db.aTSScore.findFirst({ where: { id: input.data.scoreId, userId: user.id, deletedAt: null } });
     if (!score) return fixFail("NOT_FOUND", "We couldn't find that ATS result.");
@@ -683,7 +673,7 @@ async function applyAtsFixInner(userId, input) {
       return fixFail("STALE", "This suggestion has expired. Please propose the fix again.");
     }
 
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fixFail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const score = await db.aTSScore.findFirst({ where: { id: input.scoreId, userId: user.id, deletedAt: null } });
     if (!score) return fixFail("NOT_FOUND", "We couldn't find that ATS result.");
