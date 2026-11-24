@@ -1,5 +1,6 @@
 import { generationErrorMessage } from "@/components/shared/generationError";
 import { WEAK_AREA_MIN_ANSWERS } from "@/lib/interview/rubric";
+import SaveWeakSpotButton from "@/components/interview/SaveWeakSpotButton";
 
 // weak: result of getWeakAreas() ({ topics, minAnswers, totalAnswers, hiddenTopics } or { error, code }).
 export default function WeakAreas({ weak }) {
@@ -32,6 +33,9 @@ export default function WeakAreas({ weak }) {
             </div>
             <div className="h-1.5 bg-divider/30 rounded-full overflow-hidden">
               <div className="h-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, t.average))}%` }} />
+            </div>
+            <div className="mt-2">
+              <SaveWeakSpotButton skill={t.topic} />
             </div>
           </li>
         ))}
