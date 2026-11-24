@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -546,11 +545,8 @@ export default function OnboardingFlow({ editing = false, actions }) {
                   <PipAvatar outfit="rocket" size="sm" alt="" />
                   <p className="min-w-0 flex-1 text-sm text-text">
                     <span className="font-pixel text-[11px] uppercase tracking-wider text-muted">next step </span>
-                    connect github so pip can find more projects
+                    paste a job link on home. pip checks the match and tailors your resume.
                   </p>
-                  <Link href="/resume" className="text-sm text-brand-ink underline-offset-4 hover:underline">
-                    connect github
-                  </Link>
                 </section>
 
                 {error && errorKind === "save" && (
