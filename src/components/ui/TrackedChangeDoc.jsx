@@ -129,7 +129,7 @@ function ChangeLine({ line, animate, decision, onDecide }) {
           aria-label="edit rewrite"
           onChange={(e) => setDraft(e.target.value)}
           rows={2}
-          className="w-full rounded-[9px] border border-brand bg-panel p-2 font-pixel text-lg text-brand-ink outline-none"
+          className="w-full rounded-[9px] border border-brand bg-panel p-2 text-lg text-brand-ink outline-none"
         />
         <div className="flex gap-2">
           <Act tone="ok" label="save edit" onClick={() => { setEditing(false); onDecide({ kind: "accept", text: draft.trim() || after, edited: true }); }}><Check className="size-4" /></Act>
@@ -157,7 +157,7 @@ function ChangeLine({ line, animate, decision, onDecide }) {
           {before}
         </p>
         {phase >= 2 && (
-          <p className="mt-1 font-pixel text-xl leading-snug text-brand-ink" aria-live="off">
+          <p className="mt-1 text-xl leading-snug text-brand-ink" aria-live="off">
             {after.slice(0, typed)}
             {phase === 3 && source && <Source n={source.n} text={source.text} />}
           </p>

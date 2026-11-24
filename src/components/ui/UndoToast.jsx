@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import PipAvatar from "./PipAvatar";
 import { cn } from "@/lib/utils";
 
 /** Bottom pill: "3 edits accepted · nothing sent yet  [undo]". Auto-closes after `duration` ms. */
@@ -16,10 +17,11 @@ export default function UndoToast({ open, message, onUndo, onClose, duration = 6
       role="status"
       aria-live="polite"
       className={cn(
-        "fade-up fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full bg-ink py-2 pl-5 pr-2 text-sm text-ink-foreground shadow-soft",
+        "fade-up fixed bottom-6 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-ink py-2 pl-3 pr-2 text-sm text-ink-foreground shadow-soft",
         className,
       )}
     >
+      <PipAvatar outfit="coffee" size="sm" alt="" />
       <span>{message}</span>
       <button
         type="button"
