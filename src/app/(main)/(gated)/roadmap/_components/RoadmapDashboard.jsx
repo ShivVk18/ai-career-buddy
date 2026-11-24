@@ -1,194 +1,84 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Plus,
-  Target,
-  CheckCircle,
-  TrendingUp,
-  ArrowRight,
-  Zap,
-  Star,
-} from "lucide-react";
+import { Plus } from "lucide-react";
+import ToolFrame from "@/components/shared/ToolFrame";
+import EmptyState from "@/components/ui/EmptyState";
+import { Chip } from "@/components/ui/Chip";
 import CreateRoadmapModal from "./CreateRoadmapModal";
 import RoadmapCard from "./RoadmapCard";
 import GapFrequency from "./GapFrequency";
 
-const RoadmapDashboard = ({ roadmaps, gapData }) => {
-  const [showCreateModal, setShowCreateModal] = useState(false);
+const NEW_BTN = "btn-ink inline-flex min-h-11 items-center gap-2 px-5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+const RoadmapDashboard = ({ roadmaps, gapData, initialOpen = false }) => {
+  const [showCreateModal, setShowCreateModal] = useState(initialOpen);
 
   const activeRoadmaps = roadmaps.filter((r) => r.status === "active");
   const completedRoadmaps = roadmaps.filter((r) => r.status === "completed");
+  const avg = roadmaps.length > 0 ? Math.round(roadmaps.reduce((acc, r) => acc + r.progress, 0) / roadmaps.length) : 0;
 
   return (
-    <div className="min-h-screen bg-transparent py-14 px-6 md:px-12">
-      <div className="relative z-10 max-w-7xl mx-auto space-y-16">
-
-        {/* Header */}
-        <div className="mb-20 border-b border-divider pb-16">
-          <div className="flex flex-col lg:flex-row gap-12 items-start lg:items-center justify-between">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-[1px] bg-primary" />
-                <span className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
-                  Career Planning
-                </span>
-              </div>
-
-              <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
-                Your Career{" "}
-                <span className="text-primary-ink underline decoration-1 underline-offset-8">
-                  Roadmaps
-                </span>
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl font-general font-light leading-relaxed">
-                AI-generated, step-by-step plans to get you from where you are
-                to where you want to be — at your own pace.
-              </p>
+    <ToolFrame
+      title="career roadmap"
+      line="a step-by-step plan from where you are to where you want to be."
+      outfit="rocket"
+      bare
+      action={
+        <button type="button" onClick={() => setShowCreateModal(true)} className={NEW_BTN}>
+          <Plus className="size-4" aria-hidden="true" /> new roadmap
+        </button>
+      }
+    >
+      <div className="space-y-8">
+        {roadmaps.length === 0 ? (
+          <EmptyState
+            outfit="rocket"
+            title="no roadmaps yet"
+            text="pip fills in your role and goal from your profile. one tap and you have a plan."
+            action={
+              <button type="button" onClick={() => setShowCreateModal(true)} className={NEW_BTN}>
+                <Plus className="size-4" aria-hidden="true" /> make my first roadmap
+              </button>
+            }
+          />
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2" aria-label="summary">
+              <Chip tone="brand" editable={false} value={`${activeRoadmaps.length} active`} />
+              <Chip editable={false} value={`${completedRoadmaps.length} completed`} />
+              <Chip editable={false} value={`${avg}% average progress`} />
             </div>
 
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="group inline-flex items-center h-20 px-12 bg-primary text-primary-foreground rounded-xl font-bold tracking-[0.2em] hover:brightness-110 transition-editorial text-sm"
-            >
-              <Plus className="h-5 w-5 mr-4 group-hover:rotate-90 transition-editorial" />
-              New Roadmap
-              <ArrowRight className="ml-4 h-5 w-5" />
-            </button>
-          </div>
-        </div>
+            <GapFrequency gapData={gapData} />
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-          <div className="border border-divider bg-divider/10 p-10 rounded-xl group hover:border-primary transition-editorial">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <Target className="h-6 w-6 text-primary-ink" />
-                <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
-                  Active Roadmaps
+            {activeRoadmaps.length > 0 && (
+              <section aria-label="in progress" className="space-y-3">
+                <h2 className="font-doc text-xl text-text">in progress</h2>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {activeRoadmaps.map((roadmap) => (
+                    <RoadmapCard key={roadmap.id} roadmap={roadmap} />
+                  ))}
                 </div>
-              </div>
-              <div className="text-5xl md:text-6xl font-clash font-bold text-foreground">
-                {activeRoadmaps.length}
-              </div>
-            </div>
-          </div>
+              </section>
+            )}
 
-          <div className="border border-divider bg-divider/10 p-10 rounded-xl group hover:border-primary transition-editorial">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <CheckCircle className="h-6 w-6 text-primary-ink" />
-                <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
-                  Completed
+            {completedRoadmaps.length > 0 && (
+              <section aria-label="completed" className="space-y-3">
+                <h2 className="font-doc text-xl text-text">completed</h2>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {completedRoadmaps.map((roadmap) => (
+                    <RoadmapCard key={roadmap.id} roadmap={roadmap} completed />
+                  ))}
                 </div>
-              </div>
-              <div className="text-5xl md:text-6xl font-clash font-bold text-foreground">
-                {completedRoadmaps.length}
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-divider bg-divider/10 p-10 rounded-xl group hover:border-primary transition-editorial">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <TrendingUp className="h-6 w-6 text-primary-ink" />
-                <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
-                  Avg. Progress
-                </div>
-              </div>
-              <div className="text-5xl md:text-6xl font-clash font-bold text-foreground">
-                {roadmaps.length > 0
-                  ? Math.round(
-                      roadmaps.reduce((acc, r) => acc + r.progress, 0) /
-                        roadmaps.length
-                    )
-                  : 0}
-                %
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <GapFrequency gapData={gapData} />
-
-        {/* Active Roadmaps */}
-        {activeRoadmaps.length > 0 && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-[10px] font-bold tracking-[0.4em] text-primary-ink mb-12 flex items-center gap-4">
-              <Zap className="h-4 w-4" />
-              In Progress
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <AnimatePresence>
-                {activeRoadmaps.map((roadmap, index) => (
-                  <motion.div
-                    key={roadmap.id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <RoadmapCard roadmap={roadmap} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-
-        {/* Completed Roadmaps */}
-        {completedRoadmaps.length > 0 && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-[10px] font-bold tracking-[0.4em] text-muted-foreground mb-12 flex items-center gap-4">
-              <Star className="h-4 w-4" />
-              Completed
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <AnimatePresence>
-                {completedRoadmaps.map((roadmap, index) => (
-                  <motion.div
-                    key={roadmap.id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <RoadmapCard roadmap={roadmap} completed={true} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {roadmaps.length === 0 && (
-          <div className="text-center py-40 border border-divider border-dashed rounded-xl bg-divider/5">
-            <div className="w-24 h-24 mx-auto rounded-xl border border-divider flex items-center justify-center bg-panel mb-10 group hover:border-primary transition-editorial">
-              <Target className="h-10 w-10 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
-            </div>
-            <h3 className="text-2xl md:text-4xl font-clash font-bold text-foreground tracking-tight mb-6">
-              No Roadmaps Yet
-            </h3>
-            <p className="text-muted-foreground mb-12 max-w-md mx-auto font-general font-light leading-relaxed">
-              Create your first AI-powered career roadmap and get a clear,
-              actionable plan to reach your next role.
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center h-16 px-12 bg-primary text-primary-foreground rounded-xl font-bold tracking-[0.2em] hover:brightness-110 transition-editorial text-xs"
-            >
-              <Plus className="h-4 w-4 mr-4" />
-              Create My First Roadmap
-            </button>
-          </div>
+              </section>
+            )}
+          </>
         )}
       </div>
 
-      <CreateRoadmapModal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
-    </div>
+      <CreateRoadmapModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
+    </ToolFrame>
   );
 };
 

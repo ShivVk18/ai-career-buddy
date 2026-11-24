@@ -32,8 +32,9 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FieldError, FieldLabel, More, fieldClass } from "@/components/shared/ToolBits";
+import ToolFrame from "@/components/shared/ToolFrame";
+import { cn } from "@/lib/utils";
 
 import { useRouter } from "next/navigation";
 import { saveResume, deleteResume, restoreDeletedResume } from "@/actions/Resume";
@@ -45,7 +46,6 @@ import ResumeToolsPanel from "./ResumeToolsPanel";
 import { AITextarea } from "./AITextarea";
 import useFetch from "@/hooks/use-fetch";
 import { useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
 
 import {
   ModernProTemplate,
@@ -92,7 +92,6 @@ const TEMPLATES = [
     requiresPhoto: true,
     color: "amber",
     component: ModernProTemplate,
-    icon: "💼",
   },
   {
     id: "minimal-classic",
@@ -101,7 +100,6 @@ const TEMPLATES = [
     requiresPhoto: false,
     color: "amber",
     component: MinimalClassicTemplate,
-    icon: "📄",
   },
   {
     id: "creative-bold",
@@ -110,7 +108,6 @@ const TEMPLATES = [
     requiresPhoto: true,
     color: "amber",
     component: CreativeBoldTemplate,
-    icon: "🎨",
   },
   {
     id: "executive-elite",
@@ -119,7 +116,6 @@ const TEMPLATES = [
     requiresPhoto: true,
     color: "amber",
     component: ExecutiveEliteTemplate,
-    icon: "👔",
   },
   {
     id: "tech-modern",
@@ -128,7 +124,6 @@ const TEMPLATES = [
     requiresPhoto: false,
     color: "amber",
     component: TechModernTemplate,
-    icon: "💻",
   },
   {
     id: "academic-formal",
@@ -137,7 +132,6 @@ const TEMPLATES = [
     requiresPhoto: false,
     color: "amber",
     component: AcademicFormalTemplate,
-    icon: "🎓",
   },
 ];
 
@@ -151,6 +145,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
   const [showPreview, setShowPreview] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [resumeDeleted, setResumeDeleted] = useState(false);
+  const [contactEditing, setContactEditing] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
   const router = useRouter();
   const { user } = useUser();
 
@@ -333,8 +329,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "480px", background: "var(--divider)", border: "1px dashed var(--border)", opacity: 0.5 }}>
           <Layout className="h-16 w-16 text-muted-foreground mb-6" />
-          <p className="text-foreground text-lg font-bold tracking-tight">Select a Template</p>
-          <p className="text-muted-foreground text-sm mt-2 font-general font-light">Choose from 6 professional designs above</p>
+          <p className="text-foreground text-lg font-bold tracking-tight">pick a template</p>
+          <p className="text-muted-foreground text-sm mt-2 font-general font-light">six designs on the templates tab</p>
         </div>
       );
     }
@@ -437,7 +433,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
       pdf.save(fileName);
       
       toast.dismiss(loadingToast);
-      toast.success("Resume downloaded! 📄");
+      toast.success("resume downloaded");
     } catch (error) {
       console.error("PDF generation error:", error);
       toast.dismiss(loadingToast);
@@ -474,204 +470,132 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     return Math.round((filled / fields.length) * 100);
   }, [formValues, selectedTemplate]);
 
+  const PANEL = "rounded-[20px] border border-line bg-panel p-5 shadow-card sm:p-8";
+  const H3 = "mb-5 flex flex-wrap items-center justify-between gap-2 font-doc text-xl text-text";
+  const pill = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-panel px-5 text-sm text-text outline-none transition-colors hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+  const count = (n, max, min = 0) => (
+    <span className={cn("rounded-[9px] px-2.5 py-1 font-sans text-xs", n < min ? "bg-gap-soft text-gap-ink" : "bg-soft text-muted")}>{n} / {max}</span>
+  );
+  const tabCls = "min-h-10 flex-1 rounded-full px-4 text-sm text-muted data-[state=active]:bg-ink data-[state=active]:text-ink-foreground data-[state=active]:shadow-none sm:flex-none";
+  const cv = formValues.contactInfo || {};
+  const contactReady = !!(cv.fullName && cv.email && (cv.mobile || "").length >= 10) && !errors.contactInfo;
+  const showContact = contactEditing || !contactReady;
+  const errList = [];
+  (function walk(o) {
+    Object.values(o || {}).forEach((v) => {
+      if (v?.message) errList.push(v.message);
+      else if (v && typeof v === "object") walk(v);
+    });
+  })(errors);
+
   return (
-    <div className="min-h-screen py-8 md:py-12 bg-transparent">
-      <div className="max-w-7xl mx-auto space-y-12 px-4 md:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-16 border-b border-divider pb-12">
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-8 h-[1px] bg-primary"></div>
-            <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
-              Resume Builder
-            </span>
-            <div className="w-8 h-[1px] bg-primary"></div>
+    <>
+    <ToolFrame
+      title="resume builder"
+      line="pip filled in what it knows. check it, pick a look, download."
+      outfit="wizard"
+      bare
+      className="max-w-5xl"
+    >
+      <div className="space-y-6">
+        {/* completion */}
+        <div className="flex items-center gap-3" role="status" aria-label={`resume ${formCompletion}% complete`}>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-soft">
+            <div className="h-full rounded-full bg-brand transition-[width] duration-700 motion-reduce:transition-none" style={{ width: `${formCompletion}%` }} />
           </div>
-          
-          <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
-            Your Professional <span className="text-primary-ink">Story</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
-            Choose a premium template and let AI help you craft a resume that gets you hired.
-          </p>
-          
-          {/* Progress Indicator */}
-          <div className="mt-12 max-w-md mx-auto">
-            <div className="flex items-center justify-between text-[10px] font-bold tracking-widest uppercase mb-3">
-              <span className="text-muted-foreground">Resume Completion</span>
-              <span className="text-primary-ink">{formCompletion}%</span>
-            </div>
-            <div className="h-1 bg-divider rounded-full overflow-hidden border border-divider/20">
-              <div 
-                className="h-full bg-primary transition-all duration-700 ease-editorial"
-                style={{ width: `${formCompletion}%` }}
-              />
-            </div>
-          </div>
+          <span className="text-xs text-muted">{formCompletion}% complete</span>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap justify-center gap-6 mb-12">
-          <Button
+        {/* actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
             onClick={handleSubmit(onSubmit)}
             disabled={isSaving || !isDirty || resumeDeleted}
-            className="min-w-[200px] shadow-card"
+            className="btn-ink inline-flex min-h-11 items-center gap-2 px-5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
           >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-5 w-5 mr-3" />
-                {isDirty ? "Save Changes" : "Resume Saved"}
-              </>
-            )}
-          </Button>
-          
-          <Button
-            onClick={generatePDF}
-            disabled={!selectedTemplate}
-            variant="outline"
-            className="min-w-[200px] border-divider hover:border-primary"
-          >
-            <Download className="h-5 w-5 mr-3" />
-            Download PDF
-          </Button>
-          
-          <Button
-            onClick={() => setShowPreview(!showPreview)}
-            variant="ghost"
-            className="border border-divider min-w-[200px]"
-          >
-            {showPreview ? <EyeOff className="h-5 w-5 mr-3" /> : <Eye className="h-5 w-5 mr-3" />}
-            {showPreview ? "Hide Preview" : "Show Preview"}
-          </Button>
-
+            {isSaving ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+            {isSaving ? "saving…" : isDirty ? "save changes" : "saved"}
+          </button>
+          <button type="button" onClick={generatePDF} disabled={!selectedTemplate} className={pill}>
+            <Download className="size-4" aria-hidden="true" /> download pdf
+          </button>
+          <button type="button" onClick={() => setShowPreview(!showPreview)} className={pill}>
+            {showPreview ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
+            {showPreview ? "hide preview" : "preview"}
+          </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" aria-label="More resume actions" className="border border-divider">
-                <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-              </Button>
+              <button type="button" aria-label="more resume actions" className={cn(pill, "px-3")}>
+                <MoreHorizontal className="size-5" aria-hidden="true" />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={handleDeleteResume} disabled={resumeDeleted || !initialResume} className="text-destructive">
-                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" /> Delete resume
+                <Trash2 className="mr-2 size-4" aria-hidden="true" /> delete resume
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-
-        {/* Auto-save and Status */}
-        <div className="flex justify-center items-center gap-6 text-[10px] font-bold tracking-widest uppercase flex-wrap">
-          <label className="flex items-center gap-3 cursor-pointer text-muted-foreground hover:text-foreground transition-editorial bg-divider/10 px-6 py-2 rounded-xl border border-divider/20">
-            <input
-              type="checkbox"
-              checked={autoSaveEnabled}
-              onChange={(e) => setAutoSaveEnabled(e.target.checked)}
-              className="w-4 h-4 rounded-xl border-divider bg-panel text-primary-ink focus:ring-primary focus:ring-offset-0"
-            />
-            <span>Auto-save Changes</span>
+          <label className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm text-muted">
+            <input type="checkbox" checked={autoSaveEnabled} onChange={(e) => setAutoSaveEnabled(e.target.checked)} className="size-4 accent-[var(--brand)]" />
+            auto-save
           </label>
           {isDirty && autoSaveEnabled && (
-            <span className="text-primary-ink flex items-center gap-3 bg-primary/5 px-6 py-2 rounded-xl border border-primary/20 animate-pulse">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Saving...</span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-brand-ink" role="status">
+              <Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> saving soon
             </span>
           )}
         </div>
 
-        {/* Error Alert */}
         {hasErrors && (
-          <div className="border border-destructive/30 bg-destructive/5 rounded-xl p-6 flex items-start gap-4 animate-in fade-in slide-in-from-top-2">
-            <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-destructive font-bold tracking-tight mb-2">Oops! Check these fields</h3>
-              <ul className="text-[10px] font-bold uppercase tracking-widest text-destructive/80 space-y-1">
-                {Object.entries(errors).map(([key, error]) => (
-                  <li key={key} className="flex items-center gap-2">
-                    {error.message || `Invalid input: ${key}`}
-                  </li>
+          <div role="alert" className="flex items-start gap-3 rounded-[14px] bg-gap-soft p-4 text-gap-ink">
+            <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-medium">a few things need a look</p>
+              <ul className="mt-1 list-disc pl-4 text-sm">
+                {errList.map((m, i) => (
+                  <li key={i}>{m.toLowerCase()}</li>
                 ))}
               </ul>
             </div>
           </div>
         )}
 
-        {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-center mb-12">
-            <TabsList className="bg-panel border border-border p-1 rounded-xl gap-1">
-              <TabsTrigger 
-                value="template"
-                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-xl px-10 py-3 transition-editorial font-bold tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
-              >
-                <Layout className="h-4 w-4" />
-                Templates
-              </TabsTrigger>
-              <TabsTrigger 
-                value="form"
-                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-xl px-10 py-3 transition-editorial font-bold tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
-              >
-                <FileText className="h-4 w-4" />
-                Edit Details
-              </TabsTrigger>
-              <TabsTrigger 
-                value="tailor"
-                className="data-[state=active]:bg-divider data-[state=active]:text-foreground rounded-xl px-10 py-3 transition-editorial font-bold tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-3"
-              >
-                <Sparkles className="h-4 w-4" />
-                Tailor &amp; Versions
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="mb-6 flex h-auto w-full gap-1 rounded-full bg-soft p-1 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="template" className={tabCls}><Layout className="size-4" aria-hidden="true" /> templates</TabsTrigger>
+            <TabsTrigger value="form" className={tabCls}><FileText className="size-4" aria-hidden="true" /> details</TabsTrigger>
+            <TabsTrigger value="tailor" className={tabCls}><Sparkles className="size-4" aria-hidden="true" /> tailor &amp; versions</TabsTrigger>
+          </TabsList>
 
-          <TabsContent value="tailor" className="animate-in fade-in duration-500">
+          <TabsContent value="tailor" className="fade-up">
             <ResumeToolsPanel ensureSaved={ensureSaved} getResumeLike={getResumeLike} />
           </TabsContent>
 
-          {/* Template Selection */}
-          <TabsContent value="template" className="animate-in fade-in duration-500">
-            <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-divider pb-8">
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold text-primary-ink uppercase tracking-[0.3em]">Step 1</span>
-                  <h2 className="text-2xl md:text-3xl font-clash font-bold text-foreground flex items-center gap-3 tracking-tight">
-                    <Palette className="h-6 w-6 text-primary-ink" />
-                    Select a Template
-                  </h2>
-                </div>
+          <TabsContent value="template" className="fade-up">
+            <div className={PANEL}>
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-doc text-2xl text-text">pick a look</h2>
                 {selectedTemplate && (
-                  <Button
-                    onClick={() => setActiveTab("form")}
-                    variant="outline"
-                    className="h-12 px-8 border-divider"
-                  >
-                    <span>Next: Edit Details</span>
-                    <ChevronRight className="h-4 w-4 ml-3" />
-                  </Button>
+                  <button type="button" onClick={() => setActiveTab("form")} className={pill}>
+                    next: details <ChevronRight className="size-4" aria-hidden="true" />
+                  </button>
                 )}
               </div>
-
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {TEMPLATES.map((template) => {
                   const TemplatePreview = template.component;
+                  const on = selectedTemplate === template.id;
                   return (
-                    <div
+                    <button
                       key={template.id}
+                      type="button"
+                      aria-pressed={on}
                       onClick={() => handleTemplateSelect(template.id)}
-                      className={`group cursor-pointer rounded-xl border transition-editorial overflow-hidden shadow-card hover:shadow-md ${
-                        selectedTemplate === template.id
-                          ? "border-primary ring-1 ring-primary/20"
-                          : "border-divider/50 hover:border-primary"
-                      }`}
+                      className={cn("group overflow-hidden rounded-[20px] border text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", on ? "border-brand ring-1 ring-brand/40" : "border-line hover:border-brand/60")}
                     >
-                      {/* Live Template Thumbnail */}
-                      <div className="relative h-52 bg-panel overflow-hidden">
-                        <div
-                          className="scale-[0.28] origin-top-left w-[357%] h-[357%] pointer-events-none"
-                        >
+                      <div className="paper-doc relative h-52 overflow-hidden bg-white">
+                        <div className="pointer-events-none h-[357%] w-[357%] origin-top-left scale-[0.28]">
                           <TemplatePreview
                             data={{
                               contactInfo: { fullName: "Alex Morgan", email: "alex@example.com", mobile: "+1 555 0100" },
@@ -684,352 +608,162 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
                             photo={null}
                           />
                         </div>
-                        {selectedTemplate === template.id && (
-                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center animate-in fade-in">
-                            <div className="bg-panel rounded-full p-2 shadow-card">
-                              <CheckCircle className="h-8 w-8 text-primary-ink" />
-                            </div>
+                        {on && (
+                          <div className="absolute inset-0 grid place-items-center bg-brand/15">
+                            <span className="rounded-full bg-panel p-2 shadow-card"><CheckCircle className="size-7 text-brand-ink" aria-hidden="true" /></span>
                           </div>
                         )}
                       </div>
-
-                      {/* Card Info */}
-                      <div className="p-5 bg-divider/5 border-t border-divider/30 space-y-3">
-                        <div>
-                          <h3 className="text-sm font-clash font-bold text-foreground group-hover:text-primary-ink transition-editorial tracking-tight">
-                            {template.name}
-                          </h3>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed font-general font-light mt-1">
-                            {template.description}
-                          </p>
-                        </div>
+                      <div className="space-y-2 border-t border-line bg-soft p-4">
+                        <p className="font-doc text-base text-text">{template.name.toLowerCase()}</p>
+                        <p className="text-xs text-muted">{template.description}</p>
                         {template.requiresPhoto && (
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-primary-ink bg-primary/5 px-3 py-1 rounded-xl border border-primary/20 uppercase tracking-widest w-fit">
-                            <ImageIcon className="h-3 w-3" />
-                            <span>Photo Supported</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 rounded-[9px] bg-brand-soft px-2.5 py-1 text-xs text-brand-ink">
+                            <ImageIcon className="size-3" aria-hidden="true" /> photo supported
+                          </span>
                         )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
             </div>
-
           </TabsContent>
 
-          {/* Form Tab */}
-          <TabsContent value="form" className="animate-in fade-in duration-500">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Photo Upload */}
+          <TabsContent value="form" className="fade-up">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               {currentTemplate?.requiresPhoto && (
-                <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                  <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
-                    <ImageIcon className="h-4 w-4 text-primary-ink" />
-                    Your Photo
-                  </h3>
-                  <div className="flex flex-col sm:flex-row items-center gap-8">
-                    <label className="cursor-pointer border-2 border-dashed border-divider hover:border-primary bg-divider/5 rounded-xl p-10 transition-editorial flex flex-col items-center justify-center min-w-[200px] group">
-                      <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary-ink transition-editorial mb-4" />
-                      <span className="text-foreground font-bold tracking-widest text-xs">Upload Photo</span>
-                      <span className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest">Drag or select</span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/jpg"
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                      />
+                <section className={PANEL} aria-label="your photo">
+                  <h3 className={H3}>your photo</h3>
+                  <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+                    <label className="flex min-h-12 cursor-pointer items-center gap-2 rounded-full border border-dashed border-line px-5 text-sm text-muted hover:border-brand hover:text-brand-ink has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+                      <Upload className="size-4" aria-hidden="true" /> {photoPreview ? "change photo" : "upload photo"}
+                      <input type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoUpload} className="sr-only" />
                     </label>
                     {photoPreview && (
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl group-hover:blur-2xl transition-editorial"></div>
-                        <img
-                          src={photoPreview}
-                          alt="Preview"
-                          className="relative w-40 h-40 rounded-xl object-cover border border-primary/50 shadow-2xl"
-                        />
+                      <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoPreview} alt="your photo preview" className="size-28 rounded-[14px] border border-line object-cover" />
                         <button
                           type="button"
                           onClick={handleRemovePhoto}
-                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-2 transition-editorial opacity-0 group-hover:opacity-100 hover:scale-110 shadow-card"
+                          aria-label="remove photo"
+                          className="absolute -right-2 -top-2 grid size-9 place-items-center rounded-full bg-ink text-ink-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="size-4" aria-hidden="true" />
                         </button>
                       </div>
                     )}
                   </div>
-                </div>
+                </section>
               )}
 
-              {/* Contact Information */}
-              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-3">
-                  <User className="h-4 w-4 text-primary-ink" />
-                  Contact Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      Full Name <span className="text-destructive/50">*</span>
-                    </label>
-                    <Input
-                      {...register("contactInfo.fullName")}
-                      placeholder="e.g. John Doe"
-                    />
-                    {errors.contactInfo?.fullName && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.contactInfo.fullName.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      Email Address <span className="text-destructive/50">*</span>
-                    </label>
-                    <Input
-                      {...register("contactInfo.email")}
-                      type="email"
-                      placeholder="hello@example.com"
-                    />
-                    {errors.contactInfo?.email && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.contactInfo.email.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      Phone Number <span className="text-destructive/50">*</span>
-                    </label>
-                    <Input
-                      {...register("contactInfo.mobile")}
-                      type="tel"
-                      placeholder="+1 234 567 890"
-                    />
-                    {errors.contactInfo?.mobile && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.contactInfo.mobile.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">LinkedIn Profile</label>
-                    <Input
-                      {...register("contactInfo.linkedin")}
-                      type="url"
-                      placeholder="https://linkedin.com/in/johndoe"
-                    />
-                    {errors.contactInfo?.linkedin && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-2">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.contactInfo.linkedin.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Additional Social Links */}
-                <div className="mt-8 pt-8 border-t border-divider border-dashed">
-                  <div className="flex items-center justify-between mb-6">
-                    <h4 className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">Additional Social Links</h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => appendSocial({ name: "", url: "" })}
-                      className="text-primary-ink hover:text-foreground h-auto p-0 hover:bg-transparent"
-                    >
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Add Link</span>
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {socialFields.map((field, index) => (
-                      <div key={field.id} className="flex gap-4 items-start">
-                        <div className="flex-1 space-y-3">
-                          <Input
-                            {...register(`contactInfo.socialLinks.${index}.name`)}
-                            placeholder="Platform (e.g. GitHub, Portfolio)"
-                            className="h-10"
-                          />
-                          {errors.contactInfo?.socialLinks?.[index]?.name && (
-                            <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">
-                              {errors.contactInfo.socialLinks[index].name.message}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex-[2] space-y-3">
-                          <Input
-                            {...register(`contactInfo.socialLinks.${index}.url`)}
-                            placeholder="URL"
-                            className="h-10"
-                          />
-                          {errors.contactInfo?.socialLinks?.[index]?.url && (
-                            <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">
-                              {errors.contactInfo.socialLinks[index].url.message}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => removeSocial(index)}
-                          className="h-10 px-3 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              {/* contact: known values collapse to chips */}
+              <section className={PANEL} aria-label="contact">
+                <h3 className={H3}>contact</h3>
+                {!showContact && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[cv.fullName, cv.email, cv.mobile].map((v) => (
+                      <span key={v} className="inline-flex min-h-9 items-center rounded-[9px] bg-soft px-3 text-sm text-text">{v}</span>
                     ))}
+                    <button type="button" onClick={() => setContactEditing(true)} className="min-h-10 rounded-full px-3 text-sm text-muted underline-offset-4 outline-none hover:text-text hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+                      edit
+                    </button>
+                  </div>
+                )}
+                <div className={showContact ? "grid gap-4 md:grid-cols-3" : "hidden"}>
+                  <div>
+                    <FieldLabel htmlFor="rb-name">full name</FieldLabel>
+                    <input id="rb-name" {...register("contactInfo.fullName")} placeholder="alex morgan" autoComplete="name" className={cn(fieldClass, "mt-1.5 h-11")} />
+                    <FieldError>{errors.contactInfo?.fullName?.message}</FieldError>
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor="rb-email">email</FieldLabel>
+                    <input id="rb-email" type="email" {...register("contactInfo.email")} placeholder="alex@example.com" autoComplete="email" className={cn(fieldClass, "mt-1.5 h-11")} />
+                    <FieldError>{errors.contactInfo?.email?.message}</FieldError>
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor="rb-phone">phone</FieldLabel>
+                    <input id="rb-phone" type="tel" {...register("contactInfo.mobile")} placeholder="+1 234 567 890" autoComplete="tel" className={cn(fieldClass, "mt-1.5 h-11")} />
+                    <FieldError>{errors.contactInfo?.mobile?.message}</FieldError>
                   </div>
                 </div>
-              </div>
 
-              {/* Summary */}
-              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
-                  <span className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-primary-ink" />
-                    Professional Summary
-                  </span>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border ${
-                    (watch("summary")?.length || 0) < 50 ? 'bg-destructive/5 text-destructive border-destructive/20' :
-                    (watch("summary")?.length || 0) > 450 ? 'bg-primary/10 text-primary-ink border-primary/20' :
-                    'bg-divider/10 text-muted-foreground border-divider/20'
-                  }`}>
-                    {watch("summary")?.length || 0} / 500
-                  </span>
+                <div className="mt-5">
+                  <More open={linksOpen} onToggle={() => setLinksOpen((v) => !v)} forceOpen={!!(errors.contactInfo?.linkedin || errors.contactInfo?.socialLinks)} label="more: links (optional)">
+                    <div>
+                      <FieldLabel htmlFor="rb-linkedin">linkedin</FieldLabel>
+                      <input id="rb-linkedin" type="url" {...register("contactInfo.linkedin")} placeholder="https://linkedin.com/in/alex" className={cn(fieldClass, "mt-1.5 h-11")} />
+                      <FieldError>{errors.contactInfo?.linkedin?.message}</FieldError>
+                    </div>
+                    <div className="space-y-3">
+                      {socialFields.map((field, index) => (
+                        <div key={field.id} className="flex flex-wrap items-start gap-2 sm:flex-nowrap">
+                          <div className="w-full sm:w-1/3">
+                            <input aria-label={`link ${index + 1} name`} {...register(`contactInfo.socialLinks.${index}.name`)} placeholder="github, portfolio" className={cn(fieldClass, "h-11")} />
+                            <FieldError>{errors.contactInfo?.socialLinks?.[index]?.name?.message}</FieldError>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <input aria-label={`link ${index + 1} url`} {...register(`contactInfo.socialLinks.${index}.url`)} placeholder="https://" className={cn(fieldClass, "h-11")} />
+                            <FieldError>{errors.contactInfo?.socialLinks?.[index]?.url?.message}</FieldError>
+                          </div>
+                          <button type="button" onClick={() => removeSocial(index)} aria-label={`remove link ${index + 1}`} className="grid size-11 shrink-0 place-items-center rounded-full text-faint outline-none hover:bg-gap-soft hover:text-gap-ink focus-visible:ring-2 focus-visible:ring-ring">
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2" role="group" aria-label="add a link">
+                      {["github", "portfolio", "twitter", "other"].map((n) => (
+                        <button key={n} type="button" onClick={() => appendSocial({ name: n === "other" ? "" : n, url: "" })} className="inline-flex min-h-10 items-center gap-1.5 rounded-[9px] border border-dashed border-line px-3 text-sm text-muted outline-none hover:border-brand hover:text-brand-ink focus-visible:ring-2 focus-visible:ring-ring">
+                          <PlusCircle className="size-3.5" aria-hidden="true" /> {n}
+                        </button>
+                      ))}
+                    </div>
+                  </More>
+                </div>
+              </section>
+
+              <section className={PANEL} aria-label="summary">
+                <h3 className={H3}>
+                  <span>summary</span>
+                  {count(watch("summary")?.length || 0, 500, 50)}
                 </h3>
                 <Controller
                   name="summary"
                   control={control}
-                  render={({ field }) => (
-                    <AITextarea
-                      {...field}
-                      type="summary"
-                      placeholder="Write a brief overview of your career, key achievements, and what you're looking for next..."
-                    />
-                  )}
+                  render={({ field }) => <AITextarea {...field} type="summary" placeholder="two or three lines on what you do, what you're proud of, and what's next." />}
                 />
-                {errors.summary && (
-                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-xl">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.summary.message}
-                  </p>
-                )}
-              </div>
+                <FieldError>{errors.summary?.message}</FieldError>
+              </section>
 
-              {/* Skills */}
-              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
-                  <span className="flex items-center gap-3">
-                    <Sparkles className="h-4 w-4 text-primary-ink" />
-                    Your Skills
-                  </span>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border ${
-                    (watch("skills")?.length || 0) < 10 ? 'bg-destructive/5 text-destructive border-destructive/20' :
-                    (watch("skills")?.length || 0) > 900 ? 'bg-primary/10 text-primary-ink border-primary/20' :
-                    'bg-divider/10 text-muted-foreground border-divider/20'
-                  }`}>
-                    {watch("skills")?.length || 0} / 1000
-                  </span>
+              <section className={PANEL} aria-label="skills">
+                <h3 className={H3}>
+                  <span>skills</span>
+                  {count(watch("skills")?.length || 0, 1000, 10)}
                 </h3>
                 <Controller
                   name="skills"
                   control={control}
-                  render={({ field }) => (
-                    <AITextarea
-                      {...field}
-                      type="skills"
-                      placeholder="List your key skills, tools, and expertise (separated by commas or on new lines)..."
-                    />
-                  )}
+                  render={({ field }) => <AITextarea {...field} type="skills" placeholder="react, typescript, sql. commas or new lines." />}
                 />
-                {errors.skills && (
-                  <p className="text-[10px] text-destructive mt-4 font-bold uppercase tracking-widest flex items-center gap-3 bg-destructive/5 p-3 border border-destructive/10 rounded-xl">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.skills.message}
-                  </p>
-                )}
-              </div>
+                <FieldError>{errors.skills?.message}</FieldError>
+              </section>
 
-              {/* Experience */}
-              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
-                  <span className="flex items-center gap-3">
-                    <Briefcase className="h-4 w-4 text-primary-ink" />
-                    Work Experience
-                  </span>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-xl bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
-                    {formValues.experience?.length || 0} Entries
-                  </span>
-                </h3>
-                <Controller
-                  name="experience"
-                  control={control}
-                  render={({ field }) => (
-                    <EntryForm
-                      type="Experience"
-                      entries={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Education */}
-              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
-                  <span className="flex items-center gap-3">
-                    <GraduationCap className="h-4 w-4 text-primary-ink" />
-                    Education
-                  </span>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-xl bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
-                    {formValues.education?.length || 0} Entries
-                  </span>
-                </h3>
-                <Controller
-                  name="education"
-                  control={control}
-                  render={({ field }) => (
-                    <EntryForm
-                      type="Education"
-                      entries={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Projects */}
-              <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-                <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-8 flex items-center justify-between">
-                  <span className="flex items-center gap-3">
-                    <Layers className="h-4 w-4 text-primary-ink" />
-                    Personal Projects
-                  </span>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-xl bg-divider/10 text-muted-foreground border border-divider/20 uppercase tracking-widest">
-                    {formValues.projects?.length || 0} Entries
-                  </span>
-                </h3>
-                <Controller
-                  name="projects"
-                  control={control}
-                  render={({ field }) => (
-                    <EntryForm
-                      type="Projects"
-                      entries={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </div>
+              {[["experience", "Experience", "work experience"], ["education", "Education", "education"], ["projects", "Projects", "projects"]].map(([key, type, title]) => (
+                <section key={key} className={PANEL} aria-label={title}>
+                  <h3 className={H3}>
+                    <span>{title}</span>
+                    <span className="rounded-[9px] bg-soft px-2.5 py-1 font-sans text-xs text-muted">{formValues[key]?.length || 0}</span>
+                  </h3>
+                  <Controller name={key} control={control} render={({ field }) => <EntryForm type={type} entries={field.value} onChange={field.onChange} />} />
+                </section>
+              ))}
             </form>
           </TabsContent>
         </Tabs>
       </div>
+    </ToolFrame>
 
       {/* Hidden container for PDF generation (used when preview is closed) */}
       {!showPreview && (
@@ -1046,16 +780,15 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-divider bg-panel shadow-card relative z-10">
             <h2 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-3">
               <Eye className="h-6 w-6 text-primary-ink" />
-              Resume Preview
+              resume preview
             </h2>
             <div className="flex items-center gap-3">
-              <Button onClick={generatePDF} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-card">
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </Button>
-              <Button onClick={() => setShowPreview(false)} variant="ghost" className="text-muted-foreground hover:text-foreground h-10 w-10 p-0 rounded-full bg-divider/10 hover:bg-divider/20">
-                <X className="h-5 w-5" />
-              </Button>
+              <button type="button" onClick={generatePDF} className="btn-ink inline-flex min-h-11 items-center gap-2 px-5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <Download className="size-4" aria-hidden="true" /> download pdf
+              </button>
+              <button type="button" onClick={() => setShowPreview(false)} aria-label="close preview" className="grid size-11 place-items-center rounded-full border border-line bg-panel outline-none hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring">
+                <X className="size-5" aria-hidden="true" />
+              </button>
             </div>
           </div>
           <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center bg-divider/10">
@@ -1068,6 +801,6 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

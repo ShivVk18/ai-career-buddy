@@ -1,134 +1,122 @@
 'use client'
 
-import Link from "next/link";
-import { ArrowLeft, Sparkles, Brain, Target, Loader2, ChevronLeft } from "lucide-react";
-import Quiz from "../_components/Quiz";
-import { useState } from "react";
-import { generateQuiz } from "@/actions/Interview";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Target } from "lucide-react";
 import { toast } from "sonner";
+import Quiz from "../_components/Quiz";
+import { generateQuiz } from "@/actions/Interview";
+import { getProfileChips } from "@/actions/Onboarding";
 import { generationErrorMessage } from "@/components/shared/generationError";
+import ToolFrame from "@/components/shared/ToolFrame";
+import { FieldLabel, InkButton, Note } from "@/components/shared/ToolBits";
+import { ChipList } from "@/components/ui/Chip";
+import PipStatus from "@/components/ui/PipStatus";
+import Skeleton from "@/components/ui/Skeleton";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+const MAX_PREFILL = 6;
 
 export default function MockInterviewPage() {
-  const router = useRouter();
-  const [skills, setSkills] = useState("");
+  const [skills, setSkills] = useState([]);
+  const [profileState, setProfileState] = useState("loading"); // loading | ready | empty
   const [quizReady, setQuizReady] = useState(false);
   const [questions, setQuestions] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleGenerate = async () => {
+  // Skills come from the profile (or ?skills=a,b). Nothing to type unless you want to add one.
+  useEffect(() => {
+    let alive = true;
+    const fromUrl = (new URLSearchParams(window.location.search).get("skills") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (fromUrl.length) {
+      setSkills(fromUrl);
+      setProfileState("ready");
+      return;
+    }
+    getProfileChips()
+      .then((res) => {
+        if (!alive) return;
+        const found = (res?.chips || []).filter((c) => c.kind === "skill").map((c) => c.label).slice(0, MAX_PREFILL);
+        setSkills(found);
+        setProfileState(found.length ? "ready" : "empty");
+      })
+      .catch(() => alive && setProfileState("empty"));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const handleGenerate = async (e) => {
+    e?.preventDefault();
     try {
       setLoading(true);
-      const arr = skills.split(",").map(s => s.trim()).filter(Boolean);
-      const generated = await generateQuiz(arr); // { quizId, questions } or { error, code }
+      setError("");
+      const generated = await generateQuiz(skills); // { quizId, questions } or { error, code }
       if (generated?.code) {
-        toast.error(generationErrorMessage(generated, "Failed to generate quiz"));
+        setError(generationErrorMessage(generated, "we couldn't make the quiz. try again."));
         return;
       }
       if (!generated?.quizId || !generated?.questions?.length) {
-        toast.error("Failed to generate quiz");
+        setError("we couldn't make the quiz. try again.");
         return;
       }
       setQuestions(generated);
       setQuizReady(true);
-    } catch (e) {
-      toast.error(e?.message || "Failed to generate quiz");
+    } catch (err) {
+      toast.error(err?.message || "we couldn't make the quiz");
     } finally {
       setLoading(false);
     }
   };
 
+  if (quizReady) {
+    return (
+      <ToolFrame title="quiz" outfit="headphones" back={{ href: "/interview", label: "interview prep" }} bare className="max-w-5xl">
+        <Quiz
+          initialQuestions={questions}
+          onComplete={() => {
+            setQuizReady(false);
+            setQuestions(null);
+          }}
+        />
+      </ToolFrame>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-transparent py-12 px-6 md:px-12">
-      <div className="max-w-7xl mx-auto relative z-10">
-        <Link href="/interview">
-          <Button variant="ghost" className="mb-12 text-muted-foreground hover:text-foreground gap-3 px-0 group">
-            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Back to Hub</span>
-          </Button>
-        </Link>
-
-        {!quizReady && (
-          <div className="flex justify-center mt-32">
-            <Dialog open={!quizReady} onOpenChange={(open) => { if (!open) router.push("/interview"); }}>
-              <DialogContent className="bg-panel border-border rounded-xl sm:max-w-md p-10 shadow-2xl">
-                <DialogHeader className="mb-8">
-                  <DialogTitle className="font-clash font-bold text-2xl uppercase tracking-tight text-foreground flex items-center gap-4">
-                    <Brain className="w-6 h-6 text-primary-ink" />
-                    Interview Prep
-                  </DialogTitle>
-                  <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest mt-2">
-                    Enter the skills you want to practice today.
-                  </p>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">What skills should we test?</label>
-                  <Input
-                    placeholder="e.g., React, Node.js, Leadership"
-                    value={skills}
-                    onChange={(e) => setSkills(e.target.value)}
-                    className="h-14"
-                  />
-                  <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest mt-2 font-medium">Separate multiple skills with commas.</p>
-                </div>
-
-                <DialogFooter className="mt-10 flex flex-col sm:flex-row gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push("/interview")}
-                    disabled={loading}
-                    className="w-full sm:w-auto h-14 order-2 sm:order-1 border-divider"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleGenerate} 
-                    disabled={loading || !skills || skills.trim() === ""} 
-                    className="w-full sm:flex-1 h-14 shadow-card order-1 sm:order-2"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-3 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Target className="mr-3 h-4 w-4" />
-                        Start Practice
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+    <ToolFrame
+      title="quick quiz"
+      line="ten questions on the skills you pick. scored when you finish."
+      outfit="headphones"
+      back={{ href: "/interview", label: "interview prep" }}
+      windowTitle="ascendai · interview prep"
+    >
+      <form onSubmit={handleGenerate} className="space-y-6" noValidate>
+        <div className="space-y-2.5">
+          <FieldLabel>skills to test</FieldLabel>
+          {profileState === "loading" ? (
+            <div aria-busy="true" aria-label="reading your skills" className="flex gap-2">
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-16" />
+            </div>
+          ) : (
+            <>
+              <ChipList values={skills} onChange={setSkills} tone="brand" addLabel="add a skill" />
+              <p className="text-xs text-faint">
+                {profileState === "ready" ? "from your profile. tap one to edit, x to drop it." : "nothing on your profile yet. add the skills you want to practice."}
+              </p>
+            </>
+          )}
+        </div>
+        {error && <Note tone="error">{error}</Note>}
+        {loading ? (
+          <PipStatus outfit="headphones" text="writing your questions…" />
+        ) : (
+          <InkButton type="submit" busy={loading} busyText="writing…" disabled={profileState === "loading" || skills.length === 0}>
+            <Target className="size-4" aria-hidden="true" /> start quiz
+          </InkButton>
         )}
-
-        {quizReady && (
-          <div className="animate-in fade-in duration-700">
-            <Quiz 
-              initialQuestions={questions} 
-              onComplete={() => {
-                setQuizReady(false);
-                setQuestions(null);
-              }}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+      </form>
+    </ToolFrame>
   );
 }

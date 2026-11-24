@@ -32,7 +32,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
 
   const handleImprove = async () => {
     if (!value) {
-      toast.error(`Please enter some content first`);
+      toast.error("write a line first, then improve it");
       return;
     }
 
@@ -52,7 +52,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
         onChange({ target: { value: result.text } });
       }
       setImprovedSources(result.sources || []);
-      toast.success(`${label || 'Content'} improved by AI! ✨`);
+      toast.success("improved. check it still sounds like you");
     } catch (error) {
       toast.error(error.message || `Failed to improve content`);
     } finally {
@@ -60,42 +60,21 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
     }
   };
 
+  const small = "inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm text-brand-ink outline-none hover:bg-brand-soft focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40";
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        {label ? (
-          <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground flex items-center gap-3">
-            {label}
-          </label>
-        ) : <div />}
-        <div className="flex gap-4 items-center">
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {label ? <label className="text-xs font-medium text-faint">{label}</label> : <div />}
+        <div className="flex items-center gap-1">
           {isSupported && (
-            <button
-              type="button"
-              onClick={handleToggleRecording}
-              className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-primary-ink hover:text-foreground'}`}
-            >
-              <Mic className={`h-3.5 w-3.5 ${!isRecording && 'group-hover:scale-110 transition-transform'}`} />
-              <span>{isRecording ? "Recording..." : "Dictate"}</span>
+            <button type="button" onClick={handleToggleRecording} aria-pressed={isRecording} className={`${small} ${isRecording ? "!text-danger" : ""}`}>
+              <Mic className="size-3.5" aria-hidden="true" />
+              <span>{isRecording ? "recording…" : "dictate"}</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={handleImprove}
-            disabled={isImproving || !value}
-            className="text-[9px] font-bold tracking-widest text-primary-ink hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
-          >
-            {isImproving ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Improving...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
-                <span>Improve with AI</span>
-              </>
-            )}
+          <button type="button" onClick={handleImprove} disabled={isImproving || !value} className={small}>
+            {isImproving ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles className="size-3.5" aria-hidden="true" />}
+            <span>{isImproving ? "improving…" : "improve with ai"}</span>
           </button>
         </div>
       </div>
@@ -110,10 +89,10 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
           if (onChange) onChange(e);
         }}
         placeholder={placeholder}
-        className="h-40 w-full px-4 py-4 bg-divider/5 border border-border rounded-xl focus:outline-none focus:border-primary transition-editorial font-general text-sm leading-relaxed"
+        className="h-36 w-full rounded-lg border border-line bg-bg px-3.5 py-3 text-sm leading-relaxed text-text outline-none placeholder:text-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
         {...props}
       />
-      <SourceChips sources={improvedSources} heading="Based on" />
+      <SourceChips sources={improvedSources} heading="based on" />
     </div>
   );
 });

@@ -1,36 +1,28 @@
+import { Chip } from "@/components/ui/Chip";
+
 // gapData: result of getGapFrequency() ({ gaps, resultCount } or { error, code }).
 export default function GapFrequency({ gapData }) {
   return (
-    <div className="border border-divider bg-divider/10 p-8 rounded-xl">
-      <h2 className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground mb-2">
-        Gaps ranked by frequency
-      </h2>
+    <section aria-label="gaps ranked by frequency" className="rounded-[20px] border border-line bg-panel p-5 shadow-card sm:p-6">
+      <h2 className="font-doc text-xl text-text">gaps, most common first</h2>
       {gapData?.error ? (
-        <p role="alert" className="text-sm text-muted-foreground">
-          Couldn&apos;t load your skill gaps right now.
-        </p>
+        <p role="alert" className="mt-2 text-sm text-danger">couldn&apos;t load your skill gaps right now.</p>
       ) : !gapData?.gaps?.length ? (
-        <p className="text-sm text-muted-foreground font-light">
-          No gaps yet. Run an ATS check against a job description and the skills you&apos;re missing will be ranked here.
-        </p>
+        <p className="mt-2 text-sm text-muted">no gaps yet. scan your resume against a job and the skills you&apos;re missing are ranked here.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground mb-6">
-            Based on {gapData.resultCount} ATS result{gapData.resultCount === 1 ? "" : "s"}.
+          <p className="mb-4 mt-1 text-xs text-faint">
+            from {gapData.resultCount} scan{gapData.resultCount === 1 ? "" : "s"}.
           </p>
           <ul className="flex flex-wrap gap-2">
             {gapData.gaps.slice(0, 20).map((g) => (
-              <li
-                key={g.skill}
-                className="inline-flex items-center gap-2 px-3 py-1.5 border border-primary/30 bg-primary/5 rounded-xl text-xs text-foreground"
-              >
-                <span>{g.skill}</span>
-                <span className="font-bold text-primary-ink">{g.count}</span>
+              <li key={g.skill}>
+                <Chip tone="gap" editable={false} value={`${g.skill} · ${g.count}`} />
               </li>
             ))}
           </ul>
         </>
       )}
-    </div>
+    </section>
   );
 }

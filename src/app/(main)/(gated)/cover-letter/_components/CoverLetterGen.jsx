@@ -1,239 +1,98 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { Loader2, Sparkles, Zap, Brain, Target, FileText, PenTool } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { generateCoverLetter } from "@/actions/CoverLetter";
-import useFetch from "@/hooks/use-fetch";
-import { coverLetterSchema } from "@/app/lib/schema";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { PenTool } from "lucide-react";
+import { generateCoverLetter } from "@/actions/CoverLetter";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import JobStart from "@/components/shared/JobStart";
+import JobDetailsFields from "@/components/shared/JobDetailsFields";
+import ToolFrame from "@/components/shared/ToolFrame";
+import { ChoiceChips, FieldLabel, InkButton, Note } from "@/components/shared/ToolBits";
+import PipStatus from "@/components/ui/PipStatus";
 import { COVER_LETTER_TONES, DEFAULT_TONE, TONE_LABELS } from "@/lib/writing";
 
-export default function CoverLetterGenerator() {
+const EMPTY = { companyName: "", jobTitle: "", jobDescription: "" };
+
+export default function CoverLetterGenerator({ source, generate = generateCoverLetter, onDone }) {
   const router = useRouter();
   const [tone, setTone] = useState(DEFAULT_TONE);
   const [jobId, setJobId] = useState(null);
+  const [values, setValues] = useState(EMPTY);
+  const [errors, setErrors] = useState({});
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    reset,
-  } = useForm({
-    resolver: zodResolver(coverLetterSchema),
-  });
+  const set = (k, v) => {
+    setValues((s) => ({ ...s, [k]: v }));
+    if (errors[k]) setErrors((e) => ({ ...e, [k]: undefined }));
+  };
 
-  const {
-    loading: generating,
-    fn: generateLetterFn,
-    data: generatedLetter,
-  } = useFetch(generateCoverLetter);
-
-  // Update content when letter is generated
-  useEffect(() => {
-    if (generatedLetter?.error || generatedLetter?.code) {
-      toast.error(generationErrorMessage(generatedLetter));
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!values.jobDescription.trim()) {
+      setErrors({ jobDescription: "paste the job description, or pick one of your jobs." });
       return;
     }
-    if (generatedLetter?.id) {
-      toast.success("Cover letter generated! ✨");
-      router.push(`/cover-letter/${generatedLetter.id}`);
-      reset();
-    }
-  }, [generatedLetter]);
-
-  const onSubmit = async (data) => {
+    setBusy(true);
+    setError("");
     try {
-      await generateLetterFn({ ...data, tone, ...(jobId ? { jobId } : {}) });
-    } catch (error) {
-      toast.error(error.message || "Failed to generate cover letter");
+      const res = await generate({ ...values, tone, ...(jobId ? { jobId } : {}) });
+      if (res?.error || res?.code || !res?.id) {
+        setError(generationErrorMessage(res));
+        return;
+      }
+      toast.success("cover letter ready");
+      if (onDone) onDone(res);
+      else router.push(`/cover-letter/${res.id}`);
+    } catch (err) {
+      setError(err?.message || "we couldn't write that letter. try again.");
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="relative">
-      <div className="space-y-16 relative z-10">
-        {/* Header */}
-        <div className="text-center space-y-6 mb-20 border-b border-divider pb-16">
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-8 h-[1px] bg-primary"></div>
-            <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
-              AI Career Assistant
-            </span>
-            <div className="w-8 h-[1px] bg-primary"></div>
-          </div>
-          
-          <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
-            Cover Letter <span className="text-primary-ink">Generator</span>
-          </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
-            Create a professional, high-impact cover letter in seconds. Tailored to the job description and your unique experience.
-          </p>
+    <ToolFrame
+      title="cover letter"
+      line="pick a job and pip writes it from your resume. nothing is invented."
+      outfit="wizard"
+      back={{ href: "/cover-letter", label: "your letters" }}
+      windowTitle="ascendai · new cover letter"
+    >
+      <form onSubmit={submit} className="space-y-6" noValidate>
+        <JobStart
+          source={source}
+          disabled={busy}
+          hasErrors={!!errors.jobDescription}
+          onPick={({ jobId: id, company, title, jdText }) => {
+            setJobId(id);
+            setValues({ companyName: company, jobTitle: title, jobDescription: jdText });
+            setErrors({});
+          }}
+          onClear={() => {
+            setJobId(null);
+            setValues(EMPTY);
+          }}
+        >
+          <JobDetailsFields idPrefix="cl" values={values} onChange={set} errors={errors} placeholder="paste the job requirements. pip uses them to pick your most relevant work." />
+        </JobStart>
+
+        <div className="space-y-2">
+          <FieldLabel>tone</FieldLabel>
+          <ChoiceChips label="tone" value={tone} onChange={setTone} options={COVER_LETTER_TONES.map((t) => [t, TONE_LABELS[t]?.toLowerCase?.() || t])} />
         </div>
 
-        {/* Form Container */}
-        <div className="border border-border bg-panel rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
-          
-          <div className="mb-12">
-            <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3">
-              <Target className="h-4 w-4 text-primary-ink" />
-              Job Details
-            </h3>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
-            {/* Pick a job (fills the details), or enter them by hand */}
-            <JobStart
-              hasErrors={!!(errors.companyName || errors.jobTitle || errors.jobDescription)}
-              onPick={({ jobId: id, company, title, jdText }) => {
-                setJobId(id);
-                setValue("companyName", company, { shouldValidate: true });
-                setValue("jobTitle", title, { shouldValidate: true });
-                setValue("jobDescription", jdText, { shouldValidate: true });
-              }}
-              onClear={() => setJobId(null)}
-            >
-            {/* Entity and Role */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label htmlFor="companyName" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                  Company Name
-                </Label>
-                <Input
-                  id="companyName"
-                  placeholder="e.g., Google, Stripe"
-                  {...register("companyName")}
-                  className="h-14"
-                />
-                {errors.companyName && (
-                  <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.companyName.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="jobTitle" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                  Job Title
-                </Label>
-                <Input
-                  id="jobTitle"
-                  placeholder="e.g., Product Designer"
-                  {...register("jobTitle")}
-                  className="h-14"
-                />
-                {errors.jobTitle && (
-                  <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobTitle.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Content Logic */}
-            <div className="space-y-3">
-              <Label htmlFor="jobDescription" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                Job Description
-              </Label>
-              <Textarea
-                id="jobDescription"
-                placeholder="Paste the job requirements here. Our AI will use this to highlight your most relevant experience..."
-                className="h-48 bg-divider/5 border-border focus:border-primary"
-                {...register("jobDescription")}
-              />
-              {errors.jobDescription && (
-                <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
-              )}
-            </div>
-
-            </JobStart>
-
-            {/* Tone */}
-            <div className="space-y-3">
-              <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                Tone
-              </Label>
-              <div role="radiogroup" aria-label="Tone" className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {COVER_LETTER_TONES.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="radio"
-                    aria-checked={tone === t}
-                    onClick={() => setTone(t)}
-                    className={`h-12 px-4 border rounded-xl text-[10px] font-bold tracking-widest uppercase transition-editorial ${
-                      tone === t
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-divider text-muted-foreground hover:border-primary"
-                    }`}
-                  >
-                    {TONE_LABELS[t]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Execution Trigger */}
-            <Button 
-              type="submit" 
-              disabled={generating}
-              className="w-full h-16 text-xs font-bold tracking-[0.3em] uppercase shadow-card"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-4" />
-                  Generating Letter...
-                </>
-              ) : (
-                <>
-                  <PenTool className="w-4 h-4 mr-4" />
-                  Generate Cover Letter
-                </>
-              )}
-            </Button>
-          </form>
-        </div>
-
-        {/* Benefits Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 pb-20">
-          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
-                <Target className="h-4 w-4 text-primary-ink" />
-              </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Precision Matching</h3>
-            </div>
-            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Our AI analyzes the job description to highlight your most relevant skills and wins.</p>
-          </div>
-          
-          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
-                <Sparkles className="h-4 w-4 text-primary-ink" />
-              </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">ATS Optimized</h3>
-            </div>
-            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Generated content follows industry-standard formats that pass through recruiter filters.</p>
-          </div>
-          
-          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
-                <FileText className="h-4 w-4 text-primary-ink" />
-              </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Ready to Use</h3>
-            </div>
-            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Get a polished, professional cover letter that you can download and use instantly.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+        {error && <Note tone="error">{error}</Note>}
+        {busy ? (
+          <PipStatus outfit="wizard" text="writing your letter, about 20 seconds" />
+        ) : (
+          <InkButton type="submit" busy={busy} busyText="writing…">
+            <PenTool className="size-4" aria-hidden="true" /> write my letter
+          </InkButton>
+        )}
+      </form>
+    </ToolFrame>
   );
 }

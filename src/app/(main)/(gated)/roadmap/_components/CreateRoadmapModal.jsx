@@ -1,49 +1,56 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Sparkles, Brain, Zap } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sparkles } from "lucide-react";
 import { generateCareerRoadmap } from "@/actions/CareerRoadmap";
 import { getProfileChips } from "@/actions/Onboarding";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { generationErrorMessage } from "@/components/shared/generationError";
+import { Chip } from "@/components/ui/Chip";
+import PipAvatar from "@/components/ui/PipAvatar";
+import PipStatus from "@/components/ui/PipStatus";
+import Skeleton from "@/components/ui/Skeleton";
+import { ChoiceChips, FieldLabel, InkButton, Note, fieldClass } from "@/components/shared/ToolBits";
+import { cn } from "@/lib/utils";
 
-const CreateRoadmapModal = ({ open, onClose }) => {
+const TIMELINES = [
+  ["", "no rush"],
+  ["6 months", "6 months"],
+  ["12 months", "1 year"],
+  ["24 months", "2 years"],
+];
+const FIELDS = [
+  { key: "currentRole", label: "where you are now", placeholder: "software engineer" },
+  { key: "targetRole", label: "where you want to be", placeholder: "engineering manager" },
+  { key: "industry", label: "industry", placeholder: "technology" },
+];
+
+/** `loadProfile` and `generate` can be swapped by dev pages. */
+const CreateRoadmapModal = ({ open, onClose, loadProfile = getProfileChips, generate = generateCareerRoadmap, onCreated }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    currentRole: "",
-    targetRole: "",
-    industry: "",
-    timeline: "",
-  });
+  const [formData, setFormData] = useState({ currentRole: "", targetRole: "", industry: "", timeline: "" });
+  const [phase, setPhase] = useState("idle"); // idle | loading | done
   const [prefilled, setPrefilled] = useState(false);
-  const [editing, setEditing] = useState(false); // "edit details": show the full fields
-  const [chipEdit, setChipEdit] = useState(null); // field name being edited in place
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState("");
   const triedPrefill = useRef(false);
   const router = useRouter();
 
-  // Smart defaults: current role, target role and industry come from the profile. Anything the user already typed wins.
+  // Smart defaults: current role, target role and industry come from the profile. Anything already typed wins.
   useEffect(() => {
     if (!open || triedPrefill.current) return;
     triedPrefill.current = true;
+    setPhase("loading");
     (async () => {
       try {
-        const res = await getProfileChips();
+        const res = await loadProfile();
         if (!res || res.error) return;
         const role = (res.chips || []).find((c) => c.kind === "role");
-        const target = res.targetRole || res.suggestedTargetRole || "";
         const found = {
           currentRole: role?.label || "",
-          targetRole: target,
+          targetRole: res.targetRole || res.suggestedTargetRole || "",
           industry: res.industry || "",
         };
         setFormData((f) => ({
@@ -55,243 +62,131 @@ const CreateRoadmapModal = ({ open, onClose }) => {
         setPrefilled(Object.values(found).some(Boolean));
       } catch {
         // Prefill is a convenience only; the fields stay empty and editable.
+      } finally {
+        setPhase("done");
       }
     })();
-  }, [open]);
+  }, [open, loadProfile]);
+
+  const set = (k, v) => setFormData((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!["currentRole", "targetRole", "industry"].every((k) => formData[k].trim())) {
+      setError("add where you are, where you want to be, and your industry.");
+      setEditing(true);
+      return;
+    }
     setLoading(true);
-
+    setError("");
     try {
-      const roadmap = await generateCareerRoadmap(formData);
+      const roadmap = await generate(formData);
       if (!roadmap || roadmap.error || !roadmap.id) {
-        toast.error(generationErrorMessage(roadmap));
+        setError(generationErrorMessage(roadmap));
         return;
       }
-      toast.success("Your roadmap is ready! 🎉");
+      toast.success("your roadmap is ready");
       setFormData({ currentRole: "", targetRole: "", industry: "", timeline: "" });
       triedPrefill.current = false; // prefill again next time it opens
       setPrefilled(false);
       setEditing(false);
-      setChipEdit(null);
       onClose();
-      router.push(`/roadmap/${roadmap.id}`);
-    } catch (error) {
-      console.error("Roadmap generation error:", error);
-      toast.error(error.message || "Something went wrong. Please try again.");
+      if (onCreated) onCreated(roadmap);
+      else router.push(`/roadmap/${roadmap.id}`);
+    } catch (err) {
+      console.error("Roadmap generation error:", err);
+      setError(err?.message || "something went wrong. try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const complete = prefilled && ["currentRole", "targetRole", "industry"].every((k) => formData[k].trim());
+  const complete = prefilled && FIELDS.every((f) => formData[f.key].trim());
   const showFields = !complete || editing;
-  const CHIPS = [
-    { key: "currentRole", label: "Now" },
-    { key: "targetRole", label: "Goal" },
-    { key: "industry", label: "Industry" },
-  ];
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl border border-divider bg-panel p-0 rounded-xl overflow-hidden shadow-2xl">
-        <div className="p-10 space-y-10">
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-[1px] bg-primary" />
-              <span className="text-[10px] font-bold tracking-[0.3em] text-primary-ink uppercase">
-                AI Career Roadmap
-              </span>
-            </div>
+    <Dialog open={open} onOpenChange={(o) => !o && !loading && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-xl overflow-y-auto rounded-[20px] border border-line bg-panel p-5 shadow-pop sm:p-8">
+        <div className="mb-5 flex items-center gap-3">
+          <PipAvatar outfit="rocket" size="lg" alt="" />
+          <div>
+            <DialogTitle className="font-doc text-2xl font-normal normal-case tracking-normal text-text">new roadmap</DialogTitle>
+            <DialogDescription className="mt-0.5 text-sm text-muted">
+              {prefilled ? "filled in from your profile. tap a chip to change it." : "tell pip where you are and where you're headed."}
+            </DialogDescription>
+          </div>
+        </div>
 
-            <div className="flex flex-col gap-4">
-              <DialogTitle asChild>
-                <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
-                  Build Your <span className="text-muted-foreground">Plan</span>
-                </h2>
-              </DialogTitle>
-              <DialogDescription asChild>
-                <p className="text-muted-foreground text-sm font-general font-light leading-relaxed max-w-md">
-                  Tell us where you are and where you want to go — your AI coach
-                  will map out every step to get there.
-                </p>
-              </DialogDescription>
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          {phase === "loading" && (
+            <div aria-busy="true" aria-label="reading your profile" className="flex flex-wrap gap-2">
+              <Skeleton className="h-8 w-44" />
+              <Skeleton className="h-8 w-36" />
+              <Skeleton className="h-8 w-28" />
             </div>
+          )}
+
+          {phase !== "loading" && !showFields && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2" aria-label="details from your profile">
+                {FIELDS.map((f) => (
+                  <span key={f.key} className="inline-flex items-center gap-1.5">
+                    <span className="text-xs text-faint">{f.key === "currentRole" ? "now" : f.key === "targetRole" ? "goal" : "industry"}</span>
+                    <Chip tone="brand" value={formData[f.key]} onChange={(v) => set(f.key, v)} className="min-h-10" />
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {phase !== "loading" && showFields && (
+            <div className="space-y-4">
+              {FIELDS.map((f) => (
+                <div key={f.key}>
+                  <FieldLabel htmlFor={`rm-${f.key}`}>{f.label}</FieldLabel>
+                  <input
+                    id={`rm-${f.key}`}
+                    name={f.key}
+                    value={formData[f.key]}
+                    onChange={(e) => set(f.key, e.target.value)}
+                    placeholder={f.placeholder}
+                    autoComplete="off"
+                    className={cn(fieldClass, "mt-1.5 h-11")}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <FieldLabel>timeline</FieldLabel>
+            <ChoiceChips label="timeline" value={formData.timeline} onChange={(v) => set("timeline", v)} options={TIMELINES} />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {prefilled && <p className="text-xs text-muted-foreground">Filled in from your profile. Change anything that isn&apos;t right.</p>}
-            {!showFields && (
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2" aria-label="Details from your profile">
-                  {CHIPS.map((c) =>
-                    chipEdit === c.key ? (
-                      <Input
-                        key={c.key}
-                        name={c.key}
-                        aria-label={c.label}
-                        autoFocus
-                        value={formData[c.key]}
-                        onChange={handleChange}
-                        onBlur={() => setChipEdit(null)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === "Escape") {
-                            e.preventDefault();
-                            setChipEdit(null);
-                          }
-                        }}
-                        className="h-11 w-56 rounded-full text-sm"
-                      />
-                    ) : (
-                      <button
-                        key={c.key}
-                        type="button"
-                        onClick={() => setChipEdit(c.key)}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-divider px-4 text-sm text-foreground outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-primary/50"
-                      >
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{c.label}</span>
-                        {formData[c.key]}
-                      </button>
-                    )
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="min-h-11 px-2 text-xs text-muted-foreground underline outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/50"
-                  >
-                    edit details
-                  </button>
-                </div>
-                <Input
-                  id="timeline"
-                  name="timeline"
-                  aria-label="Timeline (optional)"
-                  placeholder="Timeline (optional), e.g. 12 months"
-                  value={formData.timeline}
-                  onChange={handleChange}
-                  className="h-11 max-w-xs rounded-full text-sm"
-                />
-              </div>
-            )}
-            {showFields && (<>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label
-                  htmlFor="currentRole"
-                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
-                >
-                  Current Role
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="currentRole"
-                    name="currentRole"
-                    placeholder="e.g. Software Engineer"
-                    value={formData.currentRole}
-                    onChange={handleChange}
-                    required
-                    className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
-                  />
-                  <Brain className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
-                </div>
-              </div>
+          {error && <Note tone="error">{error}</Note>}
 
-              <div className="space-y-3">
-                <Label
-                  htmlFor="targetRole"
-                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
-                >
-                  Target Role
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="targetRole"
-                    name="targetRole"
-                    placeholder="e.g. Engineering Manager"
-                    value={formData.targetRole}
-                    onChange={handleChange}
-                    required
-                    className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
-                  />
-                  <Zap className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label
-                  htmlFor="industry"
-                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
-                >
-                  Industry
-                </Label>
-                <Input
-                  id="industry"
-                  name="industry"
-                  placeholder="e.g. Technology, Finance"
-                  value={formData.industry}
-                  onChange={handleChange}
-                  required
-                  className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <Label
-                  htmlFor="timeline"
-                  className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
-                >
-                  Timeline (optional)
-                </Label>
-                <Input
-                  id="timeline"
-                  name="timeline"
-                  placeholder="e.g. 12 months, 2 years"
-                  value={formData.timeline}
-                  onChange={handleChange}
-                  className="h-14 bg-divider/10 border-divider rounded-xl text-foreground placeholder:text-muted-foreground/40 font-general text-sm focus:border-primary transition-editorial"
-                />
-              </div>
-            </div>
-
-            </>)}
-
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <Button
+          {loading ? (
+            <PipStatus outfit="rocket" text="building your roadmap, about 20 seconds" />
+          ) : (
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
                 type="button"
-                variant="outline"
                 onClick={onClose}
-                className="flex-1 h-14 border-divider text-[10px] font-bold tracking-widest uppercase hover:bg-divider/20 rounded-xl transition-editorial"
-                disabled={loading}
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-line px-6 text-sm text-text outline-none hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="flex-1 h-14 text-[10px] font-bold tracking-widest uppercase rounded-xl transition-editorial"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-3 animate-spin" />
-                    Building your roadmap...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-3" />
-                    Generate My Roadmap
-                  </>
-                )}
-              </Button>
+                cancel
+              </button>
+              <InkButton type="submit" busy={loading} busyText="building…" disabled={phase === "loading"}>
+                <Sparkles className="size-4" aria-hidden="true" /> make my roadmap
+              </InkButton>
             </div>
-          </form>
-        </div>
+          )}
+          {complete && !editing && phase !== "loading" && !loading && (
+            <button type="button" onClick={() => setEditing(true)} className="min-h-10 rounded-full text-sm text-muted underline-offset-4 outline-none hover:text-text hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+              edit details as text
+            </button>
+          )}
+        </form>
       </DialogContent>
     </Dialog>
   );

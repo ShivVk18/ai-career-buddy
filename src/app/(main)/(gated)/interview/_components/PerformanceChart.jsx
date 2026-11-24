@@ -11,7 +11,6 @@ import {
 } from "recharts";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { TrendingUp, BarChart3 } from "lucide-react";
 
 export default function PerformanceChart({ assessments }) {
   const [chartData, setChartData] = useState([]);
@@ -27,20 +26,11 @@ export default function PerformanceChart({ assessments }) {
   }, [assessments]);
 
   return (
-    <div className="border border-border bg-panel rounded-xl p-8 shadow-card">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-divider/20 flex items-center justify-center border border-divider/30">
-            <TrendingUp className="w-5 h-5 text-primary-ink" />
-          </div>
-          <h2 className="text-3xl font-clash font-bold text-foreground tracking-tight">
-            Performance Trend
-          </h2>
-        </div>
-        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest ml-14">Your quiz scores over time</p>
-      </div>
-
-      <div className="h-[300px] bg-divider/5 rounded-xl p-6 border border-divider/30">
+    <div>
+      {chartData.length === 0 ? (
+        <p className="rounded-[14px] border border-dashed border-line p-6 text-center text-sm text-muted">no scores yet. take a quiz and your trend shows up here.</p>
+      ) : (
+      <div role="img" aria-label="line chart of your quiz scores over time" className="h-[240px] rounded-[14px] bg-soft p-3">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
             <defs>
@@ -49,15 +39,15 @@ export default function PerformanceChart({ assessments }) {
                 <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.1}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" opacity={0.5} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" opacity={0.5} />
             <XAxis 
               dataKey="date" 
-              stroke="var(--muted-foreground)"
+              stroke="var(--faint)"
               style={{ fontSize: '12px' }}
             />
             <YAxis 
               domain={[0, 100]} 
-              stroke="var(--muted-foreground)"
+              stroke="var(--faint)"
               style={{ fontSize: '12px' }}
             />
             <Tooltip
@@ -101,6 +91,7 @@ export default function PerformanceChart({ assessments }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+      )}
     </div>
   );
 }

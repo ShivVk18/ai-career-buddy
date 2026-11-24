@@ -125,19 +125,19 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
     return (
       <div className="space-y-2" aria-busy="true" aria-label="Loading draft">
         <div className="h-4 w-1/3 animate-pulse rounded bg-soft" />
-        <div className="h-40 w-full animate-pulse rounded-lg bg-soft" />
+        <div className="h-40 w-full animate-pulse rounded-[14px] bg-soft" />
       </div>
     );
   }
   if (state.status === "gone") {
-    return <p className="text-xs text-muted">This draft was deleted. Reload the list to clear it.</p>;
+    return <p className="text-xs text-muted">this draft was deleted. reload the list to clear it.</p>;
   }
   if (state.status === "error") {
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 p-3 text-xs text-text">
+      <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[14px] bg-gap-soft text-gap-ink p-3 text-xs text-text">
         <span className="min-w-0 flex-1">{state.error}</span>
         <button type="button" onClick={load} className="btn-pill-secondary min-h-10 px-4 text-xs">
-          Retry
+          retry
         </button>
       </div>
     );
@@ -146,11 +146,11 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
   const label = isLetter ? "cover letter" : "cold email";
   return (
     <div className="space-y-3">
-      {!isLetter && state.doc.subject && <p className="text-xs text-muted">Subject: {state.doc.subject}</p>}
+      {!isLetter && state.doc.subject && <p className="text-xs text-muted">subject: {state.doc.subject}</p>}
       {isLetter && (
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Tone">
           {toneName(tone) && (
-            <span className="inline-flex h-8 items-center rounded-full border border-pip bg-pip-soft px-3 font-pixel text-[11px] text-pip-ink">
+            <span className="inline-flex h-8 items-center rounded-full bg-brand-soft px-3 text-xs text-brand-ink">
               tone: {toneName(tone)}
             </span>
           )}
@@ -160,7 +160,7 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
               type="button"
               disabled={!!working}
               onClick={() => doSwitch(sw)}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-panel px-4 text-xs text-text outline-none transition hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95 disabled:opacity-60"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-panel px-4 text-xs text-text outline-none transition hover:border-brand focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:opacity-60"
             >
               {working === sw.key && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
               {sw.label}
@@ -186,7 +186,7 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
         rows={Math.min(Math.max(text.split("\n").length + 2, 8), 24)}
         maxLength={10000}
         aria-label={`Edit this ${label}`}
-        className="w-full resize-y rounded-xl border border-line bg-panel p-4 font-serif text-[13px] leading-relaxed text-text outline-none focus-visible:border-pip focus-visible:ring-2 focus-visible:ring-pip/40"
+        className="w-full resize-y rounded-[14px] border border-line bg-bg p-4 font-doc text-[15px] leading-relaxed text-text outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
       />
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -195,19 +195,19 @@ export default function LetterReview({ kind, item, href, onApprove, approving })
           onClick={async () => {
             if (await flush()) onApprove();
           }}
-          className="btn-pill-primary inline-flex min-h-11 items-center gap-2 px-5 text-xs disabled:opacity-60"
+          className="btn-ink inline-flex min-h-11 items-center gap-2 px-5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {approving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}
-          Looks good
+          looks good
         </button>
-        <Link href={href} className="text-xs text-pip-ink underline-offset-4 hover:underline rounded focus-visible:ring-2 focus-visible:ring-pip/50">
+        <Link href={href} className="inline-flex min-h-10 items-center text-sm text-brand-ink underline-offset-4 hover:underline rounded focus-visible:ring-2 focus-visible:ring-ring">
           open full editor
         </Link>
         <span className="text-[11px] text-muted" role="status" aria-live="polite">
           {saveState === "saving" ? "saving…" : saveState === "saved" ? "saved" : saveState === "failed" ? "not saved" : "saves when you click away"}
         </span>
       </div>
-      <p className="text-[11px] text-muted">Approving only marks it reviewed. Nothing is ever sent for you.</p>
+      <p className="text-[11px] text-muted">approving only marks it reviewed. nothing is sent for you.</p>
     </div>
   );
 }

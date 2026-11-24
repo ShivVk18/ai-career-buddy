@@ -2,130 +2,109 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Upload, FileText, Loader, AlertCircle, CheckCircle, Target, TrendingUp, Sparkles, Zap, Brain, Search } from 'lucide-react';
-import { createATSAnalysis } from '@/actions/ResumeParser';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Upload, CheckCircle, Search } from 'lucide-react';
+import { createATSAnalysis, getATSScoreById } from '@/actions/ResumeParser';
+import { getResume } from '@/actions/Resume';
 import { generationErrorMessage } from "@/components/shared/generationError";
-import { getATSScoreById } from "@/actions/ResumeParser";
-import { getResume } from "@/actions/Resume";
 import JobStart from "@/components/shared/JobStart";
+import JobDetailsFields from "@/components/shared/JobDetailsFields";
+import ToolFrame from "@/components/shared/ToolFrame";
+import { ChoiceChips, FieldLabel, InkButton, Note } from "@/components/shared/ToolBits";
+import PipStatus from "@/components/ui/PipStatus";
+import { cn } from "@/lib/utils";
 import AtsResult from "./AtsResult";
 import AtsHistory from "./AtsHistory";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
-const ResumeParserComponent = () => {
-
-  const [formData, setFormData] = useState({
-    companyName: '',
-    jobTitle: '',
-    jobDescription: '',
-    resumePdf: null
-  });
-
+const ResumeParserComponent = ({ source, scan = createATSAnalysis, openById = getATSScoreById, loadResume = getResume, initialResult = null, skipHistory = false }) => {
+  const [formData, setFormData] = useState({ companyName: '', jobTitle: '', jobDescription: '', resumePdf: null });
   const [jobId, setJobId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(initialResult);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [notice, setNotice] = useState('');
   const [historyKey, setHistoryKey] = useState(0);
   const [hasSaved, setHasSaved] = useState(false);
-  const [source, setSource] = useState('saved'); // 'saved' | 'pdf'
+  const [source_, setSource] = useState('saved'); // 'saved' | 'pdf'
   const [noResume, setNoResume] = useState(false);
-  const useSaved = hasSaved && source === 'saved';
+  const useSaved = hasSaved && source_ === 'saved';
 
   useEffect(() => {
     let alive = true;
-    getResume()
+    Promise.resolve()
+      .then(() => loadResume())
       .then((r) => { if (alive) setHasSaved(!!r); })
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [loadResume]);
 
-  // Convert PDF → base64
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
+  const setField = (k, v) => setFormData((prev) => ({ ...prev, [k]: v }));
+
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result.split(",")[1]);
       reader.onerror = reject;
     });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setNoResume(false);
+    if (!formData.jobDescription.trim()) {
+      setError("paste the job description, or pick one of your jobs.");
+      return;
+    }
     if (!useSaved && !formData.resumePdf) {
-      setError("Please upload your resume in PDF format");
+      setError("add your resume as a pdf, or build one first.");
       return;
     }
-
-    if (!formData.jobDescription) {
-      setError("Please provide a job description for better matching");
-      return;
-    }
-
     setLoading(true);
     setError('');
-
     try {
       const base64Resume = useSaved ? null : await fileToBase64(formData.resumePdf);
-
-      const response = await createATSAnalysis({
+      const response = await scan({
         companyName: formData.companyName,
         jobTitle: formData.jobTitle,
         jobDescription: formData.jobDescription,
-        ...(useSaved
-          ? { useSavedResume: true }
-          : { resumeBase64: base64Resume, resumeType: formData.resumePdf.type }),
+        ...(useSaved ? { useSavedResume: true } : { resumeBase64: base64Resume, resumeType: formData.resumePdf.type }),
         ...(jobId ? { jobId } : {}),
       });
-
       if (response?.code === 'NO_RESUME') {
         setNoResume(true);
         setSource('pdf');
-        setError("You don't have a saved resume yet.");
-        setLoading(false);
+        setError("you don't have a saved resume yet.");
         return;
       }
       if (!response || !response.success) {
-        setError(generationErrorMessage(response, "Something went wrong while scanning. Please try again."));
-        setLoading(false);
+        setError(generationErrorMessage(response, "something went wrong while scanning. try again."));
         return;
       }
-
       setResult(response.data);
       setNotice('');
       setHistoryKey((k) => k + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
     } catch (err) {
       console.error("ATS ERROR:", err);
-      setError("We couldn't process your resume. Please check the file and try again.");
+      setError("we couldn't process your resume. check the file and try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    handleFileSelection(file);
-  };
-
   const handleFileSelection = (file) => {
     if (!file) return;
     if (file.type !== 'application/pdf') {
-      setError('That file is not a PDF. Please upload your resume as a PDF.');
+      setError('that file is not a pdf. upload your resume as a pdf.');
       return;
     }
     if (file.size > MAX_PDF_BYTES) {
-      setError('That file is larger than 5 MB. Please upload a smaller PDF.');
+      setError('that file is larger than 5 mb. upload a smaller pdf.');
       return;
     }
-    setFormData(prev => ({ ...prev, resumePdf: file }));
+    setField('resumePdf', file);
     setError('');
   };
 
@@ -140,9 +119,7 @@ const ResumeParserComponent = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
-    const file = e.dataTransfer.files[0];
-    handleFileSelection(file);
+    handleFileSelection(e.dataTransfer.files[0]);
   };
 
   const resetAll = () => {
@@ -155,207 +132,30 @@ const ResumeParserComponent = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Pre-fill company, title and job description; the user only re-uploads the PDF.
+  // Pre-fill company, title and job description; the user only re-uploads the PDF (or uses the saved resume).
   const handleRerun = (row) => {
     setResult(null);
-    setFormData({
-      companyName: row.companyName || '',
-      jobTitle: row.jobTitle || '',
-      jobDescription: row.jobDescription || '',
-      resumePdf: null,
-    });
+    setFormData({ companyName: row.companyName || '', jobTitle: row.jobTitle || '', jobDescription: row.jobDescription || '', resumePdf: null });
     setError('');
-    setNotice('Job details are filled in from your earlier scan. Upload your resume PDF to run it again.');
+    setNotice(hasSaved ? 'job details are filled in from your earlier scan.' : 'job details are filled in from your earlier scan. upload your resume pdf to run it again.');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openScore = async (id) => {
     setError('');
     try {
-      const data = await getATSScoreById(id);
+      const data = await openById(id);
       setResult(data);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
-      setError("We couldn't open that result. Please try again.");
+      setError("we couldn't open that result. try again.");
     }
   };
 
-  return (
-    <div className="min-h-screen bg-transparent py-14 px-6 md:px-12 relative overflow-hidden">
-      {/* Header */}
-      <div className="mb-16 border-b border-divider pb-12">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-8 h-[1px] bg-primary"></div>
-          <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
-            Resume Insights
-          </span>
-        </div>
-        
-        <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none mb-6">
-          Resume <span className="text-primary-ink">Scanner</span>
-        </h1>
-        <p className="text-lg md:text-xl text-muted-foreground max-w-3xl font-light leading-relaxed">
-          Scan your resume against any job description and see how you rank. Get actionable tips to improve your ATS score and land the interview.
-        </p>
-      </div>
-
-      {/* If no result → show form */}
-      {!result ? (
-        <>
-        <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="border border-border bg-panel p-10 rounded-xl shadow-xl">
-            <h3 className="text-xs font-bold tracking-[0.2em] text-muted-foreground mb-10 flex items-center gap-3">
-              <span className="w-4 h-[1px] bg-divider"></span>
-              Analysis Setup
-            </h3>
-
-            {/* FORM FIELDS: pick a job, or enter the details by hand */}
-            <div className="mb-8">
-            <JobStart
-              hasErrors={(!!error && !formData.jobDescription.trim()) || !!notice}
-              onPick={({ jobId: id, company, title, jdText }) => {
-                setJobId(id);
-                setFormData((prev) => ({ ...prev, companyName: company, jobTitle: title, jobDescription: jdText }));
-              }}
-              onClear={() => setJobId(null)}
-            >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Company Name</label>
-                <Input
-                  type="text"
-                  placeholder="e.g. Google, Stripe"
-                  value={formData.companyName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-                  className="h-14"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Target Role</label>
-                <Input
-                  type="text"
-                  placeholder="e.g. Software Engineer"
-                  value={formData.jobTitle}
-                  onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))}
-                  className="h-14"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-8">
-              <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Job Description</label>
-              <textarea
-                placeholder="Paste the job description here to see how your resume matches..."
-                rows={6}
-                value={formData.jobDescription}
-                onChange={(e) => setFormData(prev => ({ ...prev, jobDescription: e.target.value }))}
-                className="bg-divider/10 border border-divider rounded-xl p-4 w-full outline-none focus:border-primary transition-editorial font-general text-sm text-foreground placeholder:text-muted-foreground/30"
-              />
-            </div>
-
-            </JobStart>
-            </div>
-
-            {hasSaved && (
-              <div className="mb-6 flex flex-wrap gap-3" role="radiogroup" aria-label="Resume to scan">
-                {[['saved', 'Use my saved resume'], ['pdf', 'Upload a PDF instead']].map(([val, label]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    role="radio"
-                    aria-checked={source === val}
-                    onClick={() => setSource(val)}
-                    className={`min-h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-widest transition-editorial ${
-                      source === val ? 'border-primary bg-primary/10 text-foreground' : 'border-divider text-muted-foreground hover:border-primary'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {jobId && (
-              <p className="mb-4 text-xs text-muted-foreground" role="status">
-                {useSaved
-                  ? "The job is filled in and your saved resume will be used. You're ready to scan."
-                  : formData.resumePdf
-                  ? `Uses your uploaded PDF (${formData.resumePdf.name}). Choose another file below to replace it.`
-                  : "The job is filled in. Add your resume PDF and you're ready to scan."}
-              </p>
-            )}
-
-            {/* FILE UPLOAD */}
-            {!useSaved && (
-            <div
-              className={`border-dashed border-2 rounded-xl p-12 text-center transition-editorial mb-10 group ${
-                dragActive ? 'border-primary bg-primary/5' : 'border-divider hover:border-primary bg-divider/5'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <input type="file" accept=".pdf" onChange={handleFileChange} className="hidden" id="resume-upload" />
-              <label htmlFor="resume-upload" className="cursor-pointer block">
-                <Upload className={`mx-auto w-10 h-10 transition-editorial ${formData.resumePdf ? 'text-primary-ink' : 'text-muted-foreground group-hover:text-primary-ink'}`} />
-                <p className="mt-6 font-bold tracking-widest text-sm text-foreground">
-                  {formData.resumePdf ? (
-                    <span className="text-primary-ink flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 mr-3" /> {formData.resumePdf.name}
-                    </span>
-                  ) : (
-                    "Upload Your Resume (PDF)"
-                  )}
-                </p>
-                {!formData.resumePdf && <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-2">Drag and drop or click to select</p>}
-              </label>
-            </div>
-            )}
-
-            {notice && (
-              <div className="mb-8 p-4 border border-primary/30 bg-primary/5 text-foreground rounded-xl text-xs">
-                {notice}
-              </div>
-            )}
-
-            {error && (
-              <div className="mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive flex items-center rounded-xl text-xs font-bold uppercase tracking-widest animate-pulse">
-                <AlertCircle className="w-4 h-4 mr-3" /> {error}
-                {noResume && (
-                  <Link href="/resume" className="ml-3 underline">Build your resume</Link>
-                )}
-              </div>
-            )}
-
-            {/* SUBMIT BUTTON */}
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full h-16 shadow-card"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-4 tracking-[0.2em]">
-                  <Loader className="animate-spin w-5 h-5" /> Analyzing your resume...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-4 tracking-[0.2em]">
-                  <Search className="w-5 h-5" /> Scan Resume
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-        <AtsHistory onOpen={openScore} onRerun={handleRerun} refreshKey={historyKey} />
-        </>
-      ) : (
-        <>
-        {error && (
-          <div className="max-w-5xl mx-auto mb-8 p-4 border border-destructive/30 bg-destructive/5 text-destructive rounded-xl text-xs font-bold uppercase tracking-widest">
-            {error}
-          </div>
-        )}
+  if (result) {
+    return (
+      <ToolFrame title="resume scan" line="what the job wants, what you have, and what to fix." outfit="detective" bare className="max-w-5xl">
+        {error && <Note tone="error" className="mb-5">{error}</Note>}
         <AtsResult
           key={result.id}
           result={result}
@@ -368,9 +168,82 @@ const ResumeParserComponent = () => {
           }}
           onRestored={() => setHistoryKey((k) => k + 1)}
         />
-        </>
-      )}
-    </div>
+      </ToolFrame>
+    );
+  }
+
+  return (
+    <>
+      <ToolFrame title="resume scan" line="check your resume against a job. nothing is changed unless you accept a fix." outfit="detective" windowTitle="ascendai · resume scan">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          <JobStart
+            source={source}
+            disabled={loading}
+            hasErrors={(!!error && !formData.jobDescription.trim()) || !!notice}
+            onPick={({ jobId: id, company, title, jdText }) => {
+              setJobId(id);
+              setFormData((prev) => ({ ...prev, companyName: company, jobTitle: title, jobDescription: jdText }));
+            }}
+            onClear={() => {
+              setJobId(null);
+              setFormData((prev) => ({ ...prev, companyName: '', jobTitle: '', jobDescription: '' }));
+            }}
+          >
+            <JobDetailsFields idPrefix="ats" values={formData} onChange={setField} errors={{}} placeholder="paste the job description to see how your resume matches." />
+          </JobStart>
+
+          {/* which resume: chips when a saved one exists, a drop zone otherwise */}
+          <div className="space-y-2.5">
+            <FieldLabel>resume to scan</FieldLabel>
+            {hasSaved && (
+              <ChoiceChips label="resume to scan" value={source_} onChange={setSource} options={[['saved', 'my saved resume'], ['pdf', 'upload a pdf instead']]} />
+            )}
+            {!useSaved && (
+              <div
+                className={cn("rounded-[20px] border-2 border-dashed p-8 text-center transition-colors", dragActive ? "border-brand bg-brand-soft" : "border-line bg-bg hover:border-brand")}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                <input type="file" accept=".pdf" onChange={(e) => handleFileSelection(e.target.files[0])} className="sr-only" id="resume-upload" />
+                <label htmlFor="resume-upload" className="block cursor-pointer rounded-[14px] outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+                  {formData.resumePdf ? (
+                    <span className="flex items-center justify-center gap-2 text-sm text-brand-ink">
+                      <CheckCircle className="size-5" aria-hidden="true" /> {formData.resumePdf.name}
+                    </span>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto size-8 text-faint" aria-hidden="true" />
+                      <p className="mt-3 text-sm text-text">drop your resume pdf, or tap to choose</p>
+                      <p className="mt-1 text-xs text-faint">pdf, up to 5 mb</p>
+                    </>
+                  )}
+                </label>
+              </div>
+            )}
+            {useSaved && <p className="text-xs text-faint" role="status">pip reads the resume you saved in the builder.</p>}
+          </div>
+
+          {notice && <Note>{notice}</Note>}
+          {error && (
+            <Note tone="error">
+              {error}
+              {noResume && <Link href="/resume" className="ml-2 underline">build your resume</Link>}
+            </Note>
+          )}
+
+          {loading ? (
+            <PipStatus outfit="detective" text="reading your resume against the job…" />
+          ) : (
+            <InkButton type="submit" busy={loading} busyText="scanning…">
+              <Search className="size-4" aria-hidden="true" /> scan my resume
+            </InkButton>
+          )}
+        </form>
+      </ToolFrame>
+      {!skipHistory && <AtsHistory onOpen={openScore} onRerun={handleRerun} refreshKey={historyKey} />}
+    </>
   );
 };
 

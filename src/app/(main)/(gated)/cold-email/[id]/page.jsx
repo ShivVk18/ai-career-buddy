@@ -1,10 +1,9 @@
 import Link from "next/link"
-import { ArrowLeft, FileText, ChevronLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
-
 import ColdEmailPreview from "../_components/ColdEmailPreview"
 import { getColdEmail } from "@/actions/ColdEmail"
 import { generationErrorMessage } from "@/components/shared/generationError"
+import ToolFrame from "@/components/shared/ToolFrame"
+import EmptyState from "@/components/ui/EmptyState"
 
 export default async function EditColdEmailPage({ params }) {
   const { id } = await params
@@ -14,66 +13,28 @@ export default async function EditColdEmailPage({ params }) {
 
   if (loadError !== null || !coldEmail) {
     return (
-      <div className="min-h-screen bg-transparent text-foreground py-12 px-6 md:px-12">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <Link href="/cold-email">
-            <Button variant="ghost" className="gap-3 pl-0 text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="h-4 w-4" />
-              <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Back to Emails</span>
-            </Button>
-          </Link>
-          <p className="text-muted-foreground text-sm">
-            {generationErrorMessage(loadError, "We couldn't load this email. It may have been deleted.")}
-          </p>
-        </div>
-      </div>
+      <ToolFrame title="cold email" outfit="detective" back={{ href: "/cold-email", label: "your emails" }} bare>
+        <EmptyState
+          outfit="detective"
+          title="i can't open that email"
+          text={generationErrorMessage(loadError, "it may have been deleted.").toLowerCase()}
+          action={<Link href="/cold-email" className="btn-ink inline-flex min-h-11 items-center px-5 text-sm">back to your emails</Link>}
+        />
+      </ToolFrame>
     )
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-foreground relative py-12 px-6 md:px-12">
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Navigation */}
-        <div className="flex flex-col space-y-12 mb-16 border-b border-divider pb-12">
-          <Link href="/cold-email">
-            <Button
-              variant="ghost"
-              className="gap-3 pl-0 text-muted-foreground hover:text-foreground transition-editorial group"
-            >
-              <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
-              <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Back to Emails</span>
-            </Button>
-          </Link>
-
-          <div className="space-y-6">
-            <div className="flex items-center gap-6">
-              <div className="p-5 rounded-xl border border-divider bg-divider/10 transition-editorial shadow-card">
-                <FileText className="h-8 w-8 text-primary-ink" />
-              </div>
-              <div>
-                <span className="text-[10px] font-bold tracking-[0.3em] text-primary-ink uppercase mb-2 block">Email Detail</span>
-                <h1 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
-                  {coldEmail?.jobTitle} <span className="text-muted-foreground font-light">at</span> {coldEmail?.companyName}
-                </h1>
-                <p className="text-muted-foreground text-sm md:text-lg mt-3 font-light">
-                  Review and copy your personalized outreach message.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <ColdEmailPreview
-          id={coldEmail?.id}
-          content={coldEmail?.content}
-          sources={coldEmail?.sources ?? null}
-          recipientName={coldEmail?.recipientName ?? ""}
-          recipientRole={coldEmail?.recipientRole ?? ""}
-          recipientEmail={coldEmail?.recipientEmail ?? ""}
-          subject={coldEmail?.subject ?? ""}
-          followUpAt={coldEmail?.followUpAt ? new Date(coldEmail.followUpAt).toISOString().slice(0, 10) : ""}
-        />
-      </div>
-    </div>
+    <ColdEmailPreview
+      title={[coldEmail?.jobTitle, coldEmail?.companyName].filter(Boolean).join(" at ").toLowerCase() || "your cold email"}
+      id={coldEmail?.id}
+      content={coldEmail?.content}
+      sources={coldEmail?.sources ?? null}
+      recipientName={coldEmail?.recipientName ?? ""}
+      recipientRole={coldEmail?.recipientRole ?? ""}
+      recipientEmail={coldEmail?.recipientEmail ?? ""}
+      subject={coldEmail?.subject ?? ""}
+      followUpAt={coldEmail?.followUpAt ? new Date(coldEmail.followUpAt).toISOString().slice(0, 10) : ""}
+    />
   )
 }

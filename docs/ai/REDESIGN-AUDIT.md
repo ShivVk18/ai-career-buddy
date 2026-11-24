@@ -72,3 +72,22 @@ Missing:
 1. HIGH: "you can leave, we'll notify you" is false today (JobView.jsx:45-79).
 2. MED: interview ignores projects (Practice.js:113-127).
 3. MED: tailor accept has no undo.
+
+## Forms after (task 13)
+
+Typed fields per form, before then after. "with job" = a job picked (chip or `?job=<id>`); "standalone" = no job. Every tool still works standalone from the sidebar.
+
+| Form | Before | After |
+|---|---|---|
+| Cover letter generate | 3 (company, title, JD) + tone | with job 0; standalone 1 (JD), company and role optional; tone is chips |
+| Cold email generate | 6 | with job 0; standalone 1 (JD); company, role and 3 recipient fields optional under "more" |
+| Cold email preview | 4 + date + editor | 0 by default (recipient and subject shown as a summary, follow-up as date chips); fields behind "edit"; editor unchanged |
+| Resume builder contact | 4 + 2 per social row | 0 when name, email, phone are prefilled (chips); linkedin and links under "more"; link platform is a quick-add chip |
+| EntryForm (x3) | 5 + checkbox | 3 (title, org, description); dates and "currently here" under "more" |
+| Create roadmap modal | 4 | 0 when profile is filled (editable chips, timeline chips); 3 inputs only if the profile is empty |
+| Resume scan (ATS) | 3 + PDF | with job 0 and saved resume chip; standalone 1 (JD) + PDF only if no saved resume |
+| Quick quiz skills | 1 (comma text) | 0 (profile skills as chips, optional add) |
+| Letter review (needs-you) | 1 | 1 (restyle only) |
+| Interview open practice | 3 | restyled earlier (task 11) |
+
+Not changed: tailor panel, versions panel, job fields, roadmap detail page (outside the six tool screens).

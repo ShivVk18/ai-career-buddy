@@ -3,12 +3,11 @@ import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { parse, format } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
-import { Input } from "@/components/ui/input";
+import { z } from "zod";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { entrySchema } from "@/app/lib/schema";
-import { Sparkles, PlusCircle, X, Loader2, Calendar, CheckCircle2, Trash2 } from "lucide-react";
+import { Sparkles, Plus, Loader2, Calendar, Check, Trash2 } from "lucide-react";
+import { FieldError, FieldLabel, More, fieldClass } from "@/components/shared/ToolBits";
+import { cn } from "@/lib/utils";
 import { improveWithAI } from "@/actions/Resume";
 import { toast } from "sonner";
 import { generationErrorMessage } from "@/components/shared/generationError";
@@ -16,6 +15,17 @@ import useFetch from "@/hooks/use-fetch";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { Mic } from "lucide-react";
 import SourceChips from "@/components/shared/SourceChips";
+
+// Dates are optional (kept under "more: dates"); the server never required them.
+const entrySchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "add a title"),
+  organization: z.string().min(1, "add the organization"),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  description: z.string().min(1, "add a line about your impact"),
+  current: z.boolean().default(false),
+});
 
 const formatDisplayDate = (dateString) => {
   if (!dateString) return "";
@@ -30,6 +40,7 @@ const formatDisplayDate = (dateString) => {
 export function EntryForm({ type, entries, onChange }) {
   const [isAdding, setIsAdding] = useState(false);
   const [initialDescription, setInitialDescription] = useState("");
+  const [datesOpen, setDatesOpen] = useState(false);
 
   const {
     register,
@@ -83,6 +94,7 @@ export function EntryForm({ type, entries, onChange }) {
     reset();
     setImprovedSources([]);
     setIsAdding(false);
+    setDatesOpen(false);
   });
 
   const handleDelete = (index) => {
@@ -96,7 +108,7 @@ export function EntryForm({ type, entries, onChange }) {
   const handleImproveDescription = async () => {
     const description = watch("description");
     if (!description) {
-      toast.error("Please enter a description first");
+      toast.error("write a line first, then improve it");
       return;
     }
 
@@ -112,7 +124,7 @@ export function EntryForm({ type, entries, onChange }) {
       }
       setValue("description", result.text);
       setImprovedSources(result.sources || []);
-      toast.success("Description improved by AI! ✨");
+      toast.success("improved. check it still sounds like you");
     } catch (error) {
       toast.error(error.message || "Failed to improve description");
     } finally {
@@ -120,241 +132,141 @@ export function EntryForm({ type, entries, onChange }) {
     }
   };
 
+  const org = type === "Education" ? "school / university" : "company / organization";
+  const role = type === "Education" ? "degree / certificate" : "job title / role";
+  const small = "inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40";
+
   return (
-    <div className="space-y-8">
-      {/* List of existing entries */}
-      <div className="space-y-6">
+    <div className="space-y-4">
+      {entries.length === 0 && !isAdding && <p className="text-sm text-muted">nothing here yet. add one below, or import from a pdf on the resume tab.</p>}
+      <ul className="space-y-3">
         {entries.map((item, index) => (
-          <motion.div
-            key={item.id ?? index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="border border-border bg-divider/10 rounded-xl p-6 relative group hover:border-primary transition-editorial shadow-card"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="text-lg font-clash font-bold text-foreground uppercase tracking-tight mb-1">
-                  {item.title}
-                </h4>
-                <p className="text-primary-ink text-xs font-bold uppercase tracking-widest mb-3">
-                  {item.organization}
-                </p>
-                <div className="flex items-center text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em]">
-                  <Calendar className="h-3.5 w-3.5 mr-3 text-primary-ink" />
-                  {item.current
-                    ? `${item.startDate} - Present`
-                    : `${item.startDate} - ${item.endDate}`}
-                </div>
+          <li key={item.id ?? index} className="fade-up relative rounded-[14px] border border-line bg-soft p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h4 className="font-doc text-lg leading-snug text-text">{item.title}</h4>
+                <p className="text-sm text-brand-ink">{item.organization}</p>
+                {(item.startDate || item.endDate || item.current) && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-faint">
+                    <Calendar className="size-3.5" aria-hidden="true" />
+                    {[item.startDate, item.current ? "present" : item.endDate].filter(Boolean).join(" to ")}
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => handleDelete(index)}
-                className="opacity-0 group-hover:opacity-100 transition-editorial text-muted-foreground hover:text-destructive p-2"
-                title="Delete Entry"
+                aria-label={`delete ${item.title || "entry"}`}
+                className="grid size-11 shrink-0 place-items-center rounded-full text-faint outline-none hover:bg-gap-soft hover:text-gap-ink focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="size-4" aria-hidden="true" />
               </button>
             </div>
-            {item.description && (
-              <div className="mt-6 pt-6 border-t border-divider text-sm text-muted-foreground font-general font-light leading-relaxed whitespace-pre-wrap">
-                {item.description}
-              </div>
-            )}
-          </motion.div>
+            {item.description && <p className="mt-3 whitespace-pre-wrap border-t border-dashed border-line pt-3 text-sm leading-relaxed text-muted">{item.description}</p>}
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <AnimatePresence>
-        {isAdding && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="border border-primary/50 bg-panel rounded-xl overflow-hidden shadow-xl"
-          >
-            <div className="p-8">
-              <h4 className="text-xs font-bold tracking-[0.3em] text-primary-ink uppercase mb-10 flex items-center gap-3">
-                <PlusCircle className="h-4 w-4" />
-                Add New {type}
-              </h4>
-              
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      {type === "Education" ? "Degree / Certificate" : "Job Title / Role"}
-                    </label>
-                    <Input
-                      placeholder={type === "Education" ? "e.g. Bachelor of Science" : "e.g. Software Engineer"}
-                      {...register("title")}
-                      className="h-12"
-                    />
-                    {errors.title && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">{errors.title.message}</p>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      {type === "Education" ? "School / University" : "Company / Organization"}
-                    </label>
-                    <Input
-                      placeholder={type === "Education" ? "e.g. Harvard University" : "e.g. Google"}
-                      {...register("organization")}
-                      className="h-12"
-                    />
-                    {errors.organization && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
-                        {errors.organization.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
+      {isAdding && (
+        <div className="fade-up space-y-5 rounded-[20px] border border-brand/50 bg-panel p-4 sm:p-6">
+          <h4 className="font-doc text-lg text-text">add {type.toLowerCase() === "projects" ? "a project" : type === "Education" ? "education" : "an experience"}</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor={`${type}-title`}>{role}</FieldLabel>
+              <input id={`${type}-title`} placeholder={type === "Education" ? "bachelor of science" : "software engineer"} {...register("title")} className={cn(fieldClass, "mt-1.5 h-11")} />
+              <FieldError>{errors.title?.message}</FieldError>
+            </div>
+            <div>
+              <FieldLabel htmlFor={`${type}-org`}>{org}</FieldLabel>
+              <input id={`${type}-org`} placeholder={type === "Education" ? "state university" : "acme"} {...register("organization")} className={cn(fieldClass, "mt-1.5 h-11")} />
+              <FieldError>{errors.organization?.message}</FieldError>
+            </div>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      Start Date
-                    </label>
-                    <Input
-                      type="month"
-                      {...register("startDate")}
-                      className="h-12"
-                    />
-                    {errors.startDate && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
-                        {errors.startDate.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      End Date
-                    </label>
-                    <Input
-                      type="month"
-                      {...register("endDate")}
-                      disabled={current}
-                      className={`h-12 ${current ? "opacity-30" : ""}`}
-                    />
-                    {errors.endDate && (
-                      <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
-                        {errors.endDate.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 group cursor-pointer w-fit">
-                  <input
-                    type="checkbox"
-                    id="current"
-                    {...register("current")}
-                    onChange={(e) => {
-                      setValue("current", e.target.checked);
-                      if (e.target.checked) {
-                        setValue("endDate", "");
-                      }
-                    }}
-                    className="w-4 h-4 rounded-xl border-divider bg-panel text-primary-ink focus:ring-primary focus:ring-offset-0 cursor-pointer"
-                  />
-                  <label htmlFor="current" className="text-[10px] font-bold tracking-widest text-muted-foreground group-hover:text-foreground transition-colors uppercase cursor-pointer">
-                    I currently {type === "Education" ? "study" : "work"} here
-                  </label>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                      Description & Achievements
-                    </label>
-                    <div className="flex gap-4">
-                      {isSupported && (
-                        <button
-                          type="button"
-                          onClick={handleToggleRecording}
-                          className={`text-[9px] font-bold tracking-widest transition-editorial uppercase flex items-center gap-2 group ${isRecording ? 'text-destructive animate-pulse' : 'text-primary-ink hover:text-foreground'}`}
-                        >
-                          <Mic className={`h-3.5 w-3.5 ${!isRecording && 'group-hover:scale-110 transition-transform'}`} />
-                          <span>{isRecording ? "Recording..." : "Dictate"}</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleImproveDescription}
-                        disabled={isImproving || !watch("description")}
-                        className="text-[9px] font-bold tracking-widest text-primary-ink hover:text-foreground transition-editorial uppercase flex items-center gap-2 disabled:opacity-30 group"
-                      >
-                      {isImproving ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span>Improving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
-                          <span>Improve with AI</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  </div>
-                  <Textarea
-                    placeholder={`Tell us about your impact and key wins in this role...`}
-                    className="h-40 w-full px-4 py-4 bg-divider/5 border border-divider/40 rounded-xl focus:outline-none focus:border-primary transition-editorial font-general text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30"
-                    {...register("description", {
-                      onChange: () => {
-                        if (isRecording) {
-                          typedRef.current = true;
-                          toggleRecording();
-                        }
-                      },
-                    })}
-                  />
-                  <SourceChips sources={improvedSources} heading="Based on" />
-                  {errors.description && (
-                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest animate-pulse">
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-divider/30">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => {
-                    reset();
-                    setImprovedSources([]);
-                    setIsAdding(false);
-                  }}
-                  className="h-12 px-8 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAdd}
-                  className="h-12 px-10 shadow-card"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-3" />
-                  Add to Resume
-                </Button>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <FieldLabel htmlFor={`${type}-desc`}>what you did and what changed</FieldLabel>
+              <div className="flex items-center gap-1">
+                {isSupported && (
+                  <button type="button" onClick={handleToggleRecording} aria-pressed={isRecording} className={cn(small, isRecording ? "text-danger" : "text-brand-ink hover:bg-brand-soft")}>
+                    <Mic className="size-3.5" aria-hidden="true" /> {isRecording ? "recording…" : "dictate"}
+                  </button>
+                )}
+                <button type="button" onClick={handleImproveDescription} disabled={isImproving || !watch("description")} className={cn(small, "text-brand-ink hover:bg-brand-soft")}>
+                  {isImproving ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles className="size-3.5" aria-hidden="true" />}
+                  {isImproving ? "improving…" : "improve with ai"}
+                </button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <Textarea
+              id={`${type}-desc`}
+              placeholder="cut load time from 3.8s to 1.1s by code-splitting routes"
+              className={cn(fieldClass, "h-32 py-3")}
+              {...register("description", {
+                onChange: () => {
+                  if (isRecording) {
+                    typedRef.current = true;
+                    toggleRecording();
+                  }
+                },
+              })}
+            />
+            <SourceChips sources={improvedSources} heading="based on" />
+            <FieldError>{errors.description?.message}</FieldError>
+          </div>
+
+          <More open={datesOpen} onToggle={() => setDatesOpen((v) => !v)} label="more: dates (optional)">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor={`${type}-start`}>start</FieldLabel>
+                <input id={`${type}-start`} type="month" {...register("startDate")} className={cn(fieldClass, "mt-1.5 h-11")} />
+              </div>
+              <div>
+                <FieldLabel htmlFor={`${type}-end`}>end</FieldLabel>
+                <input id={`${type}-end`} type="month" {...register("endDate")} disabled={current} className={cn(fieldClass, "mt-1.5 h-11", current && "opacity-40")} />
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!current}
+              onClick={() => {
+                setValue("current", !current);
+                if (!current) setValue("endDate", "");
+              }}
+              className={cn("inline-flex min-h-10 items-center gap-2 rounded-[9px] px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", current ? "bg-brand-soft text-brand-ink ring-1 ring-brand/50" : "bg-soft text-muted hover:text-text")}
+            >
+              {current && <Check className="size-4" aria-hidden="true" />} i currently {type === "Education" ? "study" : "work"} here
+            </button>
+          </More>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setImprovedSources([]);
+                setIsAdding(false);
+                setDatesOpen(false);
+              }}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-6 text-sm text-text outline-none hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              cancel
+            </button>
+            <button type="button" onClick={handleAdd} className="btn-ink inline-flex min-h-11 items-center justify-center gap-2 px-6 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Check className="size-4" aria-hidden="true" /> add to resume
+            </button>
+          </div>
+        </div>
+      )}
 
       {!isAdding && (
         <button
+          type="button"
           onClick={() => setIsAdding(true)}
-          className="w-full border border-divider border-dashed bg-divider/5 hover:border-primary hover:bg-primary/5 py-10 rounded-xl transition-editorial flex items-center justify-center gap-4 group shadow-card"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-line text-sm text-muted outline-none transition-colors hover:border-brand hover:text-brand-ink focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <PlusCircle className="h-5 w-5 text-muted-foreground group-hover:text-primary-ink transition-editorial" />
-          <span className="text-xs font-bold tracking-[0.3em] text-muted-foreground group-hover:text-foreground uppercase transition-editorial">
-            Add {type}
-          </span>
+          <Plus className="size-4" aria-hidden="true" /> add {type === "Education" ? "education" : type === "Projects" ? "a project" : "an experience"}
         </button>
       )}
     </div>

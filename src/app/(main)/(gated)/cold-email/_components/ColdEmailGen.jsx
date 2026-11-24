@@ -1,259 +1,116 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { Loader2, Sparkles, Zap, Brain, Target, FileText, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea" 
-import useFetch from "@/hooks/use-fetch";
-import { coldEmailSchema } from "@/app/lib/schema";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Send } from "lucide-react";
+import { generateColdEmail } from "@/actions/ColdEmail";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import JobStart from "@/components/shared/JobStart";
-import { generateColdEmail } from "@/actions/ColdEmail";
+import JobDetailsFields from "@/components/shared/JobDetailsFields";
+import ToolFrame from "@/components/shared/ToolFrame";
+import { FieldError, FieldLabel, InkButton, More, Note, fieldClass } from "@/components/shared/ToolBits";
+import PipStatus from "@/components/ui/PipStatus";
+import { cn } from "@/lib/utils";
 
-export default function ColdEmailGenerator() {
+const EMPTY = { companyName: "", jobTitle: "", jobDescription: "", recipientName: "", recipientRole: "", recipientEmail: "" };
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function ColdEmailGenerator({ source, generate = generateColdEmail, onDone }) {
   const router = useRouter();
   const [jobId, setJobId] = useState(null);
+  const [values, setValues] = useState(EMPTY);
+  const [errors, setErrors] = useState({});
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    reset,
-  } = useForm({
-    resolver: zodResolver(coldEmailSchema),
-  });
+  const set = (k, v) => {
+    setValues((s) => ({ ...s, [k]: v }));
+    if (errors[k]) setErrors((e) => ({ ...e, [k]: undefined }));
+  };
 
-  const {
-    loading: generating,
-    fn: generateLetterFn,
-    data: generatedLetter,
-  } = useFetch(generateColdEmail);
-
-  
-  useEffect(() => {
-    if (generatedLetter?.error || generatedLetter?.code) {
-      toast.error(generationErrorMessage(generatedLetter));
+  const submit = async (e) => {
+    e.preventDefault();
+    const next = {};
+    if (!values.jobDescription.trim()) next.jobDescription = "paste the job description, or pick one of your jobs.";
+    if (values.recipientEmail.trim() && !EMAIL_RE.test(values.recipientEmail.trim())) next.recipientEmail = "that email doesn't look right.";
+    if (Object.keys(next).length) {
+      setErrors(next);
       return;
     }
-    if (generatedLetter?.id) {
-      toast.success("Cold email generated successfully! ✨");
-      router.push(`/cold-email/${generatedLetter.id}`);
-      reset();
-    }
-  }, [generatedLetter]);
-
-  const onSubmit = async (data) => {
+    setBusy(true);
+    setError("");
     try {
-      await generateLetterFn({ ...data, ...(jobId ? { jobId } : {}) });
-    } catch (error) {
-      toast.error(error.message || "Failed to generate cold email");
+      const res = await generate({ ...values, ...(jobId ? { jobId } : {}) });
+      if (res?.error || res?.code || !res?.id) {
+        setError(generationErrorMessage(res));
+        return;
+      }
+      toast.success("cold email ready");
+      if (onDone) onDone(res);
+      else router.push(`/cold-email/${res.id}`);
+    } catch (err) {
+      setError(err?.message || "we couldn't write that email. try again.");
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="relative">
-      <div className="space-y-16 relative z-10">
-        {/* Header */}
-        <div className="text-center space-y-6 mb-20 border-b border-divider pb-16">
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-8 h-[1px] bg-primary"></div>
-            <span className="text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
-              AI Outreach Assistant
-            </span>
-            <div className="w-8 h-[1px] bg-primary"></div>
+    <ToolFrame
+      title="cold email"
+      line="a short note to a real person. pip writes it, you send it."
+      outfit="rocket"
+      back={{ href: "/cold-email", label: "your emails" }}
+      windowTitle="ascendai · new cold email"
+    >
+      <form onSubmit={submit} className="space-y-6" noValidate>
+        <JobStart
+          source={source}
+          disabled={busy}
+          hasErrors={!!errors.jobDescription}
+          onPick={({ jobId: id, company, title, jdText }) => {
+            setJobId(id);
+            setValues((s) => ({ ...s, companyName: company, jobTitle: title, jobDescription: jdText }));
+            setErrors({});
+          }}
+          onClear={() => {
+            setJobId(null);
+            setValues((s) => ({ ...s, companyName: "", jobTitle: "", jobDescription: "" }));
+          }}
+        >
+          <JobDetailsFields idPrefix="ce" values={values} onChange={set} errors={errors} placeholder="paste the job description or what you know about the role." />
+        </JobStart>
+
+        <More open={moreOpen} onToggle={() => setMoreOpen((v) => !v)} forceOpen={!!errors.recipientEmail} label="more: who it's for (optional)">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <FieldLabel htmlFor="ce-rname">name</FieldLabel>
+              <input id="ce-rname" value={values.recipientName} onChange={(e) => set("recipientName", e.target.value)} placeholder="priya sharma" maxLength={100} autoComplete="off" className={cn(fieldClass, "mt-1.5 h-11")} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="ce-rrole">role</FieldLabel>
+              <input id="ce-rrole" value={values.recipientRole} onChange={(e) => set("recipientRole", e.target.value)} placeholder="engineering manager" maxLength={150} autoComplete="off" className={cn(fieldClass, "mt-1.5 h-11")} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="ce-remail">email</FieldLabel>
+              <input id="ce-remail" type="email" value={values.recipientEmail} onChange={(e) => set("recipientEmail", e.target.value)} placeholder="name@company.com" maxLength={254} autoComplete="off" aria-invalid={!!errors.recipientEmail} className={cn(fieldClass, "mt-1.5 h-11")} />
+              <FieldError>{errors.recipientEmail}</FieldError>
+            </div>
           </div>
+          <p className="text-xs text-faint">the email is only kept for the &quot;open in mail&quot; button. it never goes to the ai and nothing is sent for you.</p>
+        </More>
 
-          <h2 className="text-3xl md:text-5xl font-clash font-bold text-foreground tracking-tight leading-none">
-            Cold Email <span className="text-primary-ink">Generator</span>
-          </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto px-4 font-light leading-relaxed">
-            Write high-converting cold emails that actually get replies. Our AI analyzes the job and your profile to craft the perfect outreach.
-          </p>
-        </div>
-
-        {/* Form Container */}
-        <div className="border border-border bg-panel rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
-          
-          <div className="mb-12">
-            <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3">
-              <Target className="h-4 w-4 text-primary-ink" />
-              Campaign Details
-            </h3>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
-            {/* Pick a job (fills the details), or enter them by hand */}
-            <JobStart
-              hasErrors={!!(errors.companyName || errors.jobTitle || errors.jobDescription)}
-              onPick={({ jobId: id, company, title, jdText }) => {
-                setJobId(id);
-                setValue("companyName", company, { shouldValidate: true });
-                setValue("jobTitle", title, { shouldValidate: true });
-                setValue("jobDescription", jdText, { shouldValidate: true });
-              }}
-              onClear={() => setJobId(null)}
-            >
-            {/* Entity and Role */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label htmlFor="companyName" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                  Company Name
-                </Label>
-                <Input
-                  id="companyName"
-                  placeholder="e.g., Google, Stripe"
-                  {...register("companyName")}
-                  className="h-14"
-                />
-                {errors.companyName && (
-                  <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.companyName.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="jobTitle" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                  Target Role
-                </Label>
-                <Input
-                  id="jobTitle"
-                  placeholder="e.g., Software Engineer"
-                  {...register("jobTitle")}
-                  className="h-14"
-                />
-                {errors.jobTitle && (
-                  <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobTitle.message}</p>
-                )}
-              </div>
-            </div>
-
-
-            {/* Job description */}
-            <div className="space-y-3">
-              <Label htmlFor="jobDescription" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                Job Description
-              </Label>
-              <Textarea
-                id="jobDescription"
-                placeholder="Paste the job description or specific requirements here. The more detail you provide, the better the email will be..."
-                className="h-48 bg-divider/5 border-border focus:border-primary"
-                {...register("jobDescription")}
-              />
-              {errors.jobDescription && (
-                <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.jobDescription.message}</p>
-              )}
-            </div>
-            </JobStart>
-
-            {/* Recipient (optional, typed by you), behind "more" */}
-            <div className="space-y-6">
-              <button
-                type="button"
-                aria-expanded={moreOpen || !!(errors.recipientName || errors.recipientRole || errors.recipientEmail)}
-                onClick={() => setMoreOpen((v) => !v)}
-                className="min-h-10 rounded text-[10px] font-bold tracking-widest uppercase text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                {moreOpen ? "less" : "more: add who it's for (optional)"}
-              </button>
-              <div className={moreOpen || errors.recipientName || errors.recipientRole || errors.recipientEmail ? "space-y-6" : "hidden"}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-3">
-                  <Label htmlFor="recipientName" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                    Name
-                  </Label>
-                  <Input id="recipientName" placeholder="e.g., Priya Sharma" {...register("recipientName")} className="h-14" />
-                  {errors.recipientName && (
-                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.recipientName.message}</p>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <Label htmlFor="recipientRole" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                    Role
-                  </Label>
-                  <Input id="recipientRole" placeholder="e.g., Engineering Manager" {...register("recipientRole")} className="h-14" />
-                  {errors.recipientRole && (
-                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.recipientRole.message}</p>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <Label htmlFor="recipientEmail" className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                    Email
-                  </Label>
-                  <Input id="recipientEmail" type="email" placeholder="name@company.com" {...register("recipientEmail")} className="h-14" />
-                  {errors.recipientEmail && (
-                    <p className="text-[10px] text-destructive font-bold uppercase tracking-widest mt-2">{errors.recipientEmail.message}</p>
-                  )}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                The email address is only saved for the &quot;Open in mail client&quot; button. It is never sent to the AI and nothing is sent automatically.
-              </p>
-              </div>
-            </div>
-
-            {/* Execution Trigger */}
-            <Button
-              type="submit"
-              disabled={generating}
-              className="w-full h-16 text-xs font-bold tracking-[0.3em] uppercase shadow-card"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-4" />
-                  Generating Email...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-4" />
-                  Generate Email
-                </>
-              )}
-            </Button>
-          </form>
-        </div>
-
-        {/* Benefits Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 pb-20">
-          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
-                <Target className="h-4 w-4 text-primary-ink" />
-              </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Highly Personalized</h3>
-            </div>
-            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Our AI analyzes both the job and your unique background to craft a message that resonates.</p>
-          </div>
-
-          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
-                <Sparkles className="h-4 w-4 text-primary-ink" />
-              </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Proven Formats</h3>
-            </div>
-            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Generated emails follow industry-best practices for brevity, clarity, and calls to action.</p>
-          </div>
-
-          <div className="border border-divider bg-divider/10 p-8 rounded-xl transition-editorial hover:border-primary group shadow-card">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial">
-                <Zap className="h-4 w-4 text-primary-ink" />
-              </div>
-              <h3 className="text-[10px] font-bold tracking-widest text-foreground ">Save Hours</h3>
-            </div>
-            <p className="text-muted-foreground text-sm font-general font-light leading-relaxed">Go from blank page to polished outreach in seconds. Spend your time on interviews instead.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+        {error && <Note tone="error">{error}</Note>}
+        {busy ? (
+          <PipStatus outfit="rocket" text="writing your email, about 20 seconds" />
+        ) : (
+          <InkButton type="submit" busy={busy} busyText="writing…">
+            <Send className="size-4" aria-hidden="true" /> write my email
+          </InkButton>
+        )}
+      </form>
+    </ToolFrame>
   );
 }

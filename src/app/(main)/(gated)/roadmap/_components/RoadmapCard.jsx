@@ -1,103 +1,46 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import {
-  Calendar,
-  Target,
-  CheckCircle,
-  ChevronRight,
-  Star,
-} from "lucide-react";
 import Link from "next/link";
+import { ArrowRight, CheckCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Chip } from "@/components/ui/Chip";
 
 const RoadmapCard = ({ roadmap, completed = false }) => {
-  const completedSteps =
-    roadmap.steps?.filter((step) => step.completed).length || 0;
+  const completedSteps = roadmap.steps?.filter((step) => step.completed).length || 0;
   const totalSteps = roadmap.steps?.length || 0;
+  const pct = Math.max(0, Math.min(100, Math.round(roadmap.progress || 0)));
 
   return (
-    <div className="group border border-divider bg-panel rounded-xl p-8 transition-editorial hover:border-primary">
-      {/* Header */}
-      <div className="flex flex-col space-y-6 mb-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-[1px] bg-primary" />
-            <span className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
-              {completed ? "Completed" : "Career Roadmap"}
-            </span>
-          </div>
-          {completed && <Star className="h-4 w-4 text-primary-ink fill-primary" />}
+    <div className="rounded-[20px] border border-line bg-panel p-5 shadow-card transition-colors hover:border-brand/60 sm:p-6">
+      <h3 className="font-doc text-xl leading-snug text-text">
+        {roadmap.currentRole} <span className="text-faint" aria-hidden="true">→</span> <span className="sr-only">to</span> {roadmap.targetRole}
+      </h3>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {roadmap.industry && <Chip editable={false} value={roadmap.industry} />}
+        <Chip editable={false} value={roadmap.timeline?.estimatedDuration || "no timeline"} />
+        {completed && <Chip tone="brand" editable={false} value="all done" />}
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted">
+          <span>{completedSteps} of {totalSteps} steps done</span>
+          <span className="flex items-center gap-1 font-medium text-text">
+            {completed && <CheckCircle className="size-3.5 text-brand-ink" aria-hidden="true" />} {pct}%
+          </span>
         </div>
-
-        <div className="space-y-2">
-          <h3 className="text-2xl md:text-3xl font-clash font-bold text-foreground tracking-tight group-hover:text-primary-ink transition-editorial">
-            {roadmap.currentRole}{" "}
-            <span className="text-muted-foreground/40">→</span>{" "}
-            {roadmap.targetRole}
-          </h3>
-
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] font-bold tracking-widest text-primary-ink bg-primary/5 px-3 py-1 rounded-xl border border-primary/20 uppercase">
-              {roadmap.industry}
-            </span>
-            <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-              {roadmap.timeline?.estimatedDuration || "N/A"}
-            </span>
-          </div>
+        <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="roadmap progress" className="h-1.5 overflow-hidden rounded-full bg-soft">
+          <div className="h-full rounded-full bg-brand transition-[width] duration-700 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
-      {/* Progress */}
-      <div className="space-y-6 mb-10 pb-10 border-b border-divider/50">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-            Progress
-          </span>
-          <span className="text-lg font-clash font-bold text-foreground">
-            {Math.round(roadmap.progress)}%
-          </span>
-        </div>
-
-        <div className="h-[1px] w-full bg-divider/30 relative">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${roadmap.progress}%` }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            className="absolute top-0 left-0 h-full bg-primary"
-          />
-        </div>
-
-        <div className="flex items-center justify-between text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-          <span>
-            {completedSteps} / {totalSteps} steps done
-          </span>
-          <span className="flex items-center gap-1">
-            {completed ? (
-              <><CheckCircle className="h-3 w-3 text-primary-ink" /> All done</>
-            ) : (
-              "In progress"
-            )}
-          </span>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          <span className="text-[10px] font-bold tracking-widest uppercase">
-            {formatDistanceToNow(new Date(roadmap.createdAt), {
-              addSuffix: true,
-            })}
-          </span>
-        </div>
-
-        <Link href={`/roadmap/${roadmap.id}`}>
-          <button className="h-12 px-8 border border-divider text-[10px] font-bold tracking-widest uppercase hover:bg-foreground hover:text-background transition-editorial rounded-xl">
-            {completed ? "Review" : "Continue"}
-          </button>
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <span className="text-xs text-faint">{formatDistanceToNow(new Date(roadmap.createdAt), { addSuffix: true })}</span>
+        <Link
+          href={`/roadmap/${roadmap.id}`}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-5 text-sm text-text outline-none hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {completed ? "review" : "continue"} <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
     </div>

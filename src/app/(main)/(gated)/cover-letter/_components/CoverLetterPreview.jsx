@@ -2,22 +2,13 @@
 
 import React, { useState } from "react";
 import MDEditor from "@uiw/react-md-editor";
-import { Button } from "@/components/ui/button";
-import { 
-  Download, 
-  Copy, 
-  Edit3, 
-  FileText, 
-  CheckCircle2, 
-  Eye,
-  Sparkles,
-  Zap,
-  Save,
-  Loader2,
-  FileDown
-} from "lucide-react";
+import { useTheme } from "next-themes";
+import { Copy, Edit3, Eye, Save, Loader2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 
+import { cn } from "@/lib/utils";
+import { ChoiceChips } from "@/components/shared/ToolBits";
+import PipStatus from "@/components/ui/PipStatus";
 import { ParagraphSources } from "@/components/shared/SourceChips";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import { updateCoverLetter, undoLetterChange } from "@/actions/CoverLetter";
@@ -26,6 +17,7 @@ import { WordCount, ClicheCheck } from "@/components/shared/WritingHints";
 import { COVER_LETTER_WORDS, COVER_LETTER_TONES, DEFAULT_TONE, TONE_LABELS } from "@/lib/writing";
 
 const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initialTone = null }) => {
+  const { resolvedTheme } = useTheme();
   const [sources, setSources] = useState(initialSources);
   const [tone, setTone] = useState(COVER_LETTER_TONES.includes(initialTone) ? initialTone : DEFAULT_TONE);
   const [working, setWorking] = useState(false);
@@ -118,276 +110,89 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
     toast.success("Cover letter downloaded! 📄");
   };
 
+  const btn = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-panel px-5 text-sm text-text outline-none transition-colors hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
   return (
-    <div className="space-y-12 pb-20">
-      {/* Action Bar */}
-      <div className="border border-border bg-panel rounded-xl p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <div className="w-12 h-12 rounded-xl border border-divider bg-divider/10 flex items-center justify-center transition-editorial shadow-card">
-              <FileText className="h-5 w-5 text-primary-ink" />
-            </div>
-            <div>
-              <h2 className="text-lg font-clash font-bold text-foreground tracking-tight">Preview & Edit</h2>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Ready to download</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <div className="flex items-center gap-1 p-1 border border-divider bg-divider/5 rounded-xl">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPreviewMode("edit")}
-                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-xl ${
-                  previewMode === "edit" 
-                    ? "bg-primary text-primary-foreground border border-primary hover:bg-primary/90" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPreviewMode("preview")}
-                className={`h-10 px-6 text-[10px] font-bold tracking-widest uppercase transition-editorial rounded-xl ${
-                  previewMode === "preview" 
-                    ? "bg-primary text-primary-foreground border border-primary hover:bg-primary/90" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSave}
-              disabled={saving || !isDirty || !id}
-              className="h-12 px-6 border-divider hover:border-primary text-[10px] font-bold tracking-widest uppercase transition-editorial"
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div role="group" aria-label="view" className="inline-flex gap-1 rounded-full bg-soft p-1">
+          {[["edit", Edit3], ["preview", Eye]].map(([m, Icon]) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={previewMode === m}
+              onClick={() => setPreviewMode(m)}
+              className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-full px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", previewMode === m ? "bg-ink text-ink-foreground" : "text-muted hover:text-text")}
             >
-              {saving ? <Loader2 className="h-4 w-4 mr-3 animate-spin" /> : <Save className="h-4 w-4 mr-3" />}
-              {saving ? "Saving..." : isDirty ? "Save changes" : "Saved"}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              className="h-12 px-6 border-divider hover:border-primary text-[10px] font-bold tracking-widest uppercase transition-editorial"
-            >
-              <Copy className="h-4 w-4 mr-3" />
-              Copy Text
-            </Button>
-
-            <Button
-              onClick={handleDownload}
-              className="h-12 px-8 text-[10px] font-bold tracking-widest uppercase shadow-card"
-            >
-              <FileDown className="h-4 w-4 mr-3" />
-              Download TXT
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Rewrite actions */}
-      <div className="border border-border bg-panel rounded-xl p-8 shadow-2xl space-y-6">
-        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground flex items-center gap-4">
-          <Sparkles className="h-4 w-4 text-primary-ink" />
-          Rewrite
-        </h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            aria-label="Tone"
-            value={tone}
-            onChange={(e) => setTone(e.target.value)}
-            disabled={working}
-            className="h-12 px-4 border border-divider bg-panel text-[10px] font-bold tracking-widest uppercase rounded-xl"
-          >
-            {COVER_LETTER_TONES.map((t) => (
-              <option key={t} value={t}>{TONE_LABELS[t]}</option>
-            ))}
-          </select>
-          {[["regenerate", "Regenerate"], ["formal", "More formal"], ["shorten", "Shorter"], ["warmer", "Warmer"]].map(([k, label]) => (
-            <Button
-              key={k}
-              variant="outline"
-              disabled={working || !id}
-              onClick={() => runAction(k)}
-              className="h-12 px-6 border-divider hover:border-primary text-[10px] font-bold tracking-widest uppercase"
-            >
-              {working && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {label}
-            </Button>
+              <Icon className="size-4" aria-hidden="true" /> {m}
+            </button>
           ))}
         </div>
-        {working && <p className="text-xs text-muted-foreground">Rewriting your letter...</p>}
+        <button type="button" onClick={handleSave} disabled={saving || !isDirty || !id} className={btn}>
+          {saving ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+          {saving ? "saving…" : isDirty ? "save changes" : "saved"}
+        </button>
+        <button type="button" onClick={handleCopy} className={btn}>
+          <Copy className="size-4" aria-hidden="true" /> copy
+        </button>
+        <button type="button" onClick={handleDownload} className="btn-ink inline-flex min-h-11 items-center gap-2 px-5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <FileDown className="size-4" aria-hidden="true" /> download txt
+        </button>
       </div>
 
-      {/* Editor Container */}
-      <div className="border border-border bg-panel rounded-xl overflow-hidden shadow-2xl relative">
-        <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
-        <div className="border-b border-divider p-6 bg-divider/5 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary/60 rounded-full"></div>
-              <div className="w-2 h-2 bg-primary/40 rounded-full"></div>
-              <div className="w-2 h-2 bg-primary/20 rounded-full"></div>
-            </div>
-            <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">cover-letter.md</span>
-          </div>
+      <section aria-label="rewrite" className="space-y-3">
+        <p className="text-xs font-medium text-faint">rewrite it. undo is one tap away.</p>
+        <ChoiceChips label="tone" value={tone} onChange={(t) => !working && setTone(t)} options={COVER_LETTER_TONES.map((t) => [t, TONE_LABELS[t]])} />
+        <div className="flex flex-wrap items-center gap-2">
+          {[["regenerate", "regenerate"], ["formal", "more formal"], ["shorten", "shorter"], ["warmer", "warmer"]].map(([k, label]) => (
+            <button key={k} type="button" disabled={working || !id} onClick={() => runAction(k)} className={btn}>
+              {label}
+            </button>
+          ))}
         </div>
+        {working && <PipStatus outfit="wizard" text="rewriting your letter…" />}
+      </section>
 
-        <div className="relative">
-          <MDEditor
-            value={editedContent || content}
-            onChange={setEditedContent}
-            preview={previewMode}
-            hideToolbar={previewMode === "preview"}
-            visibleDragbar={false}
-            height={600}
-            data-color-mode="dark"
-            className="custom-md-editor"
-            style={{
-              backgroundColor: 'transparent',
-            }}
-            textareaProps={{
-              className: "bg-transparent text-foreground placeholder:text-muted border-none outline-none resize-none font-general text-sm leading-relaxed p-10",
-              style: {
-                backgroundColor: 'transparent',
-                color: 'var(--foreground)',
-              }
-            }}
-            previewOptions={{
-              className: "prose prose-invert max-w-none p-12",
-              style: {
-                backgroundColor: 'transparent',
-                color: 'var(--foreground)',
-              }
-            }}
-          />
-        </div>
+      <div className="overflow-hidden rounded-[20px] border border-line">
+        <MDEditor
+          value={editedContent || content}
+          onChange={setEditedContent}
+          preview={previewMode}
+          hideToolbar={previewMode === "preview"}
+          visibleDragbar={false}
+          height={520}
+          data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}
+          className="custom-md-editor"
+          style={{ backgroundColor: "transparent" }}
+          textareaProps={{
+            "aria-label": "cover letter text",
+            className: "bg-transparent text-foreground placeholder:text-muted border-none outline-none resize-none font-sans text-sm leading-relaxed p-6",
+            style: { backgroundColor: "transparent", color: "var(--foreground)" },
+          }}
+          previewOptions={{
+            className: "prose max-w-none p-6 dark:prose-invert",
+            style: { backgroundColor: "transparent", color: "var(--foreground)" },
+          }}
+        />
       </div>
 
-      <div className="border border-border bg-panel rounded-xl p-8 shadow-2xl space-y-6">
+      <div className="space-y-3">
         <WordCount text={editedContent} range={COVER_LETTER_WORDS} />
         <ClicheCheck text={editedContent || ""} />
+        <p className="text-xs text-faint">before you send: add one specific project, and make sure no [placeholders] are left.</p>
       </div>
 
       <ParagraphSources content={editedContent} sources={sources} />
 
-
-      {/* Optimization Tips */}
-      <div className="border border-border bg-panel rounded-xl p-8 md:p-12 shadow-2xl">
-        <h3 className="text-xs font-bold tracking-[0.3em] text-muted-foreground mb-10 flex items-center gap-4">
-          <Sparkles className="h-4 w-4 text-primary-ink" />
-          Pro Tips from your Buddy
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <Zap className="h-4 w-4 text-primary-ink" />
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Personalize It</h4>
-                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
-                  Add a specific project or achievement that directly addresses the company&apos;s pain points.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <FileText className="h-4 w-4 text-primary-ink" />
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Check the Tone</h4>
-                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
-                  Match the company&apos;s culture. Use a more formal tone for finance/law, and a friendlier tone for startups.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <Edit3 className="h-4 w-4 text-primary-ink" />
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Final Proofread</h4>
-                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
-                  Make sure all placeholders (like [Company Name]) are filled in correctly.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-divider bg-divider/10 p-6 rounded-xl transition-editorial hover:border-primary group">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-divider/20 border border-divider/30 group-hover:border-primary transition-editorial flex items-center justify-center flex-shrink-0 mt-1">
-                <CheckCircle2 className="h-4 w-4 text-primary-ink" />
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold text-primary-ink mb-3 tracking-widest uppercase">Ready to Go</h4>
-                <p className="text-muted-foreground text-xs leading-relaxed font-general font-light">
-                  Once you&apos;re happy, copy the text or download it and attach it to your application.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <style jsx global>{`
-        .custom-md-editor {
-          background: transparent !important;
-          border: none !important;
-        }
-        
+        .custom-md-editor { background: transparent !important; border: none !important; box-shadow: none !important; }
         .custom-md-editor .w-md-editor-text-pre,
-        .custom-md-editor .w-md-editor-text-textarea {
-          background: transparent !important;
-          color: var(--foreground) !important;
-        }
-        
-        .custom-md-editor .w-md-editor-text {
-          background: rgba(var(--accent-rgb), 0.05) !important;
-        }
-        
-        .custom-md-editor .wmde-markdown {
-          background: transparent !important;
-          color: var(--foreground) !important;
-          font-family: 'General Sans', sans-serif !important;
-        }
-        
-        .custom-md-editor .w-md-editor-preview {
-          background: transparent !important;
-          border-left: 1px solid var(--divider) !important;
-        }
-
-        .custom-md-editor .w-md-editor-toolbar {
-          background: var(--background) !important;
-          border-bottom: 1px solid var(--divider) !important;
-          color: var(--foreground) !important;
-        }
-
-        .custom-md-editor .w-md-editor-toolbar button {
-          color: var(--foreground) !important;
-        }
-
-        .custom-md-editor .w-md-editor-content {
-          background: transparent !important;
-        }
+        .custom-md-editor .w-md-editor-text-textarea { background: transparent !important; color: var(--foreground) !important; }
+        .custom-md-editor .wmde-markdown { background: transparent !important; color: var(--foreground) !important; }
+        .custom-md-editor .w-md-editor-preview { background: transparent !important; border-left: 1px solid var(--line) !important; box-shadow: none !important; }
+        .custom-md-editor .w-md-editor-toolbar { background: var(--soft) !important; border-bottom: 1px solid var(--line) !important; }
+        .custom-md-editor .w-md-editor-toolbar button { color: var(--foreground) !important; }
+        .custom-md-editor .w-md-editor-content { background: transparent !important; }
       `}</style>
     </div>
   );
