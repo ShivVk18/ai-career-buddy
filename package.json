@@ -13,7 +13,6 @@
     "test:ai": "node --env-file-if-exists=.env scripts/test-ai-providers.js"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.31.10",
     "@hookform/resolvers": "^5.2.1",
     "@langchain/core": "^1.4.1",
     "@langchain/google-genai": "^2.3.6",

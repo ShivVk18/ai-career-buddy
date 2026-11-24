@@ -1,12 +1,13 @@
 "use client";
 
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function Header() {
-  const { isSignedIn } = useUser();
+  const { status } = useSession();
+  const isSignedIn = status === "authenticated";
 
   return (
     <header className="w-full z-50 px-4 sm:px-8 py-4">
@@ -42,11 +43,9 @@ export default function Header() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           ) : (
-            <SignInButton mode="modal">
-              <button className="btn-pill-secondary text-xs py-2 px-4 shadow-xs">
-                sign in
-              </button>
-            </SignInButton>
+            <Link href="/sign-in" className="btn-pill-secondary text-xs py-2 px-4 shadow-xs">
+              sign in
+            </Link>
           )}
         </div>
       </div>

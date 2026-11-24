@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import { Dialog } from "radix-ui";
 import {
   Home,
@@ -30,6 +30,7 @@ import CommandMenu from "./CommandMenu";
 import NotificationBell from "./NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getNeedsYou } from "@/actions/Applications";
+import { signOutAction } from "@/actions/Auth";
 import { cn } from "@/lib/utils";
 
 const FLOW = [
@@ -62,13 +63,13 @@ const isActive = (pathname, href) => {
 /** `demo` ({ name, needsCount, notifications }) renders the shell with mock data and no server calls (/dev/shell). */
 export default function AppSidebar({ demo }) {
   const pathname = usePathname();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { data: session } = useSession();
+  const user = session?.user;
   const [chatOpen, setChatOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [needsCount, setNeedsCount] = useState(demo?.needsCount ?? 0);
-  const name = demo?.name || user?.fullName || "your account";
+  const name = demo?.name || user?.name || user?.email || "your account";
 
   // Needs-you badge: best effort, silent on failure.
   useEffect(() => {
@@ -205,7 +206,7 @@ export default function AppSidebar({ demo }) {
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <ThemeToggle className="!h-8 !w-8" />
-              <button onClick={() => (demo ? null : signOut())} className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-soft hover:text-text" title="sign out" aria-label="Sign out">
+              <button onClick={() => (demo ? null : signOutAction())} className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-soft hover:text-text" title="sign out" aria-label="Sign out">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
@@ -268,8 +269,8 @@ export default function AppSidebar({ demo }) {
               <div className="grid grid-cols-2 gap-2">{TOOLS.map(drawerLink)}</div>
             </div>
             <div className="flex items-center justify-between border-t border-line pt-2 text-xs text-muted">
-              <span className="truncate">signed in as {demo?.name || user?.firstName || "you"}</span>
-              <button onClick={() => (demo ? null : signOut())} className="min-h-11 px-2 font-medium text-brand-ink">sign out</button>
+              <span className="truncate">signed in as {demo?.name || user?.name?.split(" ")[0] || "you"}</span>
+              <button onClick={() => (demo ? null : signOutAction())} className="min-h-11 px-2 font-medium text-brand-ink">sign out</button>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

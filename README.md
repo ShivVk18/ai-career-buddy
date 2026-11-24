@@ -36,7 +36,7 @@ AscendAI is built with a **human-first** approach. We've moved away from robotic
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15+ (App Router), React, Tailwind CSS 4.0
-- **Authentication**: Clerk
+- **Authentication**: Auth.js (email + password)
 - **AI Engine**: Advanced LLM integration for resume analysis and interview generation
 - **State & Logic**: Server Actions, Zod, React Hook Form
 - **Styling**: Framer Motion, Lucide Icons, Shadcn UI (customized)
@@ -47,7 +47,7 @@ AscendAI is built with a **human-first** approach. We've moved away from robotic
 
 ### Prerequisites
 - Node.js 18+
-- A Clerk account for authentication
+- An email provider (Resend) for password reset links in production
 - Database (PostgreSQL/Prisma)
 
 ### Installation
@@ -66,8 +66,8 @@ AscendAI is built with a **human-first** approach. We've moved away from robotic
 3. **Environment Variables**:
    Create a `.env.local` file and add your keys:
    ```env
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
-   CLERK_SECRET_KEY=...
+   AUTH_SECRET=...
+   AUTH_URL=http://localhost:3000
    DATABASE_URL=...
    # Add AI service keys here
    ```

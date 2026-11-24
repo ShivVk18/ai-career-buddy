@@ -3,8 +3,8 @@
 
 import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "./ui/sidebar";
-import { useRouter } from "next/navigation";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
+import { signOutAction } from "@/actions/Auth";
 import {
   ScrollText,
   Briefcase,
@@ -20,17 +20,13 @@ import ThemeToggle from "./ThemeToggle";
 
 export default function SideNavbar() {
   const [open, setOpen] = useState(true);
-  const router = useRouter();
-  const { signOut } = useClerk();
-  const { user, isLoaded } = useUser();
+  const { data: session, status } = useSession();
+  const isLoaded = status !== "loading";
 
-  const userName = user?.fullName || "User";
-  const userEmail = user?.primaryEmailAddress?.emailAddress || "";
+  const userName = session?.user?.name || "User";
+  const userEmail = session?.user?.email || "";
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push("/");
-  };
+  const handleSignOut = () => signOutAction();
 
   const links = [
     {

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 import { RotateCw } from "lucide-react";
+import { useSession } from "next-auth/react";
 import PixelScene from "@/components/ui/PixelScene";
 import PipStatus from "@/components/ui/PipStatus";
 import EmptyState from "@/components/ui/EmptyState";
@@ -71,8 +71,8 @@ function HomeSkeleton() {
 }
 
 export default function DashboardView({ actions = DEFAULT_ACTIONS, initialData = null, name = null }) {
-  const { user } = useUser();
-  const firstName = (name ?? user?.firstName ?? "").toLowerCase();
+  const { data: session } = useSession();
+  const firstName = (name ?? session?.user?.name?.trim().split(/\s+/)[0] ?? "").toLowerCase();
   const [state, setState] = useState(initialData ? { status: "ready", data: initialData } : { status: "loading", data: null });
   const [hello, setHello] = useState("hello");
   useEffect(() => setHello(greeting()), []);
