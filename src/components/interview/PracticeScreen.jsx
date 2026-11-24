@@ -63,6 +63,15 @@ function WeakCard({ weak, skill, onSave }) {
  * Open practice. `actions` = { generateOpenQuestions, scoreOpenAnswer, getOpenSession, saveWeakSpot } (injected so
  * the dev page can mock them). `sessionId` resumes a prepared session; `invite` shows the invite toast.
  */
+function formatWhen(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = d.toLocaleDateString("en-US", { weekday: "short" });
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${day} ${time}`.toLowerCase();
+}
+
 export default function PracticeScreen({ actions, sessionId, applicationId, invite = false, onFinish }) {
   const reduced = useReducedMotion();
   const [loading, setLoading] = useState(!!sessionId);
@@ -74,6 +83,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
   const [setupError, setSetupError] = useState(null);
 
   const [session, setSession] = useState(null);
+  const [app, setApp] = useState(null); // { company, title, interviewAt } of the linked application
   const [idx, setIdx] = useState(0);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -114,6 +124,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
       res.questions.forEach((qq, i) => qq.answer && (done[i] = qq.answer));
       const first = res.questions.findIndex((qq) => !qq.answer);
       setSession({ sessionId: res.sessionId, questions: res.questions });
+      setApp(res.application || null);
       setResults(done);
       setIdx(first === -1 ? res.questions.length - 1 : first);
     } catch (e) {
@@ -147,6 +158,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
         return;
       }
       setSession(res);
+      setApp(res.application || null);
       setIdx(0);
       setText("");
       setResults({});
@@ -226,6 +238,12 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
   const shownTime = result ? frozen[idx] ?? 0 : elapsed;
   const over = q && !result && elapsed >= q.timeLimitSec;
   const recording = voice.isRecording;
+  const company = app?.company ? String(app.company).toLowerCase() : null;
+  const when = formatWhen(app?.interviewAt);
+  const inviteText = company
+    ? `interview invite detected · ${company}${when ? ` · ${when}` : ""} · prep pack ready`
+    : "interview invite detected · prep pack ready";
+  const windowTitle = company ? `ascendai · interview prep · ${company}${app?.title ? ` · ${String(app.title).toLowerCase()}` : ""}` : "ascendai · interview prep";
 
   return (
     <SceneScreen variant="peaks" seed={606} as="div" innerClassName="max-w-6xl space-y-4">
@@ -234,10 +252,10 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
           {toastOpen && (
             <div role="status" className="fade-up z-20 flex w-fit max-w-full items-center gap-3 rounded-[14px] bg-ink py-2.5 pl-3 pr-5 font-doc text-sm text-ink-foreground shadow-soft sm:absolute sm:left-1/2 sm:top-3.5 sm:-translate-x-1/2">
               <PipAvatar outfit="headphones" size="sm" alt="" />
-              <span>interview invite detected · prep pack ready</span>
+              <span>{inviteText}</span>
             </div>
           )}
-          <AppWindow title="ascendai · interview prep" bodyClassName="p-4 sm:p-10 min-h-[420px]">
+          <AppWindow title={windowTitle} bodyClassName="p-4 sm:p-10 min-h-[420px]">
             {loading && (
               <div className="space-y-4" aria-busy="true">
                 <PipStatus outfit="headphones" text="loading your prep pack..." />

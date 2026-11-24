@@ -14,16 +14,36 @@ import { cn } from "@/lib/utils";
 const TONE = { have: "bg-brand-soft text-brand-ink", partial: "bg-warn-soft text-warn-ink", gap: "bg-gap-soft text-gap-ink" };
 const chip = "inline-flex h-7 shrink-0 items-center rounded-full px-3 text-sm";
 
-function Requirement({ req, onAddGap }) {
-  const [st, setSt] = useState("idle"); // idle | adding | added | error
+function Requirement({ req, onAddGap, onUndo }) {
+  const [st, setSt] = useState("idle"); // idle | added | error
+  const [token, setToken] = useState(null);
+  const [toastOpen, setToastOpen] = useState(false);
   const add = async () => {
-    setSt("adding");
+    setSt("added"); // optimistic
     try {
       const r = await onAddGap(req);
-      setSt(r?.error ? "error" : "added");
+      if (r?.error) {
+        setSt("error");
+        return;
+      }
+      if (r?.undoToken) {
+        setToken(r.undoToken);
+        setToastOpen(true);
+      }
     } catch {
       setSt("error");
     }
+  };
+  const undoAdd = async () => {
+    setToastOpen(false);
+    setSt("idle");
+    try {
+      const r = token ? await onUndo?.(token) : null;
+      if (r?.error) setSt("added");
+    } catch {
+      setSt("added");
+    }
+    setToken(null);
   };
   return (
     <li className="flex items-center justify-between gap-3 border-b border-dashed border-line py-3 last:border-b-0">
@@ -35,17 +55,16 @@ function Requirement({ req, onAddGap }) {
           <button
             type="button"
             onClick={add}
-            disabled={st === "adding"}
             aria-label={`add ${req.label} to roadmap`}
             className={cn(chip, "min-h-9 gap-1 transition-colors hover:brightness-95 focus-visible:ring-2 focus-visible:ring-gap-ink/40", TONE.gap)}
           >
-            {st === "adding" && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             {st === "error" ? "retry · add to roadmap" : "gap → roadmap"}
           </button>
         )
       ) : (
         <span className={cn(chip, TONE[req.status] || TONE.have)}>{req.status}</span>
       )}
+      <UndoToast open={toastOpen} message="added to your roadmap" onUndo={undoAdd} onClose={() => setToastOpen(false)} duration={6000} />
     </li>
   );
 }
@@ -56,7 +75,7 @@ function Requirement({ req, onAddGap }) {
  * data: { title, subtitle, wants, lines, requirements: [{ id, label, status: have|partial|gap }], invented: number|null, windowTitle }
  * onCommit({ ids, edits }) -> { count?, undoToken? } | { error }
  * onUndo(undoToken) -> { success } | { error }
- * onAddGap(req) -> { success } | { error }   (omit to show gaps as plain chips)
+ * onAddGap(req) -> { success, undoToken? } | { error }   (omit to show gaps as plain chips)
  * onDone() runs when the toast closes without undo.
  */
 export default function ReviewScreen({ status, error, onRetry, data, onCommit, onUndo, onAddGap, onDone, emptyAction, scene = true }) {
@@ -159,7 +178,7 @@ export default function ReviewScreen({ status, error, onRetry, data, onCommit, o
           ) : (
             <ul className="mt-2">
               {reqs.map((r) => (
-                <Requirement key={r.id} req={r} onAddGap={onAddGap} />
+                <Requirement key={r.id} req={r} onAddGap={onAddGap} onUndo={onUndo} />
               ))}
             </ul>
           )}

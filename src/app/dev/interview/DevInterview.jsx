@@ -32,12 +32,12 @@ export default function DevInterview({ mode }) {
         await wait(mode === "loading" ? 3_600_000 : 700);
         if (mode === "error") return { error: "mock failure", code: "FAILED" };
         if (mode === "empty") return { error: "no sources", code: "NO_SOURCES" };
-        return { sessionId: "s1", questions: Q };
+        return { sessionId: "s1", questions: Q, application: null };
       },
       getOpenSession: async () => {
         await wait(mode === "loading" ? 3_600_000 : 400);
         if (mode === "error") return { error: "mock failure", code: "FAILED" };
-        return { sessionId: "s1", questions: Q.map((x) => ({ ...x, answer: null })) };
+        return { sessionId: "s1", questions: Q.map((x) => ({ ...x, answer: null })), application: { id: "a1", company: "Zerodha", title: "Frontend Engineer", interviewAt: new Date(Date.now() + 2 * 86400000).toISOString() } };
       },
       scoreOpenAnswer: async (_s, i, text) => (await wait(900), { index: i, ...rubric(text, i !== 2) }),
       saveWeakSpot: async ({ skill }) => (await wait(500), { task: { taskId: "t1", title: `Practise ${skill}` }, created: true }),

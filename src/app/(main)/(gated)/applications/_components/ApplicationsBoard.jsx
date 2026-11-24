@@ -7,7 +7,7 @@ import { ArrowRight, Check, MoreHorizontal, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { getApplications, setApplicationStatus, markApplied, createInterviewPrep, getNeedsYou } from "@/actions/Applications";
 import { undo as undoAction } from "@/actions/Undo";
-import { approveAndCopy } from "@/actions/Track";
+import { approveAndCopy, unapproveFollowUp } from "@/actions/Track";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import AppWindow from "@/components/ui/AppWindow";
 import EmptyState from "@/components/ui/EmptyState";
@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const DEFAULT_ACTIONS = { getApplications, setApplicationStatus, markApplied, createInterviewPrep, getNeedsYou, undo: undoAction, approveAndCopy };
+const DEFAULT_ACTIONS = { getApplications, setApplicationStatus, markApplied, createInterviewPrep, getNeedsYou, undo: undoAction, approveAndCopy, unapproveFollowUp };
 
 // Four columns like the design: offer and closed share the last one (closed cards carry a badge).
 const COLUMNS = [
@@ -378,7 +378,7 @@ export default function ApplicationsBoard({ actions = DEFAULT_ACTIONS }) {
       />
       {first && (
         <div className="mt-4 space-y-2 lg:absolute lg:bottom-6 lg:right-6 lg:mt-0 lg:w-[min(420px,40%)]">
-          <FollowUpCard item={first} onDone={dropDraft} onRestore={restoreDraft} approve={actions.approveAndCopy} />
+          <FollowUpCard item={first} onDone={dropDraft} onRestore={restoreDraft} approve={actions.approveAndCopy} unapprove={actions.unapproveFollowUp} undo={actions.undo} />
           {drafts.length > 1 && (
             <Link href="/needs-you" className="block px-2 text-right font-doc text-sm text-muted underline">
               {drafts.length - 1} more in needs you

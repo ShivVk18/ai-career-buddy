@@ -68,6 +68,7 @@ export default function DevTrack({ mode }) {
         return { success: true, kind: "status_move", application: { ...a } };
       },
       createInterviewPrep: async () => ({ prepSessionId: "p1" }),
+      unapproveFollowUp: async () => (await wait(200), { success: true }),
       approveAndCopy: async (itemId) => (await wait(300), { success: true, itemId, text: DRAFT.draft.text, subject: "", applicationId: "a5", alreadyApproved: false }),
     };
   }, [mode]);

@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { approveAndCopy } from "@/actions/Track";
+import { approveAndCopy, unapproveFollowUp } from "@/actions/Track";
+import { undo as undoAction } from "@/actions/Undo";
 import PipAvatar from "@/components/ui/PipAvatar";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ async function copyText(text) {
  * so the browser allows it), removes the card optimistically, and tells the server. Nothing is ever sent for the user.
  * onDone(item) removes it from the list; onRestore(item) puts it back if the server said no.
  */
-export default function FollowUpCard({ item, onDone, onRestore, approve = approveAndCopy, className }) {
+export default function FollowUpCard({ item, onDone, onRestore, approve = approveAndCopy, unapprove = unapproveFollowUp, undo = undoAction, className }) {
   const [busy, setBusy] = useState(false);
   const text = item.draft?.text || "";
 
@@ -48,8 +49,20 @@ export default function FollowUpCard({ item, onDone, onRestore, approve = approv
     toast.success(copied ? "copied. you send it, pip never does." : "approved. copy it from the draft, then send it yourself.", {
       duration: 6000,
       action: {
-        label: "copy again",
-        onClick: async () => ((await copyText(body)) ? toast.success("copied") : toast.error("couldn't copy. select the text instead.")),
+        label: "undo",
+        onClick: async () => {
+          let r;
+          try {
+            r = res.undoToken ? await undo(res.undoToken) : await unapprove(item.id);
+          } catch {
+            r = { error: "failed" };
+          }
+          if (!r || r.error) toast.error("we couldn't undo that.");
+          else {
+            onRestore?.(item);
+            toast.success("back in needs you");
+          }
+        },
       },
     });
   };

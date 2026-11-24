@@ -10,14 +10,13 @@ import Skeleton from "@/components/ui/Skeleton";
 import PipAvatar from "@/components/ui/PipAvatar";
 import ChatSlideOver from "@/components/chat/ChatSlideOver";
 import { getHomeState } from "@/actions/Home";
-import { getDashboardData } from "@/actions/Dashboard";
 import { startIntake } from "@/actions/Intake";
 import { retryPipeline } from "@/actions/Pipeline";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import JobCard from "./JobCard";
 import { NeedsYou, Applications, WeekTasks, BotRow, Targets } from "./HomeSections";
 
-const DEFAULT_ACTIONS = { getHomeState, getDashboardData, startIntake, retryPipeline };
+const DEFAULT_ACTIONS = { getHomeState, startIntake, retryPipeline };
 const SCENE = { dawn: "morning", noon: "noon", sunset: "dusk", night: "night" };
 
 // Errors that mean "we could not read the page, paste the text instead" (keep the url).
@@ -96,18 +95,6 @@ export default function DashboardView({ actions = DEFAULT_ACTIONS, initialData =
   useEffect(() => {
     if (!initialData) load();
   }, [load, initialData]);
-
-  // Targets from documents and cold-email follow-ups come from the older dashboard call. Failure just hides them.
-  const [extras, setExtras] = useState({ targets: [], totalTargets: 0, dueFollowUps: [] });
-  const loadExtras = useCallback(async () => {
-    try {
-      const r = await actions.getDashboardData?.();
-      if (r && !r.error) setExtras({ targets: r.targets || [], totalTargets: r.totalTargets, dueFollowUps: r.dueFollowUps || [] });
-    } catch {}
-  }, [actions]);
-  useEffect(() => {
-    loadExtras();
-  }, [loadExtras]);
 
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
@@ -238,8 +225,8 @@ export default function DashboardView({ actions = DEFAULT_ACTIONS, initialData =
   const apps = d.applications || [];
   const tasks = d.tasks || [];
   const known = new Set(apps.map((a) => `${(a.job.company || "").toLowerCase()}|${(a.job.title || "").toLowerCase()}`));
-  const targets = (extras.targets || []).filter((t) => !known.has(`${(t.company || "").toLowerCase()}|${(t.role || "").toLowerCase()}`));
-  const followUps = extras.dueFollowUps || [];
+  const targets = (d.targets || []).filter((t) => !known.has(`${(t.company || "").toLowerCase()}|${(t.role || "").toLowerCase()}`));
+  const followUps = d.dueFollowUps || [];
   const isNew = !apps.length && !d.needsYou?.count && !tasks.length && !card && !targets.length && !followUps.length;
 
   return (
@@ -337,7 +324,7 @@ export default function DashboardView({ actions = DEFAULT_ACTIONS, initialData =
             <NeedsYou needsYou={d.needsYou} followUps={followUps} />
             <Applications applications={apps} />
             <WeekTasks tasks={tasks} />
-            <Targets targets={targets} total={extras.totalTargets} onAdd={addTarget} />
+            <Targets targets={targets} total={d.totalTargets} onAdd={addTarget} />
             <BotRow bots={d.bots} applications={apps} />
           </>
         )}

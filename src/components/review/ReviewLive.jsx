@@ -6,6 +6,7 @@ import { getResume, getTailorDraft, saveTailoredVersion } from "@/actions/Resume
 import { acceptTailoredVersion, undo } from "@/actions/Undo";
 import { getPipelineStatus } from "@/actions/Pipeline";
 import { getATSScoreById } from "@/actions/ResumeParser";
+import { addGapToRoadmap } from "@/actions/CareerRoadmap";
 import { approveNeedsYou } from "@/actions/Applications";
 import { generationErrorMessage } from "@/components/shared/generationError";
 import ReviewScreen from "./ReviewScreen";
@@ -40,7 +41,7 @@ export default function ReviewLive({ draftId, applicationId, onSaved }) {
             const score = await getATSScoreById(scoreId);
             const reqs = score?.evidence?.requirements;
             if (Array.isArray(reqs))
-              requirements = reqs.map((r, i) => ({ id: `r${i}`, label: r.requirement, status: r.status === "matched" ? "have" : r.status === "partial" ? "partial" : "gap" }));
+              requirements = reqs.map((r, i) => ({ id: `r${i}`, label: r.requirement, status: r.match ?? (r.status === "matched" ? "have" : "gap") }));
           }
         } catch {
           // requirement list and invented count are extras; the edits still work without them
@@ -89,6 +90,7 @@ export default function ReviewLive({ draftId, applicationId, onSaved }) {
       data={data}
       onCommit={commit}
       onUndo={undo}
+      onAddGap={(req) => addGapToRoadmap({ skill: String(req.label).slice(0, 80), ...(applicationId ? { applicationId } : {}) })}
       onDone={applicationId ? () => approveNeedsYou(applicationId, "TAILOR").then(() => onSaved?.()).catch(() => {}) : onSaved}
       emptyAction={<Link href="/needs-you" className="btn-pill-secondary inline-flex min-h-11 items-center px-5 text-sm">back to needs you</Link>}
     />

@@ -58,7 +58,7 @@ export default function DevReview({ mode }) {
         }}
         onAddGap={async () => {
           await wait(500);
-          return { success: true };
+          return { success: true, undoToken: "mock-gap", created: true };
         }}
       />
     </main>

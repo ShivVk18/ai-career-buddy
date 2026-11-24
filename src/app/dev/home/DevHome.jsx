@@ -56,11 +56,20 @@ const EMPTY = { stage: "dawn", needsYou: { count: 0, items: [] }, applications: 
 
 export default function DevHome({ mode }) {
   const data = mode === "empty" ? EMPTY : SEEDED;
+  const full = {
+    ...data,
+    targets: mode === "empty" ? [] : [
+      { key: "t1", company: "swiggy", role: "frontend developer", lastActivityAt: iso(300), ats: { score: 72, href: "/resume-parser" }, coverLetter: null, coldEmail: null },
+      { key: "t2", company: "zerodha", role: "ui engineer", lastActivityAt: iso(900), ats: null, coverLetter: { href: "/cover-letter" }, coldEmail: null },
+    ],
+    totalTargets: mode === "empty" ? 0 : 2,
+    dueFollowUps: mode === "empty" ? [] : [{ id: "f1", company: "zomato", role: "sde 1", recipientName: "priya", subject: "frontend role", followUpAt: iso(60), href: "/cold-email/f1" }],
+  };
   const actions = {
     getHomeState: async () => {
       if (mode === "loading") await wait(60 * 60000);
       if (mode === "error") return { error: "mock failure", code: "FAILED" };
-      return data;
+      return full;
     },
     startIntake: async ({ input }) => {
       await wait(1500);
@@ -74,21 +83,13 @@ export default function DevHome({ mode }) {
         chips: { company: "razorpay", role: "frontend engineer", location: "bengaluru", requirementCount: 14 },
       };
     },
-    getDashboardData: async () => ({
-      targets: mode === "empty" ? [] : [
-        { key: "t1", company: "swiggy", role: "frontend developer", lastActivityAt: iso(300), ats: { score: 72, href: "/resume-parser" }, coverLetter: null, coldEmail: null },
-        { key: "t2", company: "zerodha", role: "ui engineer", lastActivityAt: iso(900), ats: null, coverLetter: { href: "/cover-letter" }, coldEmail: null },
-      ],
-      totalTargets: mode === "empty" ? 0 : 2,
-      dueFollowUps: mode === "empty" ? [] : [{ id: "f1", company: "zomato", role: "sde 1", recipientName: "priya", subject: "frontend role", followUpAt: iso(60), href: "/cold-email/f1" }],
-    }),
     retryPipeline: async () => ({ started: true }),
   };
   return (
     <div className="flex min-h-screen flex-col bg-bg text-text md:h-screen md:flex-row md:overflow-hidden">
       <AppSidebar demo={{ name: "shivansh", needsCount: data.needsYou.count, notifications: { unreadCount: 0, items: [] } }} />
       <main className="min-w-0 flex-1 overflow-y-auto pb-20 md:pb-8">
-        <DashboardView actions={actions} initialData={mode === "loading" || mode === "error" ? null : data} name="shivansh" />
+        <DashboardView actions={actions} initialData={mode === "loading" || mode === "error" ? null : full} name="shivansh" />
       </main>
     </div>
   );
