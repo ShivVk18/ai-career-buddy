@@ -26,3 +26,14 @@ describe("generateOpenQuestions with projects", () => {
     expect(r.questions[0].sources[0].id).toBe("proj:p1");
   });
 });
+
+describe("linked application", () => {
+  it("returns the application of the prep session, or null", async () => {
+    db.application = { findFirst: vi.fn(async () => ({ id: "app1", interviewAt: new Date("2026-02-01T10:00:00Z"), job: { company: "Zerodha", title: "Dev" } })) };
+    let r = await generateOpenQuestions({ count: 3, jobDescription: "Build React dashboards." });
+    expect(r.application).toEqual({ id: "app1", company: "Zerodha", title: "Dev", interviewAt: "2026-02-01T10:00:00.000Z" });
+    db.application.findFirst.mockResolvedValueOnce(null);
+    r = await generateOpenQuestions({ count: 3, jobDescription: "Build React dashboards." });
+    expect(r.application).toBeNull();
+  });
+});

@@ -7,6 +7,7 @@ import { fail, requireUser, iso } from "@/lib/jobs/common";
 import { publicApplication } from "@/lib/applications/derive";
 import { computeNeedsYou } from "@/lib/applications/needsYou";
 import { isStalled, resumeStalledForUser } from "@/lib/jobs/runner";
+import { loadTargets, loadDueFollowUps } from "@/lib/dashboard/derive";
 import { progressStage, botStatusFor, summarizeBots } from "@/lib/home/state";
 
 const MAX_APPS = 20;
@@ -37,6 +38,8 @@ function weekTasks(roadmaps, dated = []) {
  *   applications: [{ id, status, job:{id,company,title,location,url}, appliedAt, interviewAt, prepSessionId, nextActionAt, nextAction:{label,href}|null, quietDays:number|null, isQuiet:boolean, updatedAt, bot:{state,step,completedCount,total} }],
  *   tasks: [{ kind:"task"|"roadmap", dueAt:ISO|null, taskId?, applicationId?, note?, source?, roadmapId, roadmapTitle, stepId, title, category, priority, href }],
  *   bots: { running, failed, needsYou, done, items:[{ applicationId, company, title, state, step, completedCount, total }] },
+ *   targets: [{ key, company, role, lastActivityAt, ats, coverLetter, coldEmail }] (max 10), totalTargets: number,
+ *   dueFollowUps: [{ id, company, role, recipientName, subject, followUpAt, href }],
  *   unreadNotifications: number,
  *   generatedAt: ISO string
  * } or { error, code }. Signed-out throws "Unauthorized".
@@ -47,7 +50,7 @@ export async function getHomeState() {
   const uid = user.id;
   try {
     const now = Date.now();
-    const [rows, statusGroups, needsYou, roadmaps, unread, datedTasks] = await Promise.all([
+    const [rows, statusGroups, needsYou, roadmaps, unread, datedTasks, targetsInfo, dueFollowUps] = await Promise.all([
       db.application.findMany({
         where: { userId: uid, deletedAt: null, job: { deletedAt: null } },
         orderBy: { updatedAt: "desc" },
@@ -59,6 +62,8 @@ export async function getHomeState() {
       db.careerPath.findMany({ where: { userId: uid, status: "active", deletedAt: null }, orderBy: { updatedAt: "desc" }, select: { id: true, targetRole: true, steps: true } }),
       db.notification.count({ where: { userId: uid, readAt: null } }),
       db.task.findMany({ where: { userId: uid, doneAt: null }, orderBy: { dueAt: "asc" }, take: MAX_TASKS }),
+      loadTargets(uid),
+      loadDueFollowUps(uid, new Date(now)),
     ]);
     // Resume-on-visit (D-HF1): a run that stalled (restart, timeout) continues in the background after this response.
     if (rows.some((r) => r.status !== "CLOSED" && isStalled(r, now))) {
@@ -79,6 +84,9 @@ export async function getHomeState() {
       applications,
       tasks: weekTasks(roadmaps, datedTasks),
       bots: summarizeBots(botItems),
+      targets: targetsInfo.targets,
+      totalTargets: targetsInfo.totalTargets,
+      dueFollowUps,
       unreadNotifications: unread,
       generatedAt: iso(new Date(now)),
     };

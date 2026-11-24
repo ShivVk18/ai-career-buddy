@@ -7,10 +7,9 @@ import { publicApplication } from "@/lib/applications/derive";
 import { computeNeedsYou } from "@/lib/applications/needsYou";
 import { computeProfileStrength } from "@/lib/profile/strength";
 import { pruneDeleted } from "@/lib/softDelete";
+import { deriveTargets, loadDueFollowUps } from "@/lib/dashboard/derive";
 
-const MAX_TARGETS = 10;
 const MAX_TASKS = 5;
-const MAX_FOLLOW_UPS = 10;
 const MAX_APPLICATIONS = 10;
 
 const norm = (v) => (typeof v === "string" ? v.trim() : "");
@@ -67,30 +66,8 @@ export async function getDashboardData() {
       db.resume.count({ where: { userId: uid, deletedAt: null } }),
     ]);
 
-    // Due follow-ups (D34): reminders only, never sends. Owner-scoped; due = on or before the end of today (UTC).
-    // If the cold_email_fields migration is not applied yet, this is just empty.
-    let dueFollowUps = [];
-    try {
-      const now = new Date();
-      const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-      const due = await db.coldEmail.findMany({
-        where: { userId: uid, deletedAt: null, followUpAt: { not: null, lt: endOfToday } },
-        orderBy: { followUpAt: "asc" },
-        take: MAX_FOLLOW_UPS,
-        select: { id: true, companyName: true, jobTitle: true, recipientName: true, subject: true, followUpAt: true },
-      });
-      dueFollowUps = due.map((e) => ({
-        id: e.id,
-        company: norm(e.companyName),
-        role: norm(e.jobTitle),
-        recipientName: e.recipientName ?? null,
-        subject: e.subject ?? null,
-        followUpAt: e.followUpAt.toISOString(),
-        href: `/cold-email/${e.id}`,
-      }));
-    } catch (err) {
-      console.error("dashboard follow-ups failed:", safeErr(err));
-    }
+    // Due follow-ups (D34): reminders only, never sends (shared with getHomeState).
+    const dueFollowUps = await loadDueFollowUps(uid);
 
     // UX flow pass: applications with one next action each, the "needs you" count, the offer flag, profile strength.
     // Each part falls back to its empty value so the rest of the dashboard still loads.
@@ -128,35 +105,8 @@ export async function getDashboardData() {
         .catch((err) => console.error("dashboard strength failed:", safeErr(err))),
     ]);
 
-    // Targets: dedupe by (company, role); lists are newest first so the first row per kind is the latest.
-    const map = new Map();
-    const touch = (company, role, createdAt) => {
-      const c = norm(company);
-      const r = norm(role);
-      if (!c && !r) return null;
-      const key = `${c.toLowerCase()}|${r.toLowerCase()}`;
-      let t = map.get(key);
-      if (!t) {
-        t = { key, company: c, role: r, lastActivityAt: createdAt, ats: null, coverLetter: null, coldEmail: null };
-        map.set(key, t);
-      }
-      if (createdAt > t.lastActivityAt) t.lastActivityAt = createdAt;
-      return t;
-    };
-    for (const a of ats) {
-      const t = touch(a.companyName, a.jobTitle, a.createdAt);
-      if (t && !t.ats) t.ats = { id: a.id, score: a.atsScore, href: "/resume-parser" };
-    }
-    for (const l of letters) {
-      const t = touch(l.companyName, l.jobTitle, l.createdAt);
-      if (t && !t.coverLetter) t.coverLetter = { id: l.id, href: `/cover-letter/${l.id}` };
-    }
-    for (const e of emails) {
-      const t = touch(e.companyName, e.jobTitle, e.createdAt);
-      if (t && !t.coldEmail) t.coldEmail = { id: e.id, href: `/cold-email/${e.id}` };
-    }
-    const all = [...map.values()].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
-    const targets = all.slice(0, MAX_TARGETS).map((t) => ({ ...t, lastActivityAt: t.lastActivityAt.toISOString() }));
+    // Targets (shared derivation with getHomeState).
+    const { targets, totalTargets } = deriveTargets(ats, letters, emails);
 
     // Next tasks: incomplete steps of active roadmaps, most recently updated roadmap first.
     const nextTasks = [];
@@ -190,7 +140,7 @@ export async function getDashboardData() {
         hasResume: resumeCount > 0,
       },
       targets,
-      totalTargets: all.length,
+      totalTargets,
       nextTasks,
       dueFollowUps,
       applications,

@@ -89,6 +89,21 @@ const publicAnswer = (a) =>
       }
     : null;
 
+/** The application whose prep session this is: { id, company, title, interviewAt } or null. Never throws. */
+async function linkedApplication(userId, sessionId) {
+  try {
+    const a = await db.application.findFirst({
+      where: { userId, prepSessionId: sessionId, deletedAt: null, job: { deletedAt: null } },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, interviewAt: true, job: { select: { company: true, title: true } } },
+    });
+    if (!a) return null;
+    return { id: a.id, company: a.job?.company ?? null, title: a.job?.title ?? null, interviewAt: a.interviewAt ? a.interviewAt.toISOString() : null };
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // generateOpenQuestions
 
@@ -183,7 +198,7 @@ RULES:
     await pruneOldSessions(user.id);
 
     const session = await db.quizSession.create({ data: { userId: user.id, questions: kept }, select: { id: true } });
-    return { sessionId: session.id, questions: kept.map(publicQuestion) };
+    return { sessionId: session.id, questions: kept.map(publicQuestion), application: await linkedApplication(user.id, session.id) };
   } catch (error) {
     if (error?.message === "Unauthorized") throw error;
     console.error("generateOpenQuestions failed:", safeErr(error));
@@ -371,6 +386,7 @@ export async function getOpenSession(sessionId) {
       completed: scored.length === questions.length,
       averageOverall: scored.length ? Math.round(scored.reduce((s, q) => s + q.answer.overall, 0) / scored.length) : null,
       questions,
+      application: await linkedApplication(user.id, session.id),
     };
   } catch (error) {
     if (error?.message === "Unauthorized") throw error;
