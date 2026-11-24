@@ -3,7 +3,7 @@
 Source of truth for frontend and backend. Branches `phase-2`, `phase-3`. Decisions: D18-D21, D25-D31 in DECISIONS.md.
 
 Conventions
-- All server actions run on the server, require a signed-in Clerk user, and scope every query by the user's DB id. Unauthenticated: they throw `Error("Unauthorized")` (actions) or return HTTP 401 (routes).
+- All server actions run on the server, require a signed-in user (Auth.js session; `userId` is the DB User.id), and scope every query by the user's DB id. Unauthenticated: they throw `Error("Unauthorized")` (actions) or return HTTP 401 (routes).
 - Dates returned by the new actions (`getDashboardData`, `submitQuiz`, `/api/chat`) are ISO-8601 strings, never `Date` objects.
 - Nothing here is invented by AI except the chat `reply` text and the quiz content. Every record shown (targets, tasks, scores, cards) comes from the user's own rows.
 - Missing data is an empty array, `null` or `0`, never a sample value.
@@ -18,7 +18,7 @@ Returns:
 
 ```ts
 {
-  firstName: string | null,          // Clerk firstName; null if unset (UI must not invent a name)
+  firstName: string | null,          // first word of User.name; null if unset (UI must not invent a name)
   avgAtsScore: number | null,        // rounded integer 0-100; null when the user has no ATS scores
   counts: {
     atsScores: number,
@@ -149,7 +149,7 @@ Read-only, grounded in the signed-in user's records. It writes nothing except `A
 ### Pre-stream errors (plain JSON, not SSE)
 | Status | Body | When |
 |---|---|---|
-| 401 | `{ "error": "Unauthorized", "code": "UNAUTHORIZED" }` | no Clerk user |
+| 401 | `{ "error": "Unauthorized", "code": "UNAUTHORIZED" }` | no session |
 | 400 | `{ "error": "<message>", "code": "BAD_REQUEST" }` | invalid JSON or invalid `message` |
 | 500 | `{ "error": "Failed to process chat", "code": "INTERNAL" }` | failure before the stream starts |
 
@@ -749,7 +749,7 @@ Chip = { id: string, kind: "role"|"project"|"skill"|"years", label: string, deta
 - Soft deletes set `deletedAt`: `deleteCoverLetter`, `deleteColdEmail`, `deleteATSScore` now return `{ success: true, id }`; `restoreCoverLetter(id)`, `restoreColdEmail(id)`, `restoreATSScore(id)` return `{ success: true, id }` (7 days, then `NOT_FOUND`). Every reader (lists, get-by-id, dashboard counts, targets, analytics) hides deleted rows; rows are hard-deleted lazily 7 days after `deletedAt`.
 - `restoreResumeVersion(id)` additionally returns `undoVersionId` (= `backupVersionId`); Undo is `restoreResumeVersion(undoVersionId)`.
 - Letter edits that replace content: `regenerateCoverLetter`, `shortenCoverLetter` and the new tone `"warmer"` (`COVER_LETTER_TONES` gains `warmer`; `TONE_PROMPTS` too) store `{ content, sources, at }` in `sources.previous` first. `undoLetterChange(id)` swaps it back (and clears it) and returns the letter row, or `{ error, code: "NOTHING_TO_UNDO" | "NOT_FOUND" | "FAILED" }`. Only one level of undo is kept.
-- `deleteAllMyData({ confirmation: string })` and `deleteAccount({ confirmation: string })` (src/actions/Account.js). `confirmation` must equal exactly `DELETE MY DATA` / `DELETE MY ACCOUNT` (trimmed, case-sensitive) else `{ error, code: "CONFIRMATION_REQUIRED" }`. `deleteAllMyData` deletes all the caller's rows in dependency order (InterviewAnswer first, applications, jobs, documents, resume and versions, roadmaps, goals, sessions, assessments) and resets the profile fields; the account stays. `deleteAccount` does the same, deletes the user row and then the Clerk user. Both return `{ success: true }` or `{ error, code: "CONFIRMATION_REQUIRED" | "FAILED" }` and never touch another user's rows. The UI signs the user out after `deleteAccount`.
+- `deleteAllMyData({ confirmation: string })` and `deleteAccount({ confirmation: string })` (src/actions/Account.js). `confirmation` must equal exactly `DELETE MY DATA` / `DELETE MY ACCOUNT` (trimmed, case-sensitive) else `{ error, code: "CONFIRMATION_REQUIRED" }`. `deleteAllMyData` deletes all the caller's rows in dependency order (InterviewAnswer first, applications, jobs, documents, resume and versions, roadmaps, goals, sessions, assessments) and resets the profile fields; the account stays. `deleteAccount` does the same, deletes the user row (credentials live on it). Both return `{ success: true }` or `{ error, code: "CONFIRMATION_REQUIRED" | "FAILED" }` and never touch another user's rows. The UI signs the user out after `deleteAccount`.
 
 ### 11.7b Shape notes and additions from tasks 4-6 (read these)
 - **Item hrefs (11.5):** `COVER_LETTER` -> `/cover-letter/<id>`, `COLD_EMAIL` -> `/cold-email/<id>`, `ATS_FIX` -> `/resume-parser`, `TAILOR_DRAFT` -> `/needs-you?item=<id>` (the review queue, task 11), `FOLLOW_UP` and `PREP_INTERVIEW` -> `/jobs/<jobId>`. Use `type` and `refId` to route differently. A TAILOR draft that expired (24 h) or was already saved drops out of the queue; a deleted letter/email drops out; an `ATS_FIX` item exists only for the NEWEST non-deleted ATS result of a job that has a resume quote in a weakness and stored resume text (under 90 days).
@@ -806,7 +806,7 @@ Also changed (item 6 of the follow-up): **`setApplicationStatus(id, "CLOSED")` n
 
 ## Task 5: intake + server runner (D-HF1)
 
-Server actions (Clerk session required; signed-out throws "Unauthorized"):
+Server actions (Auth.js session required; signed-out throws "Unauthorized"):
 - `startIntake({ input, url?, asJob? })` in `src/actions/Intake.js`. Returns `{ kind:"question", text }` (open chat; nothing stored) or
   `{ kind:"job", jobId, applicationId, job, notice, chips:{ company, role, location, requirementCount } }` or `{ error, code }`
   (INVALID | NOT_FOUND | URL_BLOCKED | FETCH_FAILED | PASTE_NEEDED | NOT_A_JOB | FAILED). Ids return before the slow AI work:
@@ -870,3 +870,15 @@ Migration `20261123172838_task_offer_activity` (additive): `Application.lastActi
 
 - `getOpenSession(id)` and `generateOpenQuestions(input)` now also return `application: { id, company, title, interviewAt: ISO | null } | null`, the (non-deleted) application whose `prepSessionId` is this session and that belongs to the caller. Always `null` right after `generateOpenQuestions` unless a prep link already exists. Lookup failures give `null`. Nothing else changed. Per-question `kind: "project"` was not added (UI keeps the id-prefix fallback).
 - `getHomeState()` now also returns `targets` (same shape and rules as `getDashboardData().targets`, max 10), `totalTargets: number` and `dueFollowUps` (same shape as the dashboard's, due by end of today UTC, max 10). Shared code lives in `src/lib/dashboard/derive.js`; `getDashboardData` output is unchanged. Home needs no second call.
+
+## Auth.js email + password (replaces Clerk)
+
+Session: Auth.js v5, JWT cookie, `session.user.id` = DB `User.id`. Handler: `/api/auth/[...nextauth]`. Sign-in page: `/sign-in`. Middleware redirects signed-out users on protected pages to `/sign-in?callbackUrl=...` and returns 401 JSON for `/api/chat`. All actions in `src/actions/Auth.js` (never throw for user errors; return `{ error, code }`):
+- `signUp({ name?, email, password })` (password 8..72 chars). Returns `{ success: true, message }` for BOTH a new email and an existing one (identical; an existing email is never attached, a set-password link is emailed instead). Does NOT sign in: call `signInWithPassword` next. Codes: `INVALID`, `RATE_LIMITED`, `EMAIL_NOT_CONFIGURED` (production without provider), `FAILED`.
+- `signInWithPassword({ email, password })` -> `{ success: true }` or `{ error, code: "INVALID_CREDENTIALS" | "INVALID" }` (same for wrong password, unknown email, no password yet, rate limited). Then `router.refresh()`/navigate.
+- `requestPasswordReset({ email })` -> always `{ success: true, message }` for valid input (also when limited or unknown). Link: `${AUTH_URL}/reset-password?token=...` (frontend page needed). Codes: `INVALID`, `EMAIL_NOT_CONFIGURED`, `FAILED`.
+- `resetPassword({ token, password })` -> `{ success: true }` or `{ error, code: "INVALID" | "INVALID_TOKEN" | "RATE_LIMITED" | "FAILED" }`. Token: single use, 30 min. This is also how an existing (Clerk-era) user claims their account: same row, all data kept. Then send them to sign in.
+- `signOutAction()` -> clears the session, redirects to `/`.
+Client alternative: `signIn("credentials", ...)` / `signOut()` from `next-auth/react` also work (needs `SessionProvider` only for `useSession`).
+Rate limits (Postgres table `AuthRateLimit`, fixed window): sign-in 30/15min per IP and 8/15min per email; sign-up 10/h per IP, 5/h per email; reset request 10/h per IP, 3/h per email; reset submit 20/h per IP. Behind a proxy, it must set `x-forwarded-for`.
+`deleteAccount` no longer returns `CLERK_FAILED`. `getUserOnboardingStatus` no longer auto-creates a user (throws `Unauthorized` if the row is gone).

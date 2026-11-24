@@ -69,10 +69,10 @@ OUTPUT: valid JSON only, no markdown fences:
 }
 
 /** One `fast` call for the chips the page header did not give. Mutates found/origin. Returns a notice or null. */
-async function aiFindMeta(fullCatalog, found, origin, clerkUserId) {
+async function aiFindMeta(fullCatalog, found, origin, authUserId) {
   const catalog = fullCatalog.slice(0, PROMPT_LINES);
   try {
-    const out = await runAIStructured("fast", jobMetaSchema, () => [["user", metaPrompt(catalog)]], { userId: clerkUserId });
+    const out = await runAIStructured("fast", jobMetaSchema, () => [["user", metaPrompt(catalog)]], { userId: authUserId });
     for (const f of JOB_FIELDS) {
       if (found[f]) continue;
       const v = verifyJobField(out[f], catalog);
@@ -92,7 +92,7 @@ async function aiFindMeta(fullCatalog, found, origin, clerkUserId) {
  * Fills the chips still empty on a job (created with deferAi). Only empty fields are written, so a chip the user
  * edited meanwhile is never overwritten. No session needed. Returns the notice or null.
  */
-export async function fillJobMeta({ jobId, userDbId, clerkUserId }) {
+export async function fillJobMeta({ jobId, userDbId, authUserId }) {
   const job = await db.job.findFirst({ where: { id: jobId, userId: userDbId, deletedAt: null } });
   if (!job) return "NOT_FOUND";
   const fullCatalog = buildSources({ jobDescription: job.jdText });
@@ -100,7 +100,7 @@ export async function fillJobMeta({ jobId, userDbId, clerkUserId }) {
   for (const f of JOB_FIELDS) if (job[f]) found[f] = { value: job[f], sources: [] };
   if (JOB_FIELDS.every((f) => found[f]) || fullCatalog.length === 0) return null;
   const origin = {};
-  const notice = await aiFindMeta(fullCatalog, found, origin, clerkUserId);
+  const notice = await aiFindMeta(fullCatalog, found, origin, authUserId);
   const prev = job.sources && typeof job.sources === "object" ? job.sources : {};
   const sources = { ...prev, origin: { ...(prev.origin ?? {}) } };
   for (const f of JOB_FIELDS) {
@@ -116,7 +116,7 @@ export async function fillJobMeta({ jobId, userDbId, clerkUserId }) {
 }
 
 export async function intakeJobImpl(data, opts = {}) {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   const parsed = intakeSchema.safeParse(data ?? {});
   if (!parsed.success) return fail("INVALID", "Paste a job link, the job text, or a question.");
   const { input, url: givenUrl, asJob } = parsed.data;
@@ -156,7 +156,7 @@ export async function intakeJobImpl(data, opts = {}) {
     if (JOB_FIELDS.some((f) => !found[f])) {
       // deferAi: create the rows now (ids go back to the UI at once); the caller fills the rest with fillJobMeta.
       if (opts.deferAi) notice = "PENDING";
-      else notice = await aiFindMeta(fullCatalog, found, origin, clerkUserId);
+      else notice = await aiFindMeta(fullCatalog, found, origin, authUserId);
     }
 
     const sources = { origin };

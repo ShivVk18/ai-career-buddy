@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { pruneOldSessions } from "@/lib/interview/prune";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { runAIStructured, withAiAction } from "@/lib/ai";
 import { openQuestionsSchema, rubricSchema } from "@/lib/ai/schemas";
 import { buildSources, formatCatalogForPrompt, validateSourceIds, snapshot } from "@/lib/ai/sources";
@@ -114,13 +114,13 @@ export async function generateOpenQuestions(input) {
 
 async function generateOpenQuestionsImpl(input) {
   try {
-    const clerkId = await getUserId();
+    const authUserId = await getUserId();
     const parsed = generateSchema.safeParse(input ?? {});
     if (!parsed.success) return fail("INVALID", "Choose between 3 and 10 questions and keep the job description under 20000 characters.");
     const { count, jobDescription } = parsed.data;
 
     const user = await db.user.findUnique({
-      where: { clerkUserId: clerkId },
+      where: { id: authUserId },
       select: { id: true, skills: true },
     });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
@@ -153,7 +153,7 @@ RULES:
 `;
 
     const generate = async (note) => {
-      const r = await runAIStructured("write", openQuestionsSchema, () => [["user", prompt + note]], { userId: clerkId });
+      const r = await runAIStructured("write", openQuestionsSchema, () => [["user", prompt + note]], { userId: authUserId });
       const seen = new Set();
       const kept = [];
       for (const q of r.questions) {
@@ -269,14 +269,14 @@ export async function scoreOpenAnswer(sessionId, index, answerText) {
 
 async function scoreOpenAnswerImpl(sessionId, index, answerText) {
   try {
-    const clerkId = await getUserId();
+    const authUserId = await getUserId();
     const parsed = scoreSchema.safeParse({ sessionId, index, answerText });
     if (!parsed.success) {
       return fail("INVALID", `Please write an answer of ${ANSWER_MIN_CHARS}-${ANSWER_MAX_CHARS} characters.`);
     }
     const data = parsed.data;
 
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: authUserId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const session = await db.quizSession.findFirst({ where: { id: data.sessionId, userId: user.id } });
@@ -321,7 +321,7 @@ async function scoreOpenAnswerImpl(sessionId, index, answerText) {
     try {
       // One `fast` call only. Feedback sentences with unbacked numbers are dropped by buildRubric.
       const result = await runAIStructured("fast", rubricSchema, () => [["user", rubricPrompt(item.question, item.topic, data.answerText)]], {
-        userId: clerkId,
+        userId: authUserId,
       });
       const rubric = buildRubric(result, data.answerText, allowed);
       const upd = await db.interviewAnswer.updateMany({ where: { id: claim.id, overall: null }, data: { rubric, overall: rubric.overall } });
@@ -366,10 +366,10 @@ async function scoreOpenAnswerImpl(sessionId, index, answerText) {
 
 export async function getOpenSession(sessionId) {
   try {
-    const clerkId = await getUserId();
+    const authUserId = await getUserId();
     const id = idSchema.safeParse(sessionId);
     if (!id.success) return fail("INVALID");
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: authUserId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const session = await db.quizSession.findFirst({ where: { id: id.data, userId: user.id } });
@@ -397,8 +397,8 @@ export async function getOpenSession(sessionId) {
 
 export async function getPracticeHistory() {
   try {
-    const clerkId = await getUserId();
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId }, select: { id: true } });
+    const authUserId = await getUserId();
+    const user = await db.user.findUnique({ where: { id: authUserId }, select: { id: true } });
     if (!user) return { sessions: [] };
 
     // Only sessions with at least one scored answer (that also excludes MCQ sessions).
@@ -438,8 +438,8 @@ export async function getPracticeHistory() {
 
 export async function getWeakAreas() {
   try {
-    const clerkId = await getUserId();
-    const user = await db.user.findUnique({ where: { clerkUserId: clerkId }, select: { id: true } });
+    const authUserId = await getUserId();
+    const user = await db.user.findUnique({ where: { id: authUserId }, select: { id: true } });
     if (!user) return { topics: [], minAnswers: WEAK_AREA_MIN_ANSWERS, totalAnswers: 0, hiddenTopics: 0 };
 
     const rows = await db.interviewAnswer.findMany({

@@ -6,7 +6,7 @@ const tx = {
 };
 const db = { user: { findUnique: vi.fn() }, $transaction: vi.fn((fn) => fn(tx)) };
 vi.mock("@/lib/prisma", () => ({ db }));
-vi.mock("@clerk/nextjs/server", () => ({ auth: () => auth(), clerkClient: vi.fn() }));
+vi.mock("@/lib/session", () => ({ auth: () => auth() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { updateUser } = await import("../../actions/User.js");
@@ -14,7 +14,7 @@ const good = { industry: "tech-software", experience: 5, skills: ["a", "b"], bio
 
 beforeEach(() => {
   vi.clearAllMocks();
-  auth.mockResolvedValue({ userId: "clerk_1" });
+  auth.mockResolvedValue({ userId: "u1" });
   db.user.findUnique.mockResolvedValue({ id: "u1" });
   tx.user.update.mockImplementation(async ({ data }) => ({ id: "u1", ...data }));
 });

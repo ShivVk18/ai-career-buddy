@@ -23,7 +23,7 @@ import { advanceRun } from "@/lib/jobs/runner";
  * before the ids come back; pasted text returns after one DB write.
  */
 export async function startIntake(data) {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   const res = await withAiAction(() =>
     intakeJobImpl(data, {
       deferAi: true,
@@ -37,11 +37,11 @@ export async function startIntake(data) {
   after(async () => {
     try {
       // Chips first so the steps see company and role.
-      await runAsUser(clerkUserId, () => withAiAction(() => fillJobMeta({ jobId, userDbId: user.id, clerkUserId })));
+      await runAsUser(authUserId, () => withAiAction(() => fillJobMeta({ jobId, userDbId: user.id, authUserId })));
     } catch (e) {
       console.error("fillJobMeta failed:", safeErr(e));
     }
-    await advanceRun({ applicationId: res.applicationId, user, clerkUserId });
+    await advanceRun({ applicationId: res.applicationId, user, authUserId });
   });
   return { ...rest, jobId, chips: intakeChips(res.job, jdText) };
 }

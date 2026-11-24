@@ -1,34 +1,39 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
+import { authConfig } from "@/auth.config";
 
-const isProtectedRoute = createRouteMatcher([
-  "/dashboard(.*)",
-  "/resume(.*)",
-  "/resume-parser(.*)",
-  "/interview(.*)",
-  "/cover-letter(.*)",
-  "/cold-email(.*)",
-  "/roadmap(.*)",
-  "/tools(.*)",
-  "/onboarding(.*)",
-  "/chat(.*)",
-  "/jobs(.*)",
-  "/applications(.*)",
-  "/needs-you(.*)",
-  "/review(.*)",
-  "/offers(.*)",
-  "/settings(.*)",
-  "/api/chat(.*)",
-]);
+const { auth } = NextAuth(authConfig);
 
-export default clerkMiddleware(async (auth, req) => {
-  const { userId, redirectToSignIn } = await auth();
+const PROTECTED = [
+  "/dashboard",
+  "/resume",
+  "/resume-parser",
+  "/interview",
+  "/cover-letter",
+  "/cold-email",
+  "/roadmap",
+  "/tools",
+  "/onboarding",
+  "/chat",
+  "/jobs",
+  "/applications",
+  "/needs-you",
+  "/review",
+  "/offers",
+  "/settings",
+  "/api/chat",
+];
+const isProtected = (path) => PROTECTED.some((p) => path === p || path.startsWith(p + "/"));
 
-  if (!userId && isProtectedRoute(req)) {
-    return redirectToSignIn();
+export default auth((req) => {
+  const { pathname, search } = req.nextUrl;
+  if (req.auth?.user?.id || !isProtected(pathname)) return NextResponse.next();
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
-
-  return NextResponse.next();
+  const url = new URL("/sign-in", req.nextUrl.origin);
+  url.searchParams.set("callbackUrl", pathname + search);
+  return NextResponse.redirect(url);
 });
 
 export const config = {

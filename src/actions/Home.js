@@ -45,7 +45,7 @@ function weekTasks(roadmaps, dated = []) {
  * } or { error, code }. Signed-out throws "Unauthorized".
  */
 export async function getHomeState() {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
   const uid = user.id;
   try {
@@ -68,7 +68,7 @@ export async function getHomeState() {
     // Resume-on-visit (D-HF1): a run that stalled (restart, timeout) continues in the background after this response.
     if (rows.some((r) => r.status !== "CLOSED" && isStalled(r, now))) {
       try {
-        after(() => resumeStalledForUser({ user, clerkUserId }));
+        after(() => resumeStalledForUser({ user, authUserId }));
       } catch (e) {
         console.error("resume schedule failed:", safeErr(e));
       }

@@ -23,12 +23,12 @@ const idSchema = z.string().trim().min(1).max(100);
  * the step failed (it stays "failed" and the next call retries it), or `{ error, code }` for INVALID | NOT_FOUND.
  */
 export async function runNextStep(applicationId) {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   const id = idSchema.safeParse(applicationId);
   if (!id.success) return fail("INVALID", "Missing application id.");
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
   try {
-    const state = await runStepFor({ applicationId: id.data, user, clerkUserId });
+    const state = await runStepFor({ applicationId: id.data, user, authUserId });
     if (!state) return fail("NOT_FOUND", "We couldn't find that application.");
     return state;
   } catch (error) {
@@ -65,14 +65,14 @@ export async function getPipeline(applicationId) {
  * background after this response. Failed steps are not retried here (use retryPipeline).
  */
 export async function getPipelineStatus(applicationId) {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   const id = idSchema.safeParse(applicationId);
   if (!id.success) return fail("INVALID", "Missing application id.");
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
   try {
     const app = await loadApp(id.data, user.id);
     if (!app) return fail("NOT_FOUND", "We couldn't find that application.");
-    if (isStalled(app)) after(() => advanceRun({ applicationId: app.id, user, clerkUserId }));
+    if (isStalled(app)) after(() => advanceRun({ applicationId: app.id, user, authUserId }));
     return pipelineStatus(app);
   } catch (error) {
     console.error("getPipelineStatus failed:", safeErr(error));
@@ -85,7 +85,7 @@ export async function getPipelineStatus(applicationId) {
  * the run continues on the server. { started: boolean } or { error, code }.
  */
 export async function retryPipeline(applicationId) {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   const id = idSchema.safeParse(applicationId);
   if (!id.success) return fail("INVALID", "Missing application id.");
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
@@ -95,7 +95,7 @@ export async function retryPipeline(applicationId) {
     const p = normalizePipeline(app.pipeline);
     const hasWork = Object.values(p.steps).some((s) => !["done", "skipped"].includes(s.status));
     if (!hasWork) return { started: false };
-    after(() => advanceRun({ applicationId: app.id, user, clerkUserId }));
+    after(() => advanceRun({ applicationId: app.id, user, authUserId }));
     return { started: true };
   } catch (error) {
     console.error("retryPipeline failed:", safeErr(error));

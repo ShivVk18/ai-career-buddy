@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { authUser } from "@/lib/runAsUser";
 import { revalidatePath } from "next/cache";
 import { runAIText, runAIStructured, withAiAction } from "@/lib/ai";
@@ -98,8 +98,8 @@ function formSnapshot(r) {
   };
 }
 
-async function loadOwner(clerkUserId) {
-  const user = await db.user.findUnique({ where: { clerkUserId }, select: { id: true, industry: true, skills: true, bio: true, experience: true } });
+async function loadOwner(userId) {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, industry: true, skills: true, bio: true, experience: true } });
   if (!user) return { user: null, resume: null };
   const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null }, include: { template: true } });
   return { user, resume };
@@ -113,7 +113,7 @@ export async function saveResume(data) {
     if (!userId) throw new Error("Unauthorized");
 
     const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
+      where: { id: userId },
     });
 
     if (!user) throw new Error("User not found");
@@ -163,7 +163,7 @@ export async function getResume() {
     if (!userId) return null;
 
     const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
+      where: { id: userId },
     });
 
     if (!user) return null;
@@ -235,7 +235,7 @@ async function improveWithAIImpl(input) {
 
   try {
     const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
+      where: { id: userId },
       select: { id: true, industry: true },
     });
 
@@ -331,7 +331,7 @@ export async function deleteResume() {
     if (!userId) throw new Error("Unauthorized");
 
     const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
+      where: { id: userId },
     });
 
     if (!user) throw new Error("User not found");
@@ -373,7 +373,7 @@ export async function restoreDeletedResume(undoId) {
   if (!id.success) return fail("INVALID", "Nothing to restore.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return NO_PROFILE;
     const row = await db.resumeVersion.findFirst({ where: { id: id.data, resume: { userId: user.id } }, select: { tailoredContent: true, resumeId: true } });
     if (!row || decodeVersion(row).deletedResume !== true) return fail("NOT_FOUND", "We couldn't find that resume to restore.");
@@ -401,7 +401,7 @@ export async function duplicateResume() {
     if (!userId) throw new Error("Unauthorized");
 
     const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
+      where: { id: userId },
     });
 
     if (!user) throw new Error("User not found");

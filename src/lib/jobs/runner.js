@@ -68,7 +68,7 @@ const fromError = (e) => failed(e.code ?? "FAILED", e.error ?? "This step failed
 
 // Step bodies. Each returns { status, output?, ids?, reason?, error?, needsYou? } and never throws for expected cases.
 
-async function stepChecker({ user, job, clerkUserId }) {
+async function stepChecker({ user, job, authUserId }) {
   const resume = await db.resume.findUnique({ where: { userId: user.id, deletedAt: null } });
   const resumeText = resume ? resumeToText(resume).slice(0, 30000) : "";
   if (!resume || resumeText.trim().length < MIN_RESUME_TEXT) {
@@ -82,7 +82,7 @@ async function stepChecker({ user, job, clerkUserId }) {
   const existing = await db.aTSScore.findFirst({ where: { userId: user.id, jobId: job.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { id: true, atsScore: true } });
   if (existing) return ok("done", { output: { ...summary, atsScore: existing.atsScore, atsScoreId: existing.id }, ids: { atsScoreId: existing.id } });
 
-  const scored = await scoreResume({ userId: clerkUserId, resumeText, jobDescription: jdText, jobTitle: job.title ?? "", companyName: job.company ?? "" });
+  const scored = await scoreResume({ userId: authUserId, resumeText, jobDescription: jdText, jobTitle: job.title ?? "", companyName: job.company ?? "" });
   if (scored.empty) return failed("NO_SOURCES", "We couldn't back the analysis with evidence from your resume and this job description.");
   const { result, raw, evidence } = scored;
   const row = await db.aTSScore.create({
@@ -152,7 +152,7 @@ const withState = (app, raw, extra = {}) => ({ ...publicPipeline(app, raw), ...e
  * Returns the pipeline state plus `ran: step | null` (and `error`, `code`, `step` when the step failed), `busy: true`
  * when another worker holds a fresh claim, or null when the application is gone.
  */
-export async function runStepFor({ applicationId, user, clerkUserId }) {
+export async function runStepFor({ applicationId, user, authUserId }) {
   const app = await loadApp(applicationId, user.id);
   if (!app) return null;
   const p = normalizePipeline(app.pipeline);
@@ -173,10 +173,10 @@ export async function runStepFor({ applicationId, user, clerkUserId }) {
   let result;
   let capChecked = false;
   try {
-    const out = await runAsUser(clerkUserId, () =>
+    const out = await runAsUser(authUserId, () =>
       withAiAction(
         async () => {
-          const r = await RUNNERS[step]({ user, clerkUserId, job: app.job });
+          const r = await RUNNERS[step]({ user, authUserId, job: app.job });
           return { r, capChecked: currentAiAction()?.capChecked === true };
         },
         p.run
@@ -239,12 +239,12 @@ const RUN_BUDGET_MS = 240 * 1000; // stop starting new steps after this; the nex
  * another worker holds the claim, or the time budget is spent. Idempotent: finished steps never run again.
  * Never throws.
  */
-export async function advanceRun({ applicationId, user, clerkUserId, budgetMs = RUN_BUDGET_MS }) {
+export async function advanceRun({ applicationId, user, authUserId, budgetMs = RUN_BUDGET_MS }) {
   const started = Date.now();
   try {
     for (let i = 0; i < STEPS.length + 1; i++) {
       if (Date.now() - started > budgetMs) break;
-      const r = await runStepFor({ applicationId, user, clerkUserId });
+      const r = await runStepFor({ applicationId, user, authUserId });
       if (!r || r.busy || r.complete || r.ran === null || r.error) break;
     }
     return await notifyIfSettled({ applicationId, user });
@@ -266,7 +266,7 @@ export function isStalled(app, now = Date.now()) {
 }
 
 /** Continues this user's stalled runs (resume-on-visit). Call inside after(). Never throws. */
-export async function resumeStalledForUser({ user, clerkUserId, limit = 3 }) {
+export async function resumeStalledForUser({ user, authUserId, limit = 3 }) {
   try {
     const apps = await db.application.findMany({
       where: { userId: user.id, deletedAt: null, job: { deletedAt: null }, pipeline: { not: null }, status: { not: "CLOSED" } },
@@ -275,7 +275,7 @@ export async function resumeStalledForUser({ user, clerkUserId, limit = 3 }) {
       select: { id: true, updatedAt: true, pipeline: true },
     });
     const todo = apps.filter((a) => isStalled(a)).slice(0, limit);
-    for (const a of todo) await advanceRun({ applicationId: a.id, user, clerkUserId });
+    for (const a of todo) await advanceRun({ applicationId: a.id, user, authUserId });
     return todo.length;
   } catch (e) {
     console.error("resumeStalledForUser failed:", safeErr(e));
@@ -294,12 +294,12 @@ export async function resumeStalledAll({ limit = 10 } = {}) {
     ORDER BY "updatedAt" ASC LIMIT 200`;
   const rows = await db.application.findMany({
     where: { id: { in: ids.map((r) => r.id) }, job: { deletedAt: null } },
-    select: { id: true, updatedAt: true, pipeline: true, user: { select: { id: true, name: true, clerkUserId: true } } },
+    select: { id: true, updatedAt: true, pipeline: true, user: { select: { id: true, name: true } } },
   });
-  const todo = rows.filter((a) => a.user?.clerkUserId && isStalled(a)).slice(0, limit);
+  const todo = rows.filter((a) => a.user && isStalled(a)).slice(0, limit);
   let n = 0;
   for (const a of todo) {
-    await advanceRun({ applicationId: a.id, user: { id: a.user.id, name: a.user.name }, clerkUserId: a.user.clerkUserId });
+    await advanceRun({ applicationId: a.id, user: { id: a.user.id, name: a.user.name }, authUserId: a.user.id });
     n++;
   }
   return n;

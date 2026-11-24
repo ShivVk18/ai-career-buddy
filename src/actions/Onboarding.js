@@ -30,7 +30,7 @@ export async function parseResumeToProfile(input) {
 }
 
 async function parseImpl(input) {
-  const { clerkUserId, user } = await requireUser();
+  const { authUserId, user } = await requireUser();
   const parsed = parseInput.safeParse(input ?? {});
   if (!parsed.success) return fail("INVALID_FILE", "Please upload a valid PDF resume (up to 5 MB) that contains selectable text.");
   if (!user) return fail("NOT_FOUND", NO_PROFILE_MSG);
@@ -57,7 +57,7 @@ NEVER invent anything that is not in the text.
 OUTPUT: valid JSON only, no markdown:
 { "chips": [ { "kind": "role", "label": "", "detail": "", "quote": "" } ], "years": { "value": 0, "quote": "" }, "suggestedTargetRole": { "value": "", "quote": "" }, "suggestedIndustry": { "value": "", "quote": "" } }
 `;
-    const raw = await runAIStructured("write", resumeChipsSchema, () => [["user", prompt]], { userId: clerkUserId });
+    const raw = await runAIStructured("write", resumeChipsSchema, () => [["user", prompt]], { userId: authUserId });
     const out = verifyChips(raw, text);
     if (out.chips.length === 0) return fail("NO_SOURCES", NO_CHIPS_MSG);
     return out;

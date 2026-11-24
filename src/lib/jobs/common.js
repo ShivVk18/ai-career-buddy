@@ -1,5 +1,5 @@
 // Small helpers shared by the job and pipeline actions. Not a "use server" file.
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { db } from "@/lib/prisma";
 
 export const fail = (code, error) => ({ error, code });
@@ -11,8 +11,8 @@ export const AI_UNAVAILABLE_MSG = "AI is temporarily unavailable. Please try aga
 export async function requireUser() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
-  const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true, name: true } });
-  return { clerkUserId: userId, user };
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, name: true } });
+  return { authUserId: userId, user };
 }
 
 export const iso = (d) => (d instanceof Date ? d.toISOString() : d ?? null);

@@ -10,7 +10,11 @@ datasource db {
 
 model User {
   id            String    @id @default(uuid())
-  clerkUserId   String    @unique 
+  // Legacy Clerk id: kept for existing users only (nullable, never used for lookups). New users have none.
+  clerkUserId   String?   @unique
+  // argon/bcrypt hash; null until the user signs up or claims the account via the reset link.
+  passwordHash  String?
+  passwordResetTokens PasswordResetToken[]
   email         String?   @unique
   name          String?
   imageUrl      String?
@@ -527,4 +531,24 @@ model Task {
 
   @@unique([userId, key])
   @@index([userId, doneAt, dueAt])
+}
+
+// Password reset / "set your password" tokens. Only the SHA-256 hash of the token is stored. Single use, 30 min expiry.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Fixed-window rate limit counters for sign-in, sign-up and reset requests (key = "action:ip:..." or "action:email:...").
+model AuthRateLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
 }

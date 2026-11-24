@@ -21,7 +21,7 @@ const db = {
   task: { createMany: vi.fn(async ({ data }) => { const fresh = data.filter((d) => !madeTasks.some((t) => t.key === d.key)); madeTasks.push(...fresh); return { count: fresh.length }; }) },
 };
 vi.mock("@/lib/prisma", () => ({ db }));
-vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
+vi.mock("@/lib/session", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("@/actions/Practice", () => ({ generateOpenQuestions: vi.fn() }));
 
 const { generateOpenQuestions } = await import("@/actions/Practice");

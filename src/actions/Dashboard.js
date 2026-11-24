@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { safeErr } from "@/lib/utils";
 import { publicApplication } from "@/lib/applications/derive";
 import { computeNeedsYou } from "@/lib/applications/needsYou";
@@ -19,8 +19,8 @@ export async function getDashboardData() {
   if (!userId) throw new Error("Unauthorized");
 
   try {
-    const clerkUser = await currentUser();
-    const firstName = norm(clerkUser?.firstName) || null;
+    const me = await db.user.findUnique({ where: { id: userId }, select: { name: true } });
+    const firstName = norm(me?.name).split(/\s+/)[0] || null;
 
     const empty = {
       firstName,
@@ -36,7 +36,7 @@ export async function getDashboardData() {
       profileStrength: null,
     };
 
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return empty;
     const uid = user.id;
     await pruneDeleted(uid); // lazy hard-delete of rows soft-deleted more than 7 days ago

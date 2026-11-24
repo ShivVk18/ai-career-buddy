@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { authUser } from "@/lib/runAsUser";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
@@ -127,7 +127,7 @@ async function generateCoverLetterImpl(data) {
   const { jobTitle, companyName, jobDescription, tone, jobId } = input.data;
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
@@ -178,7 +178,7 @@ export async function getCoverLetters() {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -201,7 +201,7 @@ export async function getCoverLetter(id) {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -225,7 +225,7 @@ export async function deleteCoverLetter(id) {
   const pid = idSchema.safeParse(id);
   if (!pid.success) return fail("INVALID", "We couldn't find that item.");
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const res = await db.coverLetter.updateMany({
       where: { id: pid.data, userId: user.id, deletedAt: null },
@@ -247,7 +247,7 @@ export async function restoreCoverLetter(id) {
   const pid = idSchema.safeParse(id);
   if (!pid.success) return fail("INVALID", "We couldn't find that item.");
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const res = await db.coverLetter.updateMany({
       where: { id: pid.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
@@ -280,7 +280,7 @@ export async function updateCoverLetter(id, content) {
   }
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const result = await db.coverLetter.updateMany({
@@ -315,7 +315,7 @@ async function regenerateCoverLetterImpl(id, opts) {
   const { tone, formality } = parsedOpts.data;
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId } });
+    const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id, deletedAt: null } });
@@ -370,7 +370,7 @@ async function shortenCoverLetterImpl(id) {
   if (!parsedId.success) return fail("INVALID", "We couldn't find that item.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const row = await db.coverLetter.findFirst({ where: { id: parsedId.data, userId: user.id, deletedAt: null } });
@@ -469,7 +469,7 @@ export async function undoLetterChange(id) {
   const pid = idSchema.safeParse(id);
   if (!pid.success) return fail("INVALID", "We couldn't find that item.");
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const row = await db.coverLetter.findFirst({ where: { id: pid.data, userId: user.id, deletedAt: null } });
     if (!row) return fail("NOT_FOUND", "We couldn't find that item.");

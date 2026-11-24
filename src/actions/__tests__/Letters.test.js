@@ -14,7 +14,7 @@ const db = {
   },
 };
 vi.mock("@/lib/prisma", () => ({ db }));
-vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
+vi.mock("@/lib/session", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 
 const { deleteCoverLetter, restoreCoverLetter, undoLetterChange } = await import("../CoverLetter.js");
 

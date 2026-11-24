@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { runAIStructured, runAIText, withAiAction } from "@/lib/ai";
 import { roadmapSchema } from "@/lib/ai/schemas";
 import { safeErr } from "@/lib/utils";
@@ -37,7 +37,7 @@ async function generateCareerRoadmapImpl(rawData) {
   const data = parsedInput.data;
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
     select: { id: true, industry: true, skills: true, bio: true, experience: true },
   });
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
@@ -222,7 +222,7 @@ export async function getCareerRoadmaps() {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -243,7 +243,7 @@ export async function getCareerRoadmap(id) {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -262,7 +262,7 @@ export async function updateRoadmapProgress(id, stepId, progress) {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -296,7 +296,7 @@ export async function completeRoadmapStep(id, stepId) {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -343,7 +343,7 @@ export async function deleteCareerRoadmap(id) {
   if (!parsed.success) return fail("INVALID", "Invalid roadmap.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const res = await db.careerPath.updateMany({ where: { id: parsed.data, userId: user.id, deletedAt: null }, data: { deletedAt: new Date() } });
     if (res.count === 0) return fail("NOT_FOUND", "Roadmap not found.");
@@ -363,7 +363,7 @@ export async function restoreCareerRoadmap(id) {
   if (!parsed.success) return fail("INVALID", "Invalid roadmap.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const res = await db.careerPath.updateMany({
       where: { id: parsed.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
@@ -387,7 +387,7 @@ async function generateProgressRecommendationsImpl(id) {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -452,7 +452,7 @@ export async function setRoadmapStepDone(id, stepId, done) {
   if (!parsed.success) return fail("INVALID", "Invalid roadmap step.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -493,7 +493,7 @@ export async function getGapFrequency() {
   if (!userId) throw new Error("Unauthorized");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return { gaps: [], resultCount: 0 };
     const rows = await db.aTSScore.findMany({
       where: { userId: user.id, deletedAt: null },
@@ -521,7 +521,7 @@ export async function getStepTargets(roadmapId) {
   if (!parsed.success) return fail("INVALID", "Invalid roadmap.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const path = await db.careerPath.findFirst({ where: { id: parsed.data, userId: user.id, deletedAt: null }, select: { steps: true } });
     if (!path) return fail("NOT_FOUND", "Roadmap not found.");
@@ -563,7 +563,7 @@ export async function addGapToRoadmap(input) {
   if (!p.success) return fail("INVALID", "Add the skill you want to learn (up to 80 characters).");
   const { skill, applicationId } = p.data;
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     let job = null;
     if (applicationId) {
@@ -608,7 +608,7 @@ export async function removeGapFromRoadmap(roadmapId, stepId) {
   if (!userId) throw new Error("Unauthorized");
   if (typeof roadmapId !== "string" || !roadmapId || !Number.isInteger(stepId)) return fail("INVALID", "Nothing to undo.");
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     for (let i = 0; i < GAP_TRIES; i++) {
       const path = await db.careerPath.findFirst({ where: { id: roadmapId, userId: user.id, deletedAt: null } });

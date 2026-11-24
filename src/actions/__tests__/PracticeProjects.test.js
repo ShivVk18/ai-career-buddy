@@ -7,7 +7,7 @@ const db = {
   quizSession: { create: vi.fn(async () => ({ id: "s1" })) },
 };
 vi.mock("@/lib/prisma", () => ({ db }));
-vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
+vi.mock("@/lib/session", () => ({ auth: async () => ({ userId: "clerk_1" }) }));
 vi.mock("@/lib/interview/prune", () => ({ pruneOldSessions: vi.fn(async () => {}) }));
 vi.mock("@/lib/ai", () => ({
   withAiAction: (fn) => fn(),

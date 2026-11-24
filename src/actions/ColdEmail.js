@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { authUser } from "@/lib/runAsUser";
 
 import { z } from "zod";
@@ -89,7 +89,7 @@ async function generateColdEmailImpl(data) {
   const { jobTitle, companyName, jobDescription, recipientName, recipientRole, recipientEmail, jobId } = input.data;
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
@@ -218,7 +218,7 @@ export async function getColdEmails() {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -241,7 +241,7 @@ export async function getColdEmail(id) {
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { id: userId },
   });
 
   if (!user) throw new Error("User not found");
@@ -268,7 +268,7 @@ export async function deleteColdEmail(id) {
   const pid = z.string().trim().min(1).max(100).safeParse(id);
   if (!pid.success) return fail("INVALID", "We couldn't find that item.");
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const res = await db.coldEmail.updateMany({
       where: { id: pid.data, userId: user.id, deletedAt: null },
@@ -290,7 +290,7 @@ export async function restoreColdEmail(id) {
   const pid = z.string().trim().min(1).max(100).safeParse(id);
   if (!pid.success) return fail("INVALID", "We couldn't find that item.");
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
     const res = await db.coldEmail.updateMany({
       where: { id: pid.data, userId: user.id, deletedAt: { not: null, gte: undoCutoff() } },
@@ -332,7 +332,7 @@ export async function updateColdEmail(id, content, fields) {
   if (Object.keys(data).length === 0) return fail("INVALID", "There is nothing to save.");
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     if (data.subject !== undefined) {
@@ -391,7 +391,7 @@ export async function setColdEmailFollowUp(id, date) {
   }
 
   try {
-    const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return fail("NOT_FOUND", "We couldn't find your profile. Please finish onboarding first.");
 
     const result = await db.coldEmail.updateMany({

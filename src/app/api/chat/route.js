@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/session";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { runAIStructured, withAiAction } from "@/lib/ai";
@@ -51,7 +51,7 @@ export async function POST(req) {
         try {
           send({ type: "step", step: "detective", text: "reading your records..." });
 
-          const user = await db.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+          const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
           if (!user) {
             send({ type: "text", content: "I can't find your profile yet. Please finish onboarding first." });
             send({ type: "done" });
