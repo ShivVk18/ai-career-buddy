@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { BarLoader } from "react-spinners";
 import {
-  Sparkles,
-  Brain,
-  Target,
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
@@ -17,6 +13,8 @@ import {
 import { submitQuiz } from "@/actions/Interview";
 import QuizResult from "./QuizResult";
 import { Button } from "@/components/ui/button";
+import AppWindow from "@/components/ui/AppWindow";
+import PipAvatar from "@/components/ui/PipAvatar";
 
 export default function Quiz({ onComplete, initialQuestions }) {
   // initialQuestions is the generateQuiz() response: { quizId, questions: [{ question, options }] }
@@ -37,7 +35,7 @@ export default function Quiz({ onComplete, initialQuestions }) {
   }, [initialQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (submitData) toast.success("Interview completed");
+    if (submitData) toast.success("quiz finished");
   }, [submitData]);
 
   // Shape the server response like a saved Assessment so QuizResult renders both.
@@ -84,14 +82,14 @@ export default function Quiz({ onComplete, initialQuestions }) {
       const res = await submitQuiz(quizId, answers); // result or { error, code }
       if (res?.code) {
         if (res.code === "ALREADY_SUBMITTED") setAlreadySubmitted(true);
-        toast.error(res.error || "Failed to submit quiz");
+        toast.error(res.error || "couldn't submit the quiz");
       } else if (res?.results) {
         setSubmitData(res);
       } else {
-        toast.error("Failed to submit quiz");
+        toast.error("couldn't submit the quiz");
       }
     } catch (e) {
-      toast.error(e?.message || "Failed to submit quiz");
+      toast.error(e?.message || "couldn't submit the quiz");
     } finally {
       setSavingResult(false);
     }
@@ -115,14 +113,12 @@ export default function Quiz({ onComplete, initialQuestions }) {
   // If quiz is not loaded yet
   if (!quizData) {
     return (
-      <div className="border border-border bg-panel rounded-xl p-12 text-center shadow-card">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-8 mx-auto border border-primary/20">
-          <Brain className="w-8 h-8 text-primary-ink" />
-        </div>
-        <h3 className="text-xl font-clash font-bold text-foreground tracking-tight mb-4">No Interview Ready</h3>
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-8">Please go back and generate a new set of questions first.</p>
-        <Button onClick={handleBackToHome} className="h-12 px-8">
-          Back to Interview Hub
+      <div className="panel-cozy p-8 text-center sm:p-12">
+        <PipAvatar outfit="headphones" size="xl" alt="" className="mx-auto" />
+        <h3 className="mt-4 font-doc text-2xl text-text">no quiz ready</h3>
+        <p className="mb-6 mt-2 text-sm text-muted">go back and make a new set of questions first.</p>
+        <Button variant="ink" onClick={handleBackToHome} className="min-h-11 px-6">
+          back to interview prep
         </Button>
       </div>
     );
@@ -132,133 +128,105 @@ export default function Quiz({ onComplete, initialQuestions }) {
   const progress = ((currentQuestion + 1) / quizData.length) * 100;
 
   return (
-    <div className="border border-border bg-panel rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-divider/10"></div>
-      
-      {/* Header */}
-      <div className="flex items-center justify-between mb-12">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 rounded-full bg-divider/20 flex items-center justify-center border border-divider/30">
-            <Target className="w-4 h-4 text-primary-ink" />
-          </div>
-          <h2 className="text-xs font-bold tracking-[0.3em] text-muted-foreground ">Mock Interview</h2>
-        </div>
-        <button
-          onClick={handleBackToHome}
-          className="text-muted-foreground hover:text-foreground transition-editorial flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest group"
-        >
-          <Home className="w-4 h-4 group-hover:text-primary-ink transition-editorial" />
-          <span>Quit</span>
-        </button>
-      </div>
-
-      {/* Progress Monitor */}
-      <div className="mb-12">
-        <div className="flex justify-between text-[10px] font-bold tracking-widest uppercase mb-4">
-          <span className="text-muted-foreground">Question {currentQuestion + 1} of {quizData.length}</span>
-          <span className="text-primary-ink">{Math.round(progress)}% Complete</span>
-        </div>
-        <div className="h-[1px] bg-divider/30 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-700 ease-editorial"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Question */}
-      <div className="mb-10">
-        <span className="text-[10px] font-bold text-primary-ink uppercase tracking-[0.3em] mb-4 block">Question {currentQuestion + 1}</span>
-        <h3 className="text-2xl md:text-4xl font-clash font-bold text-foreground tracking-tight leading-tight">{question.question}</h3>
-      </div>
-
-      {/* Options Grid */}
-      <div className="grid grid-cols-1 gap-4 mb-12">
-        {question.options.map((option, index) => (
+    <div className="mx-auto w-full max-w-3xl">
+      <AppWindow title="ascendai · quick quiz" bodyClassName="p-5 sm:p-8">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            question {currentQuestion + 1} of {quizData.length}
+          </p>
           <button
-            key={index}
-            onClick={() => handleAnswer(option)}
-            disabled={savingResult}
-            className={`group text-left p-6 border transition-editorial flex items-center gap-6 rounded-xl ${
-              answers[currentQuestion] === option
-                ? "border-primary bg-primary/5 shadow-card"
-                : "border-divider/50 hover:border-primary hover:bg-divider/5"
-            } ${savingResult ? 'cursor-not-allowed opacity-50' : ''}`}
+            type="button"
+            onClick={handleBackToHome}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm text-muted outline-none transition-colors hover:text-text focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <div className={`w-5 h-5 border flex items-center justify-center transition-editorial rounded-xl ${
-              answers[currentQuestion] === option
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-divider/50"
-            }`}>
-              {answers[currentQuestion] === option && (
-                <CheckCircle2 className="w-3 h-3" />
-              )}
-            </div>
-            <span className={`text-sm md:text-base font-general transition-editorial ${
-              answers[currentQuestion] === option ? "text-foreground font-medium" : "text-muted-foreground"
-            }`}>{option}</span>
+            <Home className="size-4" aria-hidden="true" /> quit
           </button>
-        ))}
-      </div>
+        </div>
 
-      {alreadySubmitted && (
-        <p className="mb-6 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          This quiz has already been submitted. Start a new one from the hub.
-        </p>
-      )}
+        <div
+          role="progressbar"
+          aria-label="quiz progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+          className="mb-8 h-1.5 overflow-hidden rounded-full bg-soft"
+        >
+          <div className="h-full rounded-full bg-brand transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${progress}%` }} />
+        </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-6">
-        <div className="flex gap-4">
+        <h3 className="mb-6 font-doc text-2xl leading-snug text-text sm:text-3xl">{question.question}</h3>
+
+        <div role="radiogroup" aria-label="answers" className="mb-8 grid grid-cols-1 gap-3">
+          {question.options.map((option, index) => {
+            const on = answers[currentQuestion] === option;
+            return (
+              <button
+                key={index}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => handleAnswer(option)}
+                disabled={savingResult}
+                className={`flex min-h-12 items-center gap-4 rounded-[14px] border p-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                  on ? "border-brand bg-brand-soft" : "border-line bg-panel hover:border-brand/60 hover:bg-soft"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`grid size-6 shrink-0 place-items-center rounded-full border ${on ? "border-brand-ink bg-brand-ink text-white" : "border-line"}`}
+                >
+                  {on && <CheckCircle2 className="size-3.5" />}
+                </span>
+                <span className={`text-sm sm:text-base ${on ? "font-medium text-text" : "text-muted"}`}>{option}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {alreadySubmitted && <p className="mb-5 text-sm text-muted">this quiz has already been submitted. start a new one from interview prep.</p>}
+
+        <div className="flex flex-col gap-3 sm:flex-row">
           {currentQuestion > 0 && (
-            <Button
-              variant="outline"
-              onClick={handlePrevious}
-              className="h-14 px-8 border-divider"
-            >
-              <ArrowLeft className="w-4 h-4 mr-3" />
-              Prev
+            <Button variant="outline" onClick={handlePrevious} className="min-h-12 px-6">
+              <ArrowLeft className="size-4" aria-hidden="true" /> prev
             </Button>
           )}
-
+          <Button
+            variant="ink"
+            onClick={handleNext}
+            disabled={!answers[currentQuestion] || savingResult || alreadySubmitted}
+            className="min-h-12 flex-1"
+          >
+            {savingResult ? (
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-label="saving" />
+            ) : (
+              <>
+                {currentQuestion < quizData.length - 1 ? "next question" : "finish quiz"}
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </>
+            )}
+          </Button>
         </div>
 
-        <Button
-          onClick={handleNext}
-          disabled={!answers[currentQuestion] || savingResult || alreadySubmitted}
-          className="flex-1 h-14 text-xs font-bold tracking-widest uppercase items-center justify-center shadow-card"
-        >
-          {savingResult ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-3" />
-          ) : (
-            <>
-              {currentQuestion < quizData.length - 1
-                ? "Next Question"
-                : "Finish Interview"}
-              <ArrowRight className="w-4 h-4 ml-4" />
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Dot Matrix Navigation */}
-      <div className="flex justify-center gap-3 mt-12">
-        {quizData.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => {
-              setCurrentQuestion(idx);
-                    }}
-            className={`h-1 transition-editorial rounded-full ${
-              idx === currentQuestion
-                ? 'bg-primary w-10'
-                : answers[idx]
-                ? 'bg-primary/40 w-4'
-                : 'bg-divider w-4'
-            }`}
-          />
-        ))}
-      </div>
+        <div className="mt-6 flex justify-center gap-1">
+          {quizData.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              aria-label={`go to question ${idx + 1}`}
+              aria-current={idx === currentQuestion ? "step" : undefined}
+              onClick={() => setCurrentQuestion(idx)}
+              className="grid size-6 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span
+                className={`block h-1.5 rounded-full transition-all ${
+                  idx === currentQuestion ? "w-6 bg-brand-ink" : answers[idx] ? "w-3 bg-brand/60" : "w-3 bg-line"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+      </AppWindow>
     </div>
   );
 }

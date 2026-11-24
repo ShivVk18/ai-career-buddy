@@ -102,7 +102,7 @@ export default function MockInterviewPage() {
           ) : (
             <>
               <ChipList values={skills} onChange={setSkills} tone="brand" addLabel="add a skill" />
-              <p className="text-xs text-faint">
+              <p className="text-xs text-muted">
                 {profileState === "ready" ? "from your profile. tap one to edit, x to drop it." : "nothing on your profile yet. add the skills you want to practice."}
               </p>
             </>

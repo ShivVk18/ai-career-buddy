@@ -49,7 +49,7 @@ export default function QuizList({ assessments, onStartNew }) {
                   <span className="flex flex-wrap items-center gap-2 text-sm text-text">
                     quiz {assessments.length - i} <Chip tone={tone} editable={false} value={label} className="h-6 text-xs" />
                   </span>
-                  <span className="block text-xs text-faint">{format(new Date(assessment.createdAt), "MMM d, yyyy, HH:mm")}</span>
+                  <span className="block text-xs text-muted">{format(new Date(assessment.createdAt), "MMM d, yyyy, HH:mm")}</span>
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden="true" />
                 <span className="sr-only">view details</span>

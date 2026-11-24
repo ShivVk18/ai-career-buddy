@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 /** Small lowercase field label. */
 export function FieldLabel({ htmlFor, children, className }) {
   return (
-    <label htmlFor={htmlFor} className={cn("block text-xs font-medium text-faint", className)}>
+    <label htmlFor={htmlFor} className={cn("block text-xs font-medium text-muted", className)}>
       {children}
     </label>
   );

@@ -51,8 +51,8 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-line bg-panel p-4 shadow-card sm:p-5">
               <div className="min-w-0 space-y-1.5">
                 <p className="truncate text-sm font-medium text-text">{[r.jobTitle, r.companyName].filter(Boolean).join(" at ") || "untitled scan"}</p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-faint">
-                  <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                  <span>{new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>
                   {r.candidateLevel && <Chip value={`${r.candidateLevel}${r.candidateYears != null ? ` · ${r.candidateYears} yr` : ''}`} editable={false} />}
                   {r.requirementsTotal > 0 && <Chip tone="brand" value={`${r.requirementsMatched}/${r.requirementsTotal} requirements`} editable={false} />}
                 </div>
@@ -67,12 +67,12 @@ export default function AtsHistory({ onOpen, onRerun, refreshKey }) {
                   </p>
                 )}
                 {r.isLegacy && <LegacySourcesLabel />}
-                {r.resumePurged && <p className="text-xs text-faint">resume text removed after 90 days; re-upload to use fixes.</p>}
+                {r.resumePurged && <p className="text-xs text-muted">resume text removed after 90 days; re-upload to use fixes.</p>}
               </div>
               <div className="flex flex-wrap items-center gap-1">
                 <div className="mr-2 text-right">
                   <p className="font-doc text-2xl leading-none text-text">{r.atsScore}</p>
-                  <p className="text-xs text-faint">{r.matchPercentage}% match</p>
+                  <p className="text-xs text-muted">{r.matchPercentage}% match</p>
                 </div>
                 <button type="button" onClick={() => onOpen(r.id)} className={ghost}><Eye className="size-4" aria-hidden="true" /> view</button>
                 <button type="button" onClick={() => onRerun(r)} className={ghost}><RotateCcw className="size-4" aria-hidden="true" /> re-run with this job</button>

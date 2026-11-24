@@ -142,7 +142,7 @@ function ChangeLine({ line, animate, decision, onDecide }) {
     <div className="flex flex-wrap items-start gap-x-3 gap-y-1 sm:flex-nowrap">
       <div className="min-w-0 flex-1">
         <p
-          className={cn("transition-colors duration-300", phase >= 1 && "text-faint line-through decoration-brand")}
+          className={cn("transition-colors duration-300", phase >= 1 && "text-muted line-through decoration-brand")}
           style={
             phase === 0 && animate
               ? {
@@ -191,7 +191,7 @@ export default function TrackedChangeDoc({ title, subtitle, lines, animate = tru
   return (
     <article className={cn("font-doc text-lg leading-relaxed text-text", className)}>
       {title && <h3 className="text-3xl normal-case tracking-tight">{title}</h3>}
-      {subtitle && <p className="mt-1 text-sm text-faint">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       <div className="mt-5 space-y-5">
         {lines.map((l) =>
           l.kind === "change" ? (

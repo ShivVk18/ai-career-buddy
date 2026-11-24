@@ -67,7 +67,7 @@ export default function OffersIndex() {
             <Link href={`/offers/${a.id}`} className="flex min-h-14 items-center justify-between gap-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-brand">
               <span className="min-w-0">
                 <span className="block truncate font-doc text-base text-text">{a.job.company || "company not set"}</span>
-                <span className="block truncate font-doc text-sm text-faint">{a.job.title || "title not set"}</span>
+                <span className="block truncate font-doc text-sm text-muted">{a.job.title || "title not set"}</span>
               </span>
               <ArrowRight className="size-4 shrink-0 text-faint" aria-hidden="true" />
             </Link>

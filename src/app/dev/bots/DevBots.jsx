@@ -53,8 +53,7 @@ export default function DevBots({ mode }) {
   );
   const bots = usePipelineStatus("a1", actions);
   return (
-    <main className="mx-auto max-w-5xl space-y-4 bg-bg p-4 text-text sm:p-8">
-      
+    <main className="bg-bg text-text">
       <PipelineProgress status={bots.status} loading={bots.loading} error={bots.error} retrying={bots.retrying} onRetry={bots.retry} />
     </main>
   );

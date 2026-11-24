@@ -115,7 +115,7 @@ export default function StatusActions({ application, onChange }) {
           <Image src="/pip/pip-rocket.svg" alt="" width={56} height={56} className="pip-hop" style={{ imageRendering: "pixelated" }} unoptimized />
           <div>
             <p className="text-sm font-semibold text-text flex items-center gap-1.5">
-              <PartyPopper className="h-4 w-4 text-pip" aria-hidden="true" /> You got an offer. Congratulations!
+              <PartyPopper className="h-4 w-4 text-pip" aria-hidden="true" /> you got an offer. congratulations.
             </p>
             <p className="text-xs text-muted">Take a moment to enjoy this one. You earned it.</p>
             <Link href={`/offers/${application.id}`} className="mt-1 inline-flex min-h-11 items-center text-xs font-medium text-pip-ink underline underline-offset-2">
@@ -153,7 +153,7 @@ export default function StatusActions({ application, onChange }) {
           type="button"
           disabled={!!pendingKey || status === "OFFER"}
           aria-pressed={status === "OFFER"}
-          onClick={() => apply("offer", { status: "OFFER" }, () => setApplicationStatus(application.id, "OFFER"), "Offer! Congratulations")}
+          onClick={() => apply("offer", { status: "OFFER" }, () => setApplicationStatus(application.id, "OFFER"), "offer logged. congratulations")}
           className={`${btn} ${status === "OFFER" ? on : idle}`}
         >
           {pendingKey === "offer" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}

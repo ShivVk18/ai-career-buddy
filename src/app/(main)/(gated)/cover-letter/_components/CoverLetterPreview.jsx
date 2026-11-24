@@ -93,7 +93,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(editedContent);
-      toast.success("Cover letter copied to clipboard! ✨");
+      toast.success("copied");
     } catch (error) {
       toast.error("Failed to copy to clipboard");
     }
@@ -107,7 +107,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
-    toast.success("Cover letter downloaded! 📄");
+    toast.success("downloaded");
   };
 
   const btn = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-panel px-5 text-sm text-text outline-none transition-colors hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -141,7 +141,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
       </div>
 
       <section aria-label="rewrite" className="space-y-3">
-        <p className="text-xs font-medium text-faint">rewrite it. undo is one tap away.</p>
+        <p className="text-xs font-medium text-muted">rewrite it. undo is one tap away.</p>
         <ChoiceChips label="tone" value={tone} onChange={(t) => !working && setTone(t)} options={COVER_LETTER_TONES.map((t) => [t, TONE_LABELS[t]])} />
         <div className="flex flex-wrap items-center gap-2">
           {[["regenerate", "regenerate"], ["formal", "more formal"], ["shorten", "shorter"], ["warmer", "warmer"]].map(([k, label]) => (
@@ -179,7 +179,7 @@ const CoverLetterPreview = ({ id, content, sources: initialSources, tone: initia
       <div className="space-y-3">
         <WordCount text={editedContent} range={COVER_LETTER_WORDS} />
         <ClicheCheck text={editedContent || ""} />
-        <p className="text-xs text-faint">before you send: add one specific project, and make sure no [placeholders] are left.</p>
+        <p className="text-xs text-muted">before you send: add one specific project, and make sure no [placeholders] are left.</p>
       </div>
 
       <ParagraphSources content={editedContent} sources={sources} />

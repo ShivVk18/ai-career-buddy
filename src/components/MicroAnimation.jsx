@@ -68,7 +68,7 @@ export const ResumeParserSkeleton = () => {
             />
             <span className="text-xs font-medium text-foreground">Parsing Document</span>
           </div>
-          <span className="text-xs font-bold text-primary-ink">{progress}%</span>
+          
         </div>
 
         <div className="space-y-2">
@@ -115,10 +115,10 @@ export const ResumeParserSkeleton = () => {
 
 export const ResumeMakerSkeleton = () => {
   const items = [
-    { icon: "👤", label: "Info", progress: 100 },
-    { icon: "🎓", label: "Education", progress: 85 },
-    { icon: "⚡", label: "Skills", progress: 70 },
-    { icon: "💼", label: "Experience", progress: 40 }
+    { label: "Info", progress: 100 },
+    { label: "Education", progress: 85 },
+    { label: "Skills", progress: 70 },
+    { label: "Experience", progress: 40 }
   ];
   
   return (
@@ -140,7 +140,7 @@ export const ResumeMakerSkeleton = () => {
         <div className="space-y-2.5">
           {items.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-sm">{item.icon}</span>
+              <span className="w-16 text-[10px] text-muted-foreground">{item.label.toLowerCase()}</span>
               <div className="flex-1">
                 <div className="h-1.5 bg-divider rounded-full overflow-hidden">
                   <motion.div
@@ -151,7 +151,7 @@ export const ResumeMakerSkeleton = () => {
                   />
                 </div>
               </div>
-              <span className="text-[10px] text-muted-foreground w-8 text-right">{item.progress}%</span>
+              
             </div>
           ))}
         </div>
@@ -185,7 +185,7 @@ export const ColdEmailSkeleton = () => {
               className="relative"
             >
               <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/40">
-                <span className="text-3xl text-primary-foreground">✉️</span>
+                <span className="block h-3 w-6 rounded-sm border-2 border-primary-foreground" aria-hidden="true" />
               </div>
               <motion.div
                 animate={{ scale: [1, 1.2, 1], opacity: [1, 0] }}
@@ -206,7 +206,7 @@ export const ColdEmailSkeleton = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-primary-ink">Sent!</span>
+              <span className="text-sm font-semibold text-primary-ink">sent</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -339,13 +339,6 @@ export const KeywordCheckerSkeleton = () => {
       <div className="h-full bg-background rounded-lg border border-primary/30 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-foreground">Keywords</span>
-          <motion.span
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="text-lg"
-          >
-            🔍
-          </motion.span>
         </div>
         
         <div className="flex flex-wrap gap-1.5 mb-3">
@@ -361,7 +354,7 @@ export const KeywordCheckerSkeleton = () => {
                   : "border-divider text-muted-foreground"
               }`}
             >
-              {kw.word} {kw.match && "✓"}
+              {kw.word}
             </motion.span>
           ))}
         </div>
@@ -369,7 +362,7 @@ export const KeywordCheckerSkeleton = () => {
         <div className="space-y-1">
           <div className="flex justify-between text-[10px]">
             <span className="text-muted-foreground">Match Rate</span>
-            <span className="text-primary-ink font-bold">60%</span>
+            
           </div>
           <div className="h-1.5 bg-divider rounded-full overflow-hidden">
             <motion.div

@@ -35,7 +35,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
 
   const handleTailor = async () => {
     if (!form.jobDescription.trim()) {
-      setError("Paste the job description first.");
+      setError("paste the job description first.");
       return;
     }
     setLoading(true);
@@ -59,7 +59,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
       setDecisions({});
       setEdits({});
       setLabel(
-        [res.jobTitle, res.companyName].filter(Boolean).join(" at ") || "Tailored resume"
+        [res.jobTitle, res.companyName].filter(Boolean).join(" at ") || "tailored resume"
       );
     } catch {
       setError("Something went wrong while tailoring. Please try again.");
@@ -90,7 +90,7 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
       }
       setSaved(res);
       setDraft(null);
-      toast.success("Tailored version saved. Your main resume is unchanged.");
+      toast.success("tailored version saved. your main resume is unchanged.");
       onSaved?.();
     } catch {
       setError("We couldn't save the version. Please try again.");
@@ -108,8 +108,8 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
   return (
     <div className={SECTION_CLASS}>
       <h3 className={HEADING_CLASS}>
-        <Sparkles className="h-4 w-4 text-primary-ink" />
-        Tailor to a job
+        <Sparkles className="size-4 text-brand-ink" aria-hidden="true" />
+        tailor to a job
       </h3>
 
       {!draft && !saved && (
@@ -123,44 +123,44 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
             onClear={() => setJobId(null)}
           >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input placeholder="Job title (optional)" value={form.jobTitle} onChange={set("jobTitle")} maxLength={200} />
-            <Input placeholder="Company (optional)" value={form.companyName} onChange={set("companyName")} maxLength={200} />
+            <Input placeholder="job title (optional)" value={form.jobTitle} onChange={set("jobTitle")} maxLength={200} />
+            <Input placeholder="company (optional)" value={form.companyName} onChange={set("companyName")} maxLength={200} />
           </div>
           <Textarea
             rows={6}
             value={form.jobDescription}
             onChange={set("jobDescription")}
-            placeholder="Paste the job description. The AI proposes edits to your existing bullets; you accept or reject each one."
+            placeholder="paste the job description. pip proposes edits to your existing bullets; you accept or reject each one."
           />
           </JobStart>
           <div className="flex items-center gap-4 flex-wrap">
-            <Button type="button" onClick={handleTailor} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-              {loading ? "Tailoring..." : "Suggest edits"}
+            <Button type="button" variant="ink" onClick={handleTailor} disabled={loading}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {loading ? "tailoring…" : "suggest edits"}
             </Button>
-            <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-              Saves your form first. Your main resume is never changed here.
+            <span className="text-xs text-muted">
+              saves your form first. your main resume is never changed here.
             </span>
           </div>
         </div>
       )}
 
-      {error && <p className="text-xs text-destructive mt-4">{error}</p>}
+      {error && <p className="text-xs text-danger mt-4">{error}</p>}
 
       {draft && (
         <div className="space-y-6">
-          <MatchResult match={draft.matchBefore} title="Match before" />
+          <MatchResult match={draft.matchBefore} title="match before" />
           <TrackedChanges proposals={draft.proposals} decisions={decisions} onDecide={decide}
             resume={getResumeLike?.()}
             edits={edits}
             onEdit={(id, text) => setEdits((e) => ({ ...e, [id]: text }))}
           />
-          <div className="space-y-3 border-t border-divider pt-6">
-            <Input placeholder="Version label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
+          <div className="space-y-3 border-t border-line pt-6">
+            <Input placeholder="version label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
             <div className="flex items-center gap-4 flex-wrap">
-              <Button type="button" onClick={() => handleSave()} disabled={saving || accepted.length === 0}>
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Save as version ({accepted.length} accepted)
+              <Button type="button" variant="ink" onClick={() => handleSave()} disabled={saving || accepted.length === 0}>
+                {saving && <Loader2 className="size-4 animate-spin" />}
+                save as version ({accepted.length} accepted)
               </Button>
               <Button
                 type="button"
@@ -172,13 +172,13 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
                   handleSave(all);
                 }}
               >
-                <Check className="h-4 w-4 mr-2" /> Accept all
+                <Check className="size-4" /> accept all
               </Button>
               <Button type="button" variant="ghost" onClick={reset} disabled={saving}>
-                Discard
+                discard
               </Button>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-                Unmarked edits are left out. Nothing is applied until you restore the version.
+              <span className="text-xs text-muted">
+                unmarked edits are left out. nothing is applied until you restore the version.
               </span>
             </div>
           </div>
@@ -187,26 +187,26 @@ export default function TailorPanel({ ensureSaved, onSaved, getResumeLike }) {
 
       {saved && (
         <div className="space-y-6">
-          <p className="text-sm text-foreground">
-            Saved &quot;{saved.label}&quot; with {saved.applied.length} edit{saved.applied.length === 1 ? "" : "s"}. Your
+          <p className="text-sm text-text">
+            saved &quot;{saved.label}&quot; with {saved.applied.length} edit{saved.applied.length === 1 ? "" : "s"}. your
             main resume was not changed; restore the version from the list below to use it.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <MatchResult match={saved.matchBefore} title="Match before" />
-            <MatchResult match={saved.matchAfter} title="Match after" />
+            <MatchResult match={saved.matchBefore} title="match before" />
+            <MatchResult match={saved.matchAfter} title="match after" />
           </div>
           {saved.skipped?.length > 0 && (
-            <div className="border border-destructive/30 bg-destructive/5 rounded-xl p-4 space-y-1">
-              <p className={LABEL_CLASS}>Skipped ({saved.skipped.length})</p>
+            <div className="border border-gap-ink/20 bg-gap-soft rounded-xl p-4 space-y-1">
+              <p className={LABEL_CLASS}>skipped ({saved.skipped.length})</p>
               {saved.skipped.map((s) => (
-                <p key={s.proposalId} className="text-xs text-muted-foreground">
-                  Edit {s.proposalId} was skipped: {SKIP_REASONS[s.reason] || s.reason}.
+                <p key={s.proposalId} className="text-xs text-muted">
+                  edit {s.proposalId} was skipped: {SKIP_REASONS[s.reason] || s.reason}.
                 </p>
               ))}
             </div>
           )}
           <Button type="button" variant="outline" onClick={reset}>
-            Tailor for another job
+            tailor for another job
           </Button>
         </div>
       )}

@@ -174,7 +174,7 @@ export default function ReviewScreen({ status, error, onRetry, data, onCommit, o
         <aside className="border-t border-line bg-soft p-6 md:border-l md:border-t-0" aria-label="what the job wants">
           <h2 className="font-doc text-sm font-normal text-muted normal-case tracking-normal">{data.wants || "the job wants"}</h2>
           {reqs.length === 0 ? (
-            <p className="mt-3 text-sm text-faint">no requirement check for this job yet.</p>
+            <p className="mt-3 text-sm text-muted">no requirement check for this job yet.</p>
           ) : (
             <ul className="mt-2">
               {reqs.map((r) => (

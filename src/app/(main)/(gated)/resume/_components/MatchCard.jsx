@@ -9,21 +9,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { computeMatch } from "@/actions/Resume";
 import { generationErrorMessage } from "@/components/shared/generationError";
 
-export const SECTION_CLASS = "border border-border bg-panel rounded-xl p-8 shadow-card";
+export const SECTION_CLASS = "panel-cozy p-5 sm:p-8";
 export const HEADING_CLASS =
-  "text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase mb-6 flex items-center gap-3";
-export const LABEL_CLASS = "text-[10px] font-bold tracking-widest uppercase text-muted-foreground";
+  "mb-5 flex items-center gap-2.5 font-doc text-xl text-text";
+export const LABEL_CLASS = "text-xs text-muted";
 
 export function TermList({ terms, tone }) {
-  if (!terms?.length) return <p className="text-xs text-muted-foreground">None</p>;
+  if (!terms?.length) return <p className="text-xs text-muted">none</p>;
   const cls =
     tone === "match"
-      ? "border-primary/30 bg-primary/5 text-foreground"
-      : "border-destructive/30 bg-destructive/5 text-destructive";
+      ? "border-brand/40 bg-brand-soft text-brand-ink"
+      : "border-gap-ink/20 bg-gap-soft text-danger";
   return (
     <div className="flex flex-wrap gap-2">
       {terms.map((t) => (
-        <span key={t} className={`px-2 py-1 border rounded-xl text-[10px] font-medium tracking-wide ${cls}`}>
+        <span key={t} className={`rounded-[9px] border px-2.5 py-1 text-xs ${cls}`}>
           {t}
         </span>
       ))}
@@ -38,16 +38,16 @@ export function MatchResult({ match, title }) {
     <div className="space-y-4">
       {title && <p className={LABEL_CLASS}>{title}</p>}
       {match.termCount === 0 ? (
-        <p className="text-sm text-muted-foreground">No recognised skills found in this job description.</p>
+        <p className="text-sm text-muted">no recognised skills found in this job description.</p>
       ) : (
         <>
-          <p className="text-4xl font-clash font-bold text-primary-ink">{match.percent}%</p>
+          <p className="font-pixel text-4xl text-brand-ink">{match.percent}%</p>
           <div className="space-y-2">
-            <p className={LABEL_CLASS}>Matched ({match.matched.length})</p>
+            <p className={LABEL_CLASS}>matched ({match.matched.length})</p>
             <TermList terms={match.matched} tone="match" />
           </div>
           <div className="space-y-2">
-            <p className={LABEL_CLASS}>Missing ({match.missing.length})</p>
+            <p className={LABEL_CLASS}>missing ({match.missing.length})</p>
             <TermList terms={match.missing} tone="miss" />
           </div>
         </>
@@ -64,7 +64,7 @@ export default function MatchCard({ getResumeLike }) {
 
   const run = async () => {
     if (!jd.trim()) {
-      setError("Paste a job description first.");
+      setError("paste a job description first.");
       return;
     }
     setLoading(true);
@@ -88,26 +88,26 @@ export default function MatchCard({ getResumeLike }) {
   return (
     <div className={SECTION_CLASS}>
       <h3 className={HEADING_CLASS}>
-        <Target className="h-4 w-4 text-primary-ink" />
-        Job match
+        <Target className="size-4 text-brand-ink" aria-hidden="true" />
+        job match
       </h3>
       <div className="space-y-4">
         <Textarea
           rows={5}
           value={jd}
           onChange={(e) => setJd(e.target.value)}
-          placeholder="Paste a job description to see how many of its skills your resume covers..."
+          placeholder="paste a job description to see how many of its skills your resume covers…"
         />
         <div className="flex items-center gap-4 flex-wrap">
-          <Button type="button" onClick={run} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Target className="h-4 w-4 mr-2" />}
-            Check match
+          <Button type="button" variant="ink" onClick={run} disabled={loading}>
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <Target className="size-4" />}
+            check match
           </Button>
-          <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-            Computed from keywords, not AI. Uses your current form.
+          <span className="text-xs text-muted">
+            computed from keywords, not ai. uses your current form.
           </span>
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
         <MatchResult match={match} />
       </div>
     </div>

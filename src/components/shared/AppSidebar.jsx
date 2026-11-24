@@ -94,14 +94,14 @@ export default function AppSidebar({ demo }) {
 
   const countBadge = (item, active) =>
     item.count && needsCount > 0 ? (
-      <span aria-label={`${needsCount} waiting`} className={cn("rounded-full px-1.5 text-[11px] font-semibold leading-5", active ? "bg-brand text-white" : "bg-ink text-ink-foreground")}>
+      <span aria-label={`${needsCount} waiting`} className={cn("rounded-full px-1.5 text-[11px] font-semibold leading-5", active ? "bg-brand-ink text-white" : "bg-ink text-ink-foreground")}>
         {needsCount}
       </span>
     ) : null;
 
   const group = (title, items) => (
     <div className="space-y-0.5">
-      <span className="mb-1 block px-3 font-pixel text-[11px] uppercase tracking-wider text-faint">{title}</span>
+      <span className="mb-1 block px-3 font-pixel text-[11px] uppercase tracking-wider text-muted">{title}</span>
       {items.map((item) => {
         const active = isActive(pathname, item.href);
         const Icon = item.icon;
@@ -264,7 +264,7 @@ export default function AppSidebar({ demo }) {
             </div>
             <div className="grid grid-cols-2 gap-2">{[FLOW[2], FLOW[4], ...ACCOUNT].map(drawerLink)}</div>
             <div>
-              <span className="mb-2 block font-pixel text-[11px] uppercase tracking-wider text-faint">tools</span>
+              <span className="mb-2 block font-pixel text-[11px] uppercase tracking-wider text-muted">tools</span>
               <div className="grid grid-cols-2 gap-2">{TOOLS.map(drawerLink)}</div>
             </div>
             <div className="flex items-center justify-between border-t border-line pt-2 text-xs text-muted">

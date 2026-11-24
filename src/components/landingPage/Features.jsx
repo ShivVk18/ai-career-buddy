@@ -11,7 +11,7 @@ export function ChipsMock() {
   const [extra, setExtra] = useState(["intern · northwind 2026"]);
   return (
     <AppWindow title="ascendai · getting to know you">
-      <p className="mb-3 font-pixel text-sm text-faint">what pip found · click a chip to fix it</p>
+      <p className="mb-3 font-pixel text-sm text-muted">what pip found · click a chip to fix it</p>
       <div className="flex flex-wrap gap-2">
         {["react", "next.js", "typescript", "postgres"].map((s) => <Chip key={s} editable={false} value={s} tone="brand" />)}
         {extra.map((s, i) => (

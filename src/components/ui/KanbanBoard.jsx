@@ -162,7 +162,7 @@ export default function KanbanBoard({ columns, cards, onMove, renderCard, classN
                   )}
                 >
                   <p className="font-doc text-base text-text">{c.title}</p>
-                  {c.sub && <p className="font-doc text-sm text-faint">{c.sub}</p>}
+                  {c.sub && <p className="font-doc text-sm text-muted">{c.sub}</p>}
                   {c.badge && (
                     <span className={cn("mt-2 inline-block rounded-[9px] px-2.5 py-1 font-doc text-sm", BADGE[c.badge.tone] || BADGE.warn)}>
                       {c.badge.text}
@@ -180,7 +180,7 @@ export default function KanbanBoard({ columns, cards, onMove, renderCard, classN
                   move here
                 </button>
               )}
-              {!items.length && !canDrop && <p className="px-1 py-3 text-sm text-faint">nothing here</p>}
+              {!items.length && !canDrop && <p className="px-1 py-3 text-sm text-muted">nothing here</p>}
             </div>
           </section>
         );

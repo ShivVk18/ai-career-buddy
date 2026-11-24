@@ -69,7 +69,7 @@ function CardBody({ app, onMove, onMark, onAskDate, askDate, onPickDate, onSkipD
       <div className="flex items-start gap-1">
         <Link href={`/jobs/${app.job.id}`} className="min-w-0 flex-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-brand">
           <span className="block truncate font-doc text-base text-text">{app.job.company || "company not set"}</span>
-          <span className="block truncate font-doc text-sm text-faint">{app.job.title || "title not set"}</span>
+          <span className="block truncate font-doc text-sm text-muted">{app.job.title || "title not set"}</span>
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

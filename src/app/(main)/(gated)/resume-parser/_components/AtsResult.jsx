@@ -90,7 +90,7 @@ function LevelAndWeights({ result }) {
     <details className={cn(SECTION, "group")}>
       <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
         <span className="font-doc text-xl text-text">how it was scored</span>
-        <span className="flex items-center gap-2 text-xs text-faint">
+        <span className="flex items-center gap-2 text-xs text-muted">
           {level ? <Chip tone="brand" editable={false} value={`${level}${result.candidateYears != null ? ` · ${result.candidateYears} ${result.candidateYears === 1 ? "year" : "years"}` : ""}`} /> : "level not recorded"}
           <span className="group-open:hidden">show</span>
           <span className="hidden group-open:inline">hide</span>
@@ -267,11 +267,11 @@ export default function AtsResult({ result, onScanAnother, onRerun, onOpenScore,
         <div className="grid grid-cols-2 gap-3 text-center sm:gap-6">
           <div className="rounded-[14px] bg-soft p-5">
             <p className={cn("font-doc text-5xl sm:text-7xl", getScoreColor(result.atsScore))}>{result.atsScore}</p>
-            <p className="mt-1 text-xs text-faint">ats score</p>
+            <p className="mt-1 text-xs text-muted">ats score</p>
           </div>
           <div className="rounded-[14px] bg-soft p-5">
             <p className={cn("font-doc text-5xl sm:text-7xl", getScoreColor(result.matchPercentage))}>{result.matchPercentage}%</p>
-            <p className="mt-1 text-xs text-faint">job match</p>
+            <p className="mt-1 text-xs text-muted">job match</p>
           </div>
         </div>
       </div>

@@ -25,7 +25,7 @@ export default function LandingNav() {
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
           <Link href="/sign-in" className="hidden min-h-10 items-center rounded-xl px-3 text-sm text-text transition hover:bg-soft sm:inline-flex">sign in</Link>
-          <Link href="/sign-up" className="inline-flex min-h-10 items-center rounded-xl bg-brand px-4 text-sm font-medium text-white transition hover:opacity-90 active:scale-[0.98]">start free</Link>
+          <Link href="/sign-up" className="inline-flex min-h-10 items-center rounded-xl bg-ink px-4 text-sm font-medium text-ink-foreground transition hover:opacity-90 active:scale-[0.98]">start free</Link>
           <details className="group relative md:hidden">
             <summary aria-label="menu" className="flex size-10 cursor-pointer list-none items-center justify-center rounded-xl border border-line text-text [&::-webkit-details-marker]:hidden">
               <Menu className="size-5" aria-hidden="true" />

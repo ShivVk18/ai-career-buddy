@@ -99,7 +99,7 @@ export default function ResumePaperDoc({
         <p className="font-serif text-xs text-muted italic mb-1">
           {candidate.title}
         </p>
-        <p className="font-sans text-[11px] text-faint tracking-wide break-words">
+        <p className="font-sans text-[11px] text-muted tracking-wide break-words">
           {candidate.contact}
         </p>
       </div>
@@ -110,7 +110,7 @@ export default function ResumePaperDoc({
           <span className="font-serif font-bold text-xs uppercase tracking-widest text-text">
             Professional Experience
           </span>
-          <span className="font-pixel text-[10px] text-faint">
+          <span className="font-pixel text-[10px] text-muted">
             tracked changes active
           </span>
         </div>
@@ -126,7 +126,7 @@ export default function ResumePaperDoc({
                 <span className="font-serif font-semibold text-xs text-text">
                   {item.role} — <span className="font-normal italic text-muted">{item.company}</span>
                 </span>
-                <span className="font-sans text-[10px] text-faint">
+                <span className="font-sans text-[10px] text-muted">
                   {item.period}
                 </span>
               </div>

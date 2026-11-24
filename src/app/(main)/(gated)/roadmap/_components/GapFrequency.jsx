@@ -11,7 +11,7 @@ export default function GapFrequency({ gapData }) {
         <p className="mt-2 text-sm text-muted">no gaps yet. scan your resume against a job and the skills you&apos;re missing are ranked here.</p>
       ) : (
         <>
-          <p className="mb-4 mt-1 text-xs text-faint">
+          <p className="mb-4 mt-1 text-xs text-muted">
             from {gapData.resultCount} scan{gapData.resultCount === 1 ? "" : "s"}.
           </p>
           <ul className="flex flex-wrap gap-2">

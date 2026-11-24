@@ -24,7 +24,7 @@ export default function JobCard({ card, onRetry }) {
     <div className="fade-up flex items-center gap-4 rounded-[20px] border border-line bg-panel p-4 sm:gap-5 sm:p-6" aria-busy={card.phase === "reading"}>
       <PipAvatar outfit="detective" size="lg" working={card.phase === "reading"} alt="" className="hidden sm:inline-block" />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-doc text-xs text-faint">new job · details pulled from the link</p>
+        <p className="truncate font-doc text-xs text-muted">new job · details pulled from the link</p>
         {title ? (
           <h2 className="mt-0.5 break-words text-xl font-bold tracking-tight text-text sm:text-2xl">{title}</h2>
         ) : (

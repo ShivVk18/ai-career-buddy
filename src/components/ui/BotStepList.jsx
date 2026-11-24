@@ -7,7 +7,7 @@ const TONE = { good: "brand", warn: "warn", bad: "gap", neutral: "neutral" };
 function Dot({ status }) {
   if (status === "done")
     return (
-      <span className="grid size-7 place-items-center rounded-full bg-brand text-white transition-colors duration-300">
+      <span className="grid size-7 place-items-center rounded-full bg-brand-ink text-white transition-colors duration-300">
         <Check className="size-4" strokeWidth={3} />
       </span>
     );
@@ -39,7 +39,7 @@ export default function BotStepList({ steps, className }) {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Dot status={s.status} />
             <div className="min-w-0 flex-1 basis-40">
-              <p className={cn("text-xl", s.status === "waiting" ? "text-faint" : "text-text")}>{s.label}</p>
+              <p className={cn("text-xl", s.status === "waiting" ? "text-muted" : "text-text")}>{s.label}</p>
               {s.detail && <p className="text-sm text-muted sm:truncate">{s.detail}</p>}
             </div>
             <span className="sr-only">{s.status}</span>

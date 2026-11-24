@@ -11,7 +11,7 @@ export default function AppWindow({ title, children, className, bodyClassName })
           <i className="size-2.5 rounded-full bg-line" />
         </div>
         {title && (
-          <span className="pointer-events-none absolute inset-x-0 text-center font-doc text-xs text-faint">{title}</span>
+          <span className="pointer-events-none absolute inset-x-0 text-center font-doc text-xs text-muted">{title}</span>
         )}
       </div>
       <div className={cn("p-5", bodyClassName)}>{children}</div>

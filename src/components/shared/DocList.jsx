@@ -7,7 +7,7 @@ import { Chip } from "@/components/ui/Chip";
 
 const fmt = (d) => {
   const t = new Date(d);
-  return Number.isNaN(t.getTime()) ? "" : t.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return Number.isNaN(t.getTime()) ? "" : t.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 };
 
 /** Saved letters / emails as quiet cards. Delete is one tap and undoable (handled by the caller). */
@@ -34,7 +34,7 @@ export default function DocList({ items, basePath, newHref, noun, outfit, emptyT
             <p className="truncate pr-12 font-doc text-lg text-text">{it.jobTitle || `untitled ${noun}`}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {it.companyName && <Chip value={it.companyName} editable={false} />}
-              <span className="text-xs text-faint">{fmt(it.createdAt)}</span>
+              <span className="text-xs text-muted">{fmt(it.createdAt)}</span>
             </div>
             {it.jobDescription && <p className="mt-3 line-clamp-2 text-sm text-muted">{it.jobDescription}</p>}
           </Link>

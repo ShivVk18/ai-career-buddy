@@ -99,7 +99,7 @@ export default function ColdEmailGenerator({ source, generate = generateColdEmai
               <FieldError>{errors.recipientEmail}</FieldError>
             </div>
           </div>
-          <p className="text-xs text-faint">the email is only kept for the &quot;open in mail&quot; button. it never goes to the ai and nothing is sent for you.</p>
+          <p className="text-xs text-muted">the email is only kept for the &quot;open in mail&quot; button. it never goes to the ai and nothing is sent for you.</p>
         </More>
 
         {error && <Note tone="error">{error}</Note>}

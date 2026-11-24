@@ -71,14 +71,14 @@ export default function LandingPage() {
             <h1 className="font-doc text-5xl leading-[1.05] tracking-tight sm:text-7xl">paste a job. pip does the rest.</h1>
             <p className="mt-4 font-pixel text-xl text-[#2E3A48] sm:text-3xl">ascendai · get hired as yourself.</p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/sign-up" className={`${cta} w-full bg-brand text-white hover:opacity-90 sm:w-auto`}>start free</Link>
+              <Link href="/sign-up" className={`${cta} w-full bg-ink text-ink-foreground hover:opacity-90 sm:w-auto`}>start free</Link>
               <a href="#flow" className={`${cta} w-full bg-white/90 text-[#1D2633] hover:bg-white sm:w-auto`}>see the 7 steps</a>
             </div>
             <p className="mt-3 text-sm text-[#2E3A48]">free while we build. up to 50 ai actions a day.</p>
           </div>
           <Reveal className="mx-auto mt-12 max-w-3xl text-left">
             <AppWindow title="ascendai · home" className="shadow-soft">
-              <p className="font-pixel text-sm text-faint">new job · details pulled from the link</p>
+              <p className="font-pixel text-sm text-muted">new job · details pulled from the link</p>
               <p className="mb-4 mt-1 font-doc text-2xl">frontend engineer · northwind</p>
               <BotStepList
                 steps={[
@@ -87,7 +87,7 @@ export default function LandingPage() {
                   { id: "c", label: "writer", status: "running", detail: "drafting your letter" },
                 ]}
               />
-              <p className="mt-3 text-xs text-faint">sample data, fictional company</p>
+              <p className="mt-3 text-xs text-muted">sample data, fictional company</p>
             </AppWindow>
           </Reveal>
         </section>
@@ -158,7 +158,7 @@ export default function LandingPage() {
               <ul className="mb-7 space-y-3 text-sm">
                 {FREE.map((f) => <li key={f} className="flex gap-3"><Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />{f}</li>)}
               </ul>
-              <Link href="/sign-up" className={`${cta} w-full bg-brand text-white hover:opacity-90`}>start free</Link>
+              <Link href="/sign-up" className={`${cta} w-full bg-ink text-ink-foreground hover:opacity-90`}>start free</Link>
             </Reveal>
             <Reveal delay={60} className="rounded-3xl border border-line bg-soft p-6 sm:p-8">
               <div className="mb-5 flex items-center justify-between"><p className="font-doc text-2xl">pro</p><span className="rounded-[9px] border border-line px-3 py-1 text-sm text-muted">planned</span></div>

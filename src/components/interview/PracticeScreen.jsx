@@ -280,7 +280,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
             {!loading && !loadError && !session && (
               <div className="grid gap-6 md:grid-cols-[1fr_180px]">
                 <div className="space-y-5">
-                  <p className="font-doc text-sm text-faint">open practice · typed or spoken</p>
+                  <p className="font-doc text-sm text-muted">open practice · typed or spoken</p>
                   <h2 className="font-doc text-2xl leading-snug text-text sm:text-[28px]">pip asks questions from the job and your own projects.</h2>
                   <fieldset className="space-y-2" disabled={generating}>
                     <legend className="text-sm text-muted">how many questions</legend>
@@ -341,7 +341,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
                 <div className="min-w-0 space-y-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-2">
-                      <p className="font-doc text-sm text-faint">
+                      <p className="font-doc text-sm text-muted">
                         question {idx + 1} of {session.questions.length}
                         {info.kind && ` · ${info.kind}`}
                       </p>
@@ -363,7 +363,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
                         disabled={submitting}
                         aria-pressed={recording}
                         aria-label={recording ? "stop recording" : "start recording"}
-                        className={`grid size-12 shrink-0 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${recording ? "bg-ink text-ink-foreground" : "bg-brand text-white"}`}
+                        className={`grid size-12 shrink-0 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${recording ? "bg-ink text-ink-foreground" : "bg-brand-ink text-white"}`}
                       >
                         {recording ? <Square className="size-4" fill="currentColor" /> : <Mic className="size-5" />}
                       </button>
@@ -372,15 +372,15 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
                     <span role="timer" aria-label="time on this question" className="w-14 shrink-0 text-right font-doc text-2xl text-text sm:w-16 sm:text-3xl">{fmt(shownTime)}</span>
                   </div>
                   <p aria-live="polite" className="sr-only">{recording ? "recording" : ""}</p>
-                  {!result && voice.supported === false && <p className="text-xs text-faint">voice isn&apos;t available in this browser. type your answer.</p>}
+                  {!result && voice.supported === false && <p className="text-xs text-muted">voice isn&apos;t available in this browser. type your answer.</p>}
                   {voice.message && <p role="alert" className="text-xs text-gap-ink">{voice.message}</p>}
-                  {over && <p className="text-xs text-faint">past the suggested {fmt(q.timeLimitSec)}. finish your answer when you&apos;re ready.</p>}
+                  {over && <p className="text-xs text-muted">past the suggested {fmt(q.timeLimitSec)}. finish your answer when you&apos;re ready.</p>}
 
                   {!result ? (
                     <div className="space-y-3">
                       {recording ? (
                         <div role="log" aria-live="polite" aria-label="live transcript" className="min-h-24 rounded-[14px] bg-soft p-3 font-doc text-base text-text">
-                          {text || <span className="text-faint">listening...</span>}
+                          {text || <span className="text-muted">listening...</span>}
                         </div>
                       ) : (
                         <textarea
@@ -395,7 +395,7 @@ export default function PracticeScreen({ actions, sessionId, applicationId, invi
                         />
                       )}
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <span className="text-xs text-faint">
+                        <span className="text-xs text-muted">
                           {text.trim().length < ANSWER_MIN_CHARS ? `${ANSWER_MIN_CHARS - text.trim().length} more characters` : `${text.length}/${ANSWER_MAX_CHARS}`}
                         </span>
                         <button

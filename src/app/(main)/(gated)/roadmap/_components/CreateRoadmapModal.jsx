@@ -131,7 +131,7 @@ const CreateRoadmapModal = ({ open, onClose, loadProfile = getProfileChips, gene
               <div className="flex flex-wrap items-center gap-2" aria-label="details from your profile">
                 {FIELDS.map((f) => (
                   <span key={f.key} className="inline-flex items-center gap-1.5">
-                    <span className="text-xs text-faint">{f.key === "currentRole" ? "now" : f.key === "targetRole" ? "goal" : "industry"}</span>
+                    <span className="text-xs text-muted">{f.key === "currentRole" ? "now" : f.key === "targetRole" ? "goal" : "industry"}</span>
                     <Chip tone="brand" value={formData[f.key]} onChange={(v) => set(f.key, v)} className="min-h-10" />
                   </span>
                 ))}

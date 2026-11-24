@@ -91,7 +91,7 @@ export default function JobStart({ onPick, onClear, hasErrors = false, children,
       )}
       {hasJobs && (
         <div className="space-y-2.5">
-          <p className="text-xs font-medium text-faint">start from one of your jobs</p>
+          <p className="text-xs font-medium text-muted">start from one of your jobs</p>
           {picked ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="fade-up inline-flex min-h-10 max-w-full items-center gap-2 rounded-[9px] bg-brand-soft py-1 pl-3 pr-1 text-sm text-brand-ink">
@@ -137,7 +137,7 @@ export default function JobStart({ onPick, onClear, hasErrors = false, children,
                   </SelectContent>
                 </Select>
               )}
-              {loadingJob && <span className="text-xs text-faint" role="status">opening that job…</span>}
+              {loadingJob && <span className="text-xs text-muted" role="status">opening that job…</span>}
             </div>
           )}
         </div>

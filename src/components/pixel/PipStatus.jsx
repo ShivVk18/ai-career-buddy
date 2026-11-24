@@ -43,7 +43,7 @@ const PIP_OUTFITS = {
     src: "/pip/pip-coffee.svg",
     label: "coffee",
     desc: "done & resting",
-    defaultText: "all done! take a sip of chai.",
+    defaultText: "all done. take a sip of chai.",
     color: "#2F9E77",
   },
 };

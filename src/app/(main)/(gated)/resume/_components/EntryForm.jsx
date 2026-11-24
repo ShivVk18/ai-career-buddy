@@ -147,7 +147,7 @@ export function EntryForm({ type, entries, onChange }) {
                 <h4 className="font-doc text-lg leading-snug text-text">{item.title}</h4>
                 <p className="text-sm text-brand-ink">{item.organization}</p>
                 {(item.startDate || item.endDate || item.current) && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-faint">
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
                     <Calendar className="size-3.5" aria-hidden="true" />
                     {[item.startDate, item.current ? "present" : item.endDate].filter(Boolean).join(" to ")}
                   </p>

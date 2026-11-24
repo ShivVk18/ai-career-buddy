@@ -105,7 +105,7 @@ export default function NotificationBell({ demo, className, align = "end", side 
                       <span className={cn("block truncate text-sm", n.read ? "text-muted" : "font-medium text-text")}>{n.title}</span>
                       {n.body && <span className="line-clamp-2 text-xs text-muted">{n.body}</span>}
                     </span>
-                    <span className="shrink-0 font-pixel text-[10px] text-faint">{ago(n.createdAt)}</span>
+                    <span className="shrink-0 font-pixel text-[10px] text-muted">{ago(n.createdAt)}</span>
                   </>
                 );
                 const cls = "flex min-h-11 w-full items-start gap-2.5 border-b border-line px-4 py-3 text-left transition last:border-0 hover:bg-soft";

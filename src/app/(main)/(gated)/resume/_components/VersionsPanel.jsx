@@ -40,20 +40,20 @@ function VersionSources({ versionId }) {
   }, [versionId]);
 
   return (
-    <div className="mt-4 border border-divider rounded-xl p-4 space-y-4 bg-divider/5">
+    <div className="mt-4 border border-line rounded-xl p-4 space-y-4 bg-divider/5">
       <p className={`${LABEL_CLASS} flex items-center gap-2`}>
-        <Link2 className="h-3 w-3 text-primary-ink" /> Sources for accepted edits
+        <Link2 className="size-3 text-brand-ink" aria-hidden="true" /> sources for accepted edits
       </p>
-      {state.loading && <p className="text-xs text-muted-foreground">Loading...</p>}
-      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
+      {state.loading && <p className="text-xs text-muted">Loading...</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
       {!state.loading && !state.error && state.applied.length === 0 && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted">
           This version has no tailored edits, so there are no sources to show.
         </p>
       )}
       {state.applied.map((a) => (
         <div key={a.proposalId} className="space-y-2">
-          <p className="text-xs text-foreground font-general">{a.proposed}</p>
+          <p className="text-xs text-text font-general">{a.proposed}</p>
           <SourceChips sources={a.sources} />
         </div>
       ))}
@@ -186,49 +186,49 @@ export default function VersionsPanel({ ensureSaved, refreshKey, onChanged }) {
   return (
     <div className={SECTION_CLASS}>
       <h3 className={HEADING_CLASS}>
-        <History className="h-4 w-4 text-primary-ink" />
-        Versions
+        <History className="size-4 text-brand-ink" aria-hidden="true" />
+        versions
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-        <Input placeholder="Label (e.g. Backend at Stripe)" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
-        <Input placeholder="Job title (optional)" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} maxLength={200} />
-        <Input placeholder="Company (optional)" value={companyName} onChange={(e) => setCompanyName(e.target.value)} maxLength={200} />
+        <Input placeholder="label (e.g. backend at stripe)" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
+        <Input placeholder="job title (optional)" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} maxLength={200} />
+        <Input placeholder="company (optional)" value={companyName} onChange={(e) => setCompanyName(e.target.value)} maxLength={200} />
       </div>
       <div className="flex items-center gap-4 flex-wrap mb-8">
-        <Button type="button" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Save version
+        <Button type="button" variant="ink" onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          save version
         </Button>
-        <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-          Saves your current form first, then snapshots it.
+        <span className="text-xs text-muted">
+          saves your current form first, then snapshots it.
         </span>
       </div>
-      {saveError && <p className="text-xs text-destructive mb-4">{saveError}</p>}
+      {saveError && <p className="text-xs text-danger mb-4">{saveError}</p>}
 
-      {versions === null && <p className="text-xs text-muted-foreground">Loading versions...</p>}
-      {loadError && <p className="text-xs text-destructive">{loadError}</p>}
+      {versions === null && <p className="text-xs text-muted">loading versions…</p>}
+      {loadError && <p className="text-xs text-danger">{loadError}</p>}
       {versions && versions.length === 0 && !loadError && (
-        <p className="text-xs text-muted-foreground">No versions yet. Save one above or tailor your resume to a job.</p>
+        <p className="text-xs text-muted">no versions yet. save one above or tailor your resume to a job.</p>
       )}
       <ul className="space-y-3">
         {versions?.map((v) => (
-          <li key={v.id} className="border border-divider rounded-xl p-4">
+          <li key={v.id} className="border border-line rounded-xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">{v.label}</p>
-                <p className="text-[10px] tracking-widest uppercase text-muted-foreground mt-1">
-                  {new Date(v.createdAt).toLocaleString()}
+                <p className="text-sm font-bold text-text truncate">{v.label}</p>
+                <p className="text-xs text-muted mt-1">
+                  {new Date(v.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
                   {v.matchPercentage != null && ` / ${v.matchPercentage}% match`}
                   {!v.restorable && " / plain text copy"}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button type="button" variant="ghost" size="sm" onClick={() => setOpenSources(openSources === v.id ? null : v.id)}>
-                  <Link2 className="h-3 w-3 mr-2" /> Sources
+                  <Link2 className="size-3" /> sources
                 </Button>
                 <Button type="button" variant="outline" size="sm" disabled={!v.restorable || !!restoringId} onClick={() => handleRestore(v)}>
-                  {restoringId === v.id ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <RotateCcw className="h-3 w-3 mr-2" />} Restore
+                  {restoringId === v.id ? <Loader2 className="size-3 animate-spin" /> : <RotateCcw className="size-3" />} restore
                 </Button>
               </div>
             </div>

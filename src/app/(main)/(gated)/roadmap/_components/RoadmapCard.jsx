@@ -35,7 +35,7 @@ const RoadmapCard = ({ roadmap, completed = false }) => {
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-3">
-        <span className="text-xs text-faint">{formatDistanceToNow(new Date(roadmap.createdAt), { addSuffix: true })}</span>
+        <span className="text-xs text-muted">{formatDistanceToNow(new Date(roadmap.createdAt), { addSuffix: true })}</span>
         <Link
           href={`/roadmap/${roadmap.id}`}
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-5 text-sm text-text outline-none hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring"

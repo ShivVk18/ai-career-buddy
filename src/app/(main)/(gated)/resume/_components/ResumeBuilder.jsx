@@ -213,8 +213,8 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
         markSaved(lastSubmitted.current);
         lastSubmitted.current = null;
       }
-      toast.success("Resume saved successfully!", {
-        description: "Your changes are now safe and sound.",
+      toast.success("resume saved", {
+        description: "your changes are saved.",
       });
     }
     if (saveError) {
@@ -449,7 +449,7 @@ export default function ResumeBuilder({ initialContent, initialResume }) {
     setValue("template", templateId, { shouldDirty: true });
     setActiveTab("form");
     toast.success("Template selected", {
-      description: "Now let's fill in your details!",
+      description: "now fill in your details.",
     });
   }, [setValue]);
 

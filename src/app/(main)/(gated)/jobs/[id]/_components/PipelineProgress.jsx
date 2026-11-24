@@ -4,8 +4,8 @@ import Link from "next/link";
 import { ArrowRight, RotateCw } from "lucide-react";
 import BotStepList from "@/components/ui/BotStepList";
 import AppWindow from "@/components/ui/AppWindow";
-import PixelScene from "@/components/ui/PixelScene";
 import PipAvatar from "@/components/ui/PipAvatar";
+import SceneScreen from "@/components/ui/SceneScreen";
 import Skeleton from "@/components/ui/Skeleton";
 import { generationErrorMessage } from "@/components/shared/generationError";
 
@@ -40,7 +40,7 @@ function outputLink(s) {
 
 const linkCls = "inline-flex min-h-9 items-center gap-1 rounded text-sm text-brand-ink underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-pip/50";
 
-export default function PipelineProgress({ status, loading, error, retrying, onRetry }) {
+function PipelineBody({ status, loading, error, retrying, onRetry }) {
   if (loading && !status) {
     return (
       <section aria-label="Pipeline progress" aria-busy="true" className="panel-cozy border border-line bg-panel p-5 sm:p-8 space-y-4">
@@ -114,10 +114,7 @@ export default function PipelineProgress({ status, loading, error, retrying, onR
   });
 
   return (
-    <section aria-label="Pipeline progress" className="relative overflow-hidden rounded-[24px] px-3 py-5 sm:px-8 sm:py-12 xl:-mx-32 xl:px-[120px]">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <PixelScene variant="pink" seed={303} />
-      </div>
+    <section aria-label="Pipeline progress">
       <AppWindow title="ascendai · pip is working" className="relative" bodyClassName="p-5 sm:px-12 sm:py-9">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-10">
           <div className="flex flex-col items-center gap-4 text-center md:order-2 md:w-[260px] md:shrink-0 md:pt-4">
@@ -153,5 +150,16 @@ export default function PipelineProgress({ status, loading, error, retrying, onR
         </div>
       </AppWindow>
     </section>
+  );
+}
+
+/** Pipeline progress on the shared full-bleed scene: pink while the run is active, calm morning once it settles. */
+export default function PipelineProgress(props) {
+  const run = props.status?.run;
+  const active = !props.status || run === "running" || run === "idle";
+  return (
+    <SceneScreen variant={active ? "pink" : "morning"} seed={303} label="pip's work on this job" className="min-h-0 !mb-0 !pb-8 sm:!pb-10">
+      <PipelineBody {...props} />
+    </SceneScreen>
   );
 }

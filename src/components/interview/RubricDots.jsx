@@ -19,7 +19,7 @@ export default function RubricDots({ rubric, overall }) {
                   <i key={i} className={`block size-[18px] rounded-[3px] border-2 border-brand ${i < filled ? "bg-brand" : ""}`} />
                 ))}
               </span>
-              <span className="text-xs text-faint">{c.score}/{CRITERION_SCORE_MAX}</span>
+              <span className="text-xs text-muted">{c.score}/{CRITERION_SCORE_MAX}</span>
             </div>
             {(c.quote || c.feedback) && (
               <div className="mt-1.5 space-y-0.5 pl-0 text-sm sm:pl-[120px]">
@@ -30,7 +30,7 @@ export default function RubricDots({ rubric, overall }) {
           </div>
         );
       })}
-      {overall != null && <p className="text-xs text-faint">overall {overall}/100 · ai estimate</p>}
+      {overall != null && <p className="text-xs text-muted">overall {overall}/100 · ai estimate</p>}
     </div>
   );
 }

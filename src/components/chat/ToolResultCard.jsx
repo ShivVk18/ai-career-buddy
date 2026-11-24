@@ -85,7 +85,7 @@ function EditSummaryCard({ data }) {
       {data.summary && <p className="mt-1 text-xs text-muted">{str(data.summary)}</p>}
       {edits.map((e, i) => (
         <div key={i} className="mt-2 rounded-[9px] bg-soft p-2.5 text-xs">
-          {e.before && <p className="text-faint line-through">{str(e.before)}</p>}
+          {e.before && <p className="text-muted line-through">{str(e.before)}</p>}
           {e.after && <p className="text-text">{str(e.after)}</p>}
         </div>
       ))}
@@ -98,7 +98,7 @@ function TaskCard({ data }) {
   return (
     <Shell label="task" date={formatDate(data.createdAt)} href={safeHref(data.href)} linkText="open">
       <div className="flex items-start gap-2.5">
-        <span className={cn("mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border", data.done ? "border-brand bg-brand text-white" : "border-line")} aria-hidden="true">
+        <span className={cn("mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border", data.done ? "border-brand-ink bg-brand-ink text-white" : "border-line")} aria-hidden="true">
           {data.done && <Check className="size-3.5" />}
         </span>
         <div className="min-w-0">
@@ -130,7 +130,7 @@ function RoadmapItemCard({ data }) {
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 function Shell({ label, date, children, href, linkText }) {
@@ -138,7 +138,7 @@ function Shell({ label, date, children, href, linkText }) {
     <div className="fade-up my-2 w-full max-w-xl rounded-[20px] border border-line bg-panel p-4 text-left shadow-card sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <Chip tone="brand" editable={false} value={label} className="h-7 text-xs" />
-        {date && <span className="text-xs text-faint">{date}</span>}
+        {date && <span className="text-xs text-muted">{date}</span>}
       </div>
       {children}
       {href && (
@@ -202,7 +202,7 @@ function RoadmapCard({ data }) {
       </div>
       {next.length > 0 && (
         <div className="mt-2 space-y-1">
-          <span className="text-xs text-faint block">next steps</span>
+          <span className="text-xs text-muted block">next steps</span>
           {next.map((st) => (
             <div key={st.id} className="text-xs text-text p-2 rounded-[9px] bg-soft">
               {st.title}

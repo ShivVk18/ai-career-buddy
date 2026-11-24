@@ -50,7 +50,7 @@ function Choice({ selected, onClick, children }) {
       aria-pressed={selected}
       onClick={onClick}
       className={`inline-flex h-8 max-w-full items-center rounded-[9px] px-3 text-sm outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px ${
-        selected ? "bg-brand text-white" : "bg-soft text-text hover:bg-line"
+        selected ? "bg-brand-ink text-white" : "bg-soft text-text hover:bg-line"
       }`}
     >
       <span className="truncate">{children}</span>
@@ -62,6 +62,27 @@ function Choice({ selected, onClick, children }) {
  * One screen: drop -> reading -> chips -> two taps -> continue.
  * `actions` lets the dev route swap in mock server actions; real ones are the default.
  */
+// Stepped pixel clouds, drawn as rows of [offset, width] in 1-unit cells, like the reference scene.
+const CLOUD_A = [[8, 8], [5, 14], [2, 20], [0, 24]];
+const CLOUD_B = [[10, 10], [6, 18], [3, 24], [0, 30]];
+const CLOUD_C = [[4, 8], [2, 12], [0, 15]];
+
+function PixelCloud({ rows, className }) {
+  const w = Math.max(...rows.map(([o, n]) => o + n));
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox={`0 0 ${w} ${rows.length}`}
+      shapeRendering="crispEdges"
+      className={`absolute h-auto ${className}`}
+    >
+      {rows.map(([o, n], y) => (
+        <rect key={y} x={o} y={y} width={n} height="1.02" fill={y === rows.length - 1 ? "#E2EEF8" : "#FFFFFF"} />
+      ))}
+    </svg>
+  );
+}
+
 export default function OnboardingFlow({ editing = false, actions }) {
   const router = useRouter();
   const fileRef = useRef(null);
@@ -297,6 +318,9 @@ export default function OnboardingFlow({ editing = false, actions }) {
     <div className="relative isolate min-h-dvh px-4 py-8 sm:px-8 sm:py-12">
       <div className="absolute inset-0 -z-10">
         <PixelScene variant="meadow" seed={5} />
+        <PixelCloud className="left-[2%] top-1 w-[130px] sm:w-[190px]" rows={CLOUD_A} />
+        <PixelCloud className="right-0 top-[15%] w-[110px] sm:w-[150px]" rows={CLOUD_B} />
+        <PixelCloud className="right-[1%] top-[26%] w-[70px] sm:w-[90px]" rows={CLOUD_C} />
       </div>
 
       <AppWindow title="ascendai · getting to know you" className="mx-auto max-w-[1040px]" bodyClassName="p-5 sm:p-10">
@@ -411,7 +435,7 @@ export default function OnboardingFlow({ editing = false, actions }) {
 
             <div className="mt-6 grid gap-6 md:grid-cols-[1fr_auto] md:gap-10">
               <div className="min-w-0">
-                <p className="font-doc text-sm text-faint">
+                <p className="font-doc text-sm text-muted">
                   {phase === "review" ? "what pip found · click any chip to fix it" : "what pip finds shows up here"}
                 </p>
 
@@ -482,7 +506,9 @@ export default function OnboardingFlow({ editing = false, actions }) {
               </div>
 
               <div className="flex justify-center md:items-start md:justify-end">
-                <ProgressRing value={ring} size={120} stroke={12} label="profile progress" />
+                <ProgressRing value={ring} size={120} stroke={12} label="profile progress">
+                  <span className="font-doc text-[28px] font-normal leading-none text-text">{Math.round(ring)}%</span>
+                </ProgressRing>
               </div>
             </div>
 
@@ -534,12 +560,12 @@ export default function OnboardingFlow({ editing = false, actions }) {
                 )}
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={finish} disabled={busy || !targetRole.trim() || !stage} size="lg" className="bg-brand text-white hover:bg-brand-ink">
+                  <Button onClick={finish} disabled={busy || !targetRole.trim() || !stage} size="lg" className="bg-ink text-ink-foreground hover:opacity-90">
                     {busy ? <Loader2 className="animate-spin" /> : null}
                     {errorKind === "save" ? "try again" : "continue"}
                     {!busy && <ArrowRight />}
                   </Button>
-                  {(!targetRole.trim() || !stage) && <span className="text-xs text-faint">pick a role and a stage to continue</span>}
+                  {(!targetRole.trim() || !stage) && <span className="text-xs text-muted">pick a role and a stage to continue</span>}
                 </div>
               </div>
             )}

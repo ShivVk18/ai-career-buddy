@@ -140,7 +140,7 @@ const ColdEmailPreview = ({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(editedContent)
-      toast.success("Cold email copied to clipboard! ✨")
+      toast.success("copied")
     } catch (error) {
       toast.error("Failed to copy to clipboard")
     }
@@ -154,7 +154,7 @@ const ColdEmailPreview = ({
     document.body.appendChild(element)
     element.click()
     document.body.removeChild(element)
-    toast.success("Cold email downloaded! 📄")
+    toast.success("downloaded")
   }
 
   const btn = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-panel px-5 text-sm text-text outline-none transition-colors hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
@@ -198,7 +198,7 @@ const ColdEmailPreview = ({
           <Mail className="size-4" aria-hidden="true" /> open in mail
         </button>
       </div>
-      <p className="-mt-4 text-xs text-faint" role="status">
+      <p className="-mt-4 text-xs text-muted" role="status">
         {!mailtoUrl ? "add a valid recipient email to turn on open in mail." : mailtoTooLong ? "too long for a mail link, it may be cut off. use copy instead." : "opens your mail app with this draft. you send it yourself."}
       </p>
 
@@ -207,8 +207,8 @@ const ColdEmailPreview = ({
         {!detailsShown ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 space-y-1 text-sm">
-              <p className="truncate text-text"><span className="text-faint">to </span>{summary || "no recipient yet"}</p>
-              <p className="truncate text-text"><span className="text-faint">subject </span>{fields.subject || "none yet"}</p>
+              <p className="truncate text-text"><span className="text-muted">to </span>{summary || "no recipient yet"}</p>
+              <p className="truncate text-text"><span className="text-muted">subject </span>{fields.subject || "none yet"}</p>
             </div>
             <button type="button" onClick={() => setDetailsOpen(true)} className="min-h-10 rounded-full px-3 text-sm text-muted underline-offset-4 outline-none hover:text-text hover:underline focus-visible:ring-2 focus-visible:ring-ring">
               edit
@@ -246,7 +246,7 @@ const ColdEmailPreview = ({
 
       {/* follow-up: quick chips, date only on request */}
       <section aria-label="follow-up reminder" className="space-y-2.5">
-        <p className="flex items-center gap-2 text-xs font-medium text-faint"><CalendarClock className="size-3.5" aria-hidden="true" /> remind me to follow up</p>
+        <p className="flex items-center gap-2 text-xs font-medium text-muted"><CalendarClock className="size-3.5" aria-hidden="true" /> remind me to follow up</p>
         <div role="radiogroup" aria-label="follow-up reminder" className="flex flex-wrap items-center gap-2">
           {[[3, "in 3 days"], [7, "in 1 week"], [14, "in 2 weeks"]].map(([n, text]) => {
             const v = inDays(n)
@@ -264,7 +264,7 @@ const ColdEmailPreview = ({
             </button>
           )}
         </div>
-        <p className="text-xs text-faint">a reminder on your home screen. nothing is sent.</p>
+        <p className="text-xs text-muted">a reminder on your home screen. nothing is sent.</p>
       </section>
 
       {/* editor */}
@@ -293,7 +293,7 @@ const ColdEmailPreview = ({
 
       <div className="space-y-4">
         <WordCount text={editedContent} range={COLD_EMAIL_WORDS} />
-        <p className="text-xs text-faint">
+        <p className="text-xs text-muted">
           aim for about {COLD_EMAIL_WORDS.target} words ({COLD_EMAIL_WORDS.min} to {COLD_EMAIL_WORDS.max}). end with one low-pressure ask, and check no [brackets] are left.
         </p>
         {paragraphs.length > 0 && (

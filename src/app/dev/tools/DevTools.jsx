@@ -10,6 +10,9 @@ import CreateRoadmapModal from "@/app/(main)/(gated)/roadmap/_components/CreateR
 import ResumeBuilder from "@/app/(main)/(gated)/resume/_components/ResumeBuilder";
 import InterviewHub from "@/app/(main)/(gated)/interview/_components/InterviewHub";
 import MockInterviewPage from "@/app/(main)/(gated)/interview/mock/page";
+import RoadmapDetailView from "@/app/(main)/(gated)/roadmap/[id]/_components/RoadmapDetailView";
+import ResumeToolsPanel from "@/app/(main)/(gated)/resume/_components/ResumeToolsPanel";
+import Quiz from "@/app/(main)/(gated)/interview/_components/Quiz";
 import ToolResultCard from "@/components/chat/ToolResultCard";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -71,6 +74,22 @@ const profile = (mode) => async () => {
   return { chips: [{ kind: "role", label: "frontend engineer" }], targetRole: "staff engineer", industry: "technology" };
 };
 
+const DETAIL = {
+  id: "r1", currentRole: "frontend engineer", targetRole: "staff engineer", industry: "technology", progress: 33,
+  timeline: { estimatedDuration: "18 months", phaseBreakdown: [{ title: "foundations", description: "close the system design and payments gaps", duration: "6 months" }, { title: "scope", description: "own a cross-team project", duration: "12 months" }] },
+  steps: [
+    { id: "s1", title: "ship one checkout project", description: "build and ship a small payments flow end to end.", category: "skill", priority: "high", completed: true, resources: ["stripe docs"], sources: [] },
+    { id: "s2", title: "write a design doc", description: "pick a real problem at work and write it up for review.", category: "experience", priority: "medium", completed: false, resources: [], sources: [] },
+    { id: "s3", title: "mentor one engineer", description: "pair weekly for a quarter.", category: "networking", priority: "low", completed: false, resources: [], sources: [] },
+  ],
+  milestones: [{ title: "first staff-level project", summary: "lead a project across two teams.", targetDate: "month 9" }],
+  resources: [{ category: "reading", items: [{ title: "staff engineer", url: "https://example.com" }] }],
+};
+const QUIZ = { quizId: "q1", questions: [
+  { question: "what does useMemo cache?", options: ["a computed value between renders", "a network response", "the component tree", "event handlers only"] },
+  { question: "which hook runs after paint?", options: ["useEffect", "useMemo", "useRef", "useId"] },
+] };
+
 const CARDS = [
   { tool: "job", data: { recordId: "j1", company: "razorpay", role: "frontend engineer", location: "bengaluru", status: "SAVED", requirementCount: 8, chips: [{ label: "match", value: "71%", tone: "good" }, { label: "invented", value: "0", tone: "good" }], href: "/jobs/j1", createdAt: new Date().toISOString() } },
   { tool: "edit_summary", data: { title: "3 edits ready", summary: "nothing invented. nothing sent.", edits: [{ before: "Worked on improving dashboard performance.", after: "Cut dashboard load from 3.8s to 1.1s by code-splitting routes" }], href: "/needs-you" } },
@@ -126,6 +145,15 @@ export default function DevTools({ tool, mode }) {
       break;
     case "letter-preview":
       body = <div className="mx-auto max-w-4xl px-4 py-8"><CoverLetterPreview id="l1" content={"Dear hiring team,\n\nI cut dashboard load from 3.8s to 1.1s and led a design-system rollout. I would like to bring that to razorpay.\n\nBest,\nAlex"} sources={null} tone="confident" /></div>;
+      break;
+    case "roadmap-detail":
+      body = <RoadmapDetailView roadmap={DETAIL} />;
+      break;
+    case "resume-tools":
+      body = <div className="mx-auto max-w-4xl space-y-6 p-4"><ResumeToolsPanel ensureSaved={async () => true} getResumeLike={() => RESUME} /></div>;
+      break;
+    case "quiz-run":
+      body = <div className="mx-auto max-w-5xl p-4 sm:p-8"><Quiz initialQuestions={QUIZ} onComplete={() => {}} /></div>;
       break;
     case "chat":
       body = (

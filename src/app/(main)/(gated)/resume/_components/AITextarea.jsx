@@ -64,7 +64,7 @@ export const AITextarea = React.forwardRef(({ label, type, value, onChange, plac
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {label ? <label className="text-xs font-medium text-faint">{label}</label> : <div />}
+        {label ? <label className="text-xs font-medium text-muted">{label}</label> : <div />}
         <div className="flex items-center gap-1">
           {isSupported && (
             <button type="button" onClick={handleToggleRecording} aria-pressed={isRecording} className={`${small} ${isRecording ? "!text-danger" : ""}`}>

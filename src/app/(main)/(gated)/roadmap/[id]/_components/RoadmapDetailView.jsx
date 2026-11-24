@@ -9,7 +9,6 @@ import {
   Target,
   BookOpen,
   TrendingUp,
-  Sparkles,
   ChevronRight,
   ExternalLink,
   Award,
@@ -77,9 +76,9 @@ const RoadmapDetailView = ({ roadmap }) => {
       if (typeof res.progress === "number") setProgress(res.progress);
       if (Array.isArray(res.steps)) setSteps(res.steps);
       if (isUndo) {
-        toast.success("Undone");
+        toast.success("undone");
       } else {
-        toast.success(done ? "Step completed" : "Step marked not done", {
+        toast.success(done ? "step done" : "step marked not done", {
           duration: 5000,
           action: { label: "Undo", onClick: () => toggleStepRef.current?.(stepId, !done, true) },
         });
@@ -112,13 +111,11 @@ const RoadmapDetailView = ({ roadmap }) => {
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
-        return "bg-primary/20 text-primary-ink border-primary/30";
+        return "bg-gap-soft text-gap-ink";
       case "medium":
-        return "bg-primary/15 text-primary-ink border-primary/25";
-      case "low":
-        return "bg-primary/10 text-muted border-primary/20";
+        return "bg-warn-soft text-warn-ink";
       default:
-        return "bg-gray-500/20 text-gray-300 border-gray-500/30";
+        return "bg-soft text-muted";
     }
   };
 
@@ -139,22 +136,9 @@ const RoadmapDetailView = ({ roadmap }) => {
     }
   };
 
-  const getProgressColor = (progress) => {
-    if (progress >= 70) return "from-primary to-lime";
-    if (progress >= 50) return "from-primary to-lime";
-    if (progress >= 30) return "from-primary/80 to-lime/80";
-    return "from-primary/60 to-lime/60";
-  };
-
   return (
-    <div className="min-h-screen bg-bg text-white py-12 px-4 sm:px-6 lg:px-8">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-lime/10 rounded-full blur-3xl animate-pulse"></div>
-      </div>
-
-      <div className="relative z-10 max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-bg px-4 py-8 text-text sm:px-6 sm:py-12 lg:px-8">
+      <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -163,15 +147,15 @@ const RoadmapDetailView = ({ roadmap }) => {
         >
           <button
             onClick={() => router.back()}
-            className="p-3 backdrop-blur-xl bg-gradient-to-br from-panel/80 to-soft/60 border border-primary/30 hover:border-primary/50 rounded-2xl transition-all duration-300"
+            aria-label="back" className="grid size-11 shrink-0 place-items-center rounded-full border border-line bg-panel text-text outline-none transition-colors hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <ArrowLeft className="h-5 w-5 text-primary-ink" />
+            <ArrowLeft className="size-4" aria-hidden="true" />
           </button>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary via-lime to-primary bg-clip-text text-transparent">
+            <h1 className="font-doc text-2xl leading-tight text-text sm:text-4xl">
               {roadmap.currentRole} → {roadmap.targetRole}
             </h1>
-            <p className="text-muted mt-1">
+            <p className="mt-1 text-sm text-muted">
               {roadmap.industry} • {roadmap.timeline?.estimatedDuration}
             </p>
           </div>
@@ -182,37 +166,29 @@ const RoadmapDetailView = ({ roadmap }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="backdrop-blur-xl bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border border-primary/20 rounded-3xl p-8 shadow-xl shadow-primary/5"
+          className="panel-cozy p-5 sm:p-8"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            >
-              <Sparkles className="h-6 w-6 text-primary-ink" />
-            </motion.div>
-            <h2 className="text-2xl font-semibold text-white">
-              Overall Progress
+          <div className="mb-5 flex items-center gap-3">
+            <h2 className="font-doc text-2xl text-text">
+              overall progress
             </h2>
           </div>
 
           <div className="space-y-4 mb-6">
             <div className="flex items-center justify-between">
               <span className="text-muted">
-                {completedSteps} of {totalSteps} steps completed
+                {completedSteps} of {totalSteps} steps done
               </span>
-              <span className="text-2xl font-bold text-primary-ink">
+              <span className="font-pixel text-2xl text-brand-ink">
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="relative h-4 bg-panel/50 rounded-full overflow-hidden">
+            <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)} aria-label="roadmap progress" className="relative h-2 overflow-hidden rounded-full bg-soft">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
-                className={`h-full bg-gradient-to-r ${getProgressColor(
-                  progress
-                )}`}
+                className="h-full rounded-full bg-brand"
               />
             </div>
           </div>
@@ -220,8 +196,8 @@ const RoadmapDetailView = ({ roadmap }) => {
           {/* Timeline Breakdown */}
           {roadmap.timeline?.phaseBreakdown?.length > 0 && (
             <div className="mt-8 space-y-4">
-              <h3 className="text-lg font-semibold text-primary-ink">
-                Timeline Phases
+              <h3 className="text-sm font-medium text-text">
+                timeline phases
               </h3>
               <ul className="space-y-3">
                 {roadmap.timeline.phaseBreakdown.map((phase, index) => (
@@ -230,10 +206,10 @@ const RoadmapDetailView = ({ roadmap }) => {
                     className="flex items-start gap-3 text-muted"
                   >
                     <div className="mt-1.5">
-                      <CheckCircle className="h-4 w-4 text-primary-ink" />
+                      <CheckCircle className="size-4 text-brand-ink" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="font-medium text-white">{phase.title}</p>
+                      <p className="font-medium text-text">{phase.title}</p>
                       <p className="text-sm text-muted">
                         {phase.description}
                       </p>
@@ -247,28 +223,28 @@ const RoadmapDetailView = ({ roadmap }) => {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="backdrop-blur-xl bg-gradient-to-br from-panel/80 to-soft/60 border border-primary/20 rounded-2xl p-2">
-            <TabsList className="grid w-full grid-cols-3 bg-transparent gap-2">
+          <div className="rounded-full border border-line bg-panel p-1.5">
+            <TabsList className="grid h-auto w-full grid-cols-3 gap-1 bg-transparent p-0">
               <TabsTrigger
                 value="steps"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-lime data-[state=active]:text-white rounded-xl transition-all duration-300"
+                className="min-h-11 rounded-full text-muted data-[state=active]:bg-ink data-[state=active]:text-ink-foreground data-[state=active]:shadow-none"
               >
-                <Zap className="h-4 w-4 mr-2" />
-                Steps
+                <Zap className="mr-2 size-4" aria-hidden="true" />
+                steps
               </TabsTrigger>
               <TabsTrigger
                 value="milestones"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-lime data-[state=active]:text-white rounded-xl transition-all duration-300"
+                className="min-h-11 rounded-full text-muted data-[state=active]:bg-ink data-[state=active]:text-ink-foreground data-[state=active]:shadow-none"
               >
-                <Target className="h-4 w-4 mr-2" />
-                Milestones
+                <Target className="mr-2 size-4" aria-hidden="true" />
+                milestones
               </TabsTrigger>
               <TabsTrigger
                 value="resources"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-lime data-[state=active]:text-white rounded-xl transition-all duration-300"
+                className="min-h-11 rounded-full text-muted data-[state=active]:bg-ink data-[state=active]:text-ink-foreground data-[state=active]:shadow-none"
               >
-                <BookOpen className="h-4 w-4 mr-2" />
-                Resources
+                <BookOpen className="mr-2 size-4" aria-hidden="true" />
+                resources
               </TabsTrigger>
             </TabsList>
           </div>
@@ -276,13 +252,13 @@ const RoadmapDetailView = ({ roadmap }) => {
           {/* --- Steps Tab --- */}
           <TabsContent value="steps" className="space-y-4">
             <p className="text-xs text-muted">
-              AI estimate: steps are grouped by phase in order, and the roadmap itself is AI generated.
+              ai estimate: steps are grouped by phase in order, and the roadmap itself is ai generated.
             </p>
             {groups.map((group, gi) => (
             <div key={gi} className="space-y-4">
               {group.title && (
                 <div className="pt-2">
-                  <h3 className="text-lg font-semibold text-primary-ink">
+                  <h3 className="font-doc text-xl text-text">
                     {group.title}
                     {group.duration ? <span className="text-sm font-normal text-muted"> ({group.duration})</span> : null}
                   </h3>
@@ -298,35 +274,31 @@ const RoadmapDetailView = ({ roadmap }) => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`backdrop-blur-xl border-2 rounded-3xl p-6 transition-all duration-300 shadow-xl ${
-                      step.completed
-                        ? "bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-lime/30 shadow-lime/5"
-                        : "bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-primary/20 hover:border-primary/40 hover:shadow-primary/10"
+                    className={`rounded-[20px] border bg-panel p-5 shadow-card transition-colors sm:p-6 ${
+                      step.completed ? "border-brand/40" : "border-line hover:border-brand/60"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 flex-1">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-1 items-start gap-4">
                         <div
-                          className={`p-3 rounded-2xl ${
-                            step.completed
-                              ? "bg-lime/20 text-primary-ink"
-                              : "bg-primary/20 text-primary-ink"
+                          className={`grid size-11 shrink-0 place-items-center rounded-[12px] ${
+                            step.completed ? "bg-brand-soft text-brand-ink" : "bg-soft text-muted"
                           }`}
                         >
                           {step.completed ? (
-                            <CheckCircle className="h-6 w-6" />
+                            <CheckCircle className="size-5" aria-hidden="true" />
                           ) : (
-                            <IconComponent className="h-6 w-6" />
+                            <IconComponent className="size-5" aria-hidden="true" />
                           )}
                         </div>
 
                         <div className="space-y-3 flex-1">
                           <div className="flex items-start justify-between gap-4">
-                            <h3 className="font-semibold text-lg text-white">
+                            <h3 className="font-doc text-lg leading-snug text-text">
                               {step.title}
                             </h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs border capitalize ${getPriorityColor(
+                              className={`shrink-0 rounded-full px-3 py-1 text-xs lowercase ${getPriorityColor(
                                 step.priority
                               )}`}
                             >
@@ -334,20 +306,20 @@ const RoadmapDetailView = ({ roadmap }) => {
                             </span>
                           </div>
 
-                          <p className="text-muted leading-relaxed">
+                          <p className="text-sm leading-relaxed text-muted">
                             {step.description}
                           </p>
 
                           {targetsState === "ready" && targets?.[step.id]?.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] font-bold tracking-widest uppercase text-muted">
-                                Closes gaps for
+                              <span className="text-xs text-muted">
+                                closes gaps for
                               </span>
                               {targets[step.id].map((t, ti) => (
                                 <span
                                   key={ti}
                                   title={t.jdExcerpt}
-                                  className="px-2 py-1 rounded-full text-xs border border-primary/30 bg-primary/10 text-primary-ink cursor-help"
+                                  className="cursor-help rounded-full bg-brand-soft px-2.5 py-1 text-xs text-brand-ink"
                                 >
                                   {[t.company, t.role].filter(Boolean).join(" - ")}
                                 </span>
@@ -364,7 +336,7 @@ const RoadmapDetailView = ({ roadmap }) => {
                           {step.resources && step.resources.length > 0 && (
                             <div className="space-y-2">
                               <h4 className="font-medium text-sm text-muted">
-                                Resources:
+                                resources
                               </h4>
                               <ul className="space-y-1">
                                 {step.resources.map((resource, i) => (
@@ -372,7 +344,7 @@ const RoadmapDetailView = ({ roadmap }) => {
                                     key={i}
                                     className="text-sm text-muted flex items-center gap-2"
                                   >
-                                    <ChevronRight className="h-3 w-3 text-primary-ink" />
+                                    <ChevronRight className="size-3 text-brand-ink" aria-hidden="true" />
                                     {resource}
                                   </li>
                                 ))}
@@ -382,21 +354,21 @@ const RoadmapDetailView = ({ roadmap }) => {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="pl-[60px] sm:pl-0">
                         <button
                           onClick={() => toggleStep(step.id, !step.completed)}
                           disabled={completingStep !== null}
                           className={
                             step.completed
-                              ? "px-4 py-2 border border-primary/40 rounded-xl text-primary-ink font-semibold transition-all duration-300 disabled:opacity-50 hover:bg-primary/10"
-                              : "px-4 py-2 bg-gradient-to-r from-primary to-lime hover:from-lime hover:to-primary rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50 shadow-card shadow-primary/30 hover:shadow-xl hover:shadow-primary/40"
+                              ? "min-h-11 whitespace-nowrap rounded-full border border-line bg-panel px-4 text-sm text-text outline-none transition-colors hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                              : "min-h-11 whitespace-nowrap rounded-full bg-ink px-5 text-sm text-ink-foreground outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                           }
                         >
                           {completingStep === step.id
-                            ? "Saving..."
+                            ? "saving…"
                             : step.completed
-                            ? "Mark not done"
-                            : "Complete"}
+                            ? "mark not done"
+                            : "complete"}
                         </button>
                       </div>
                     </div>
@@ -407,10 +379,10 @@ const RoadmapDetailView = ({ roadmap }) => {
             </div>
             ))}
             {targetsState === "error" && (
-              <p className="text-xs text-muted">Couldn&apos;t load which of your targets each step closes gaps for.</p>
+              <p className="text-xs text-muted">couldn&apos;t load which of your targets each step closes gaps for.</p>
             )}
             {steps.length === 0 && (
-              <p className="text-muted">This roadmap has no steps yet.</p>
+              <p className="text-sm text-muted">this roadmap has no steps yet.</p>
             )}
           </TabsContent>
 
@@ -423,20 +395,20 @@ const RoadmapDetailView = ({ roadmap }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="backdrop-blur-xl bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-2 border-primary/20 hover:border-primary/40 rounded-3xl p-6 shadow-xl shadow-primary/5 hover:shadow-primary/10 transition-all duration-300"
+                  className="rounded-[20px] border border-line bg-panel p-5 shadow-card transition-colors hover:border-brand/60 sm:p-6"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary/20 text-primary-ink rounded-2xl">
-                      <Target className="h-6 w-6" />
+                    <div className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-brand-soft text-brand-ink">
+                      <Target className="size-5" aria-hidden="true" />
                     </div>
                     <div className="space-y-3 flex-1">
-                      <h3 className="font-semibold text-lg text-white">
+                      <h3 className="font-doc text-lg leading-snug text-text">
                         {milestone.title}
                       </h3>
-                      <p className="text-muted leading-relaxed">
+                      <p className="text-sm leading-relaxed text-muted">
                         {milestone.summary}
                       </p>
-                      <div className="px-3 py-1 bg-primary/20 text-primary-ink border border-primary/30 rounded-full text-xs w-fit">
+                      <div className="w-fit rounded-full bg-brand-soft px-3 py-1 text-xs text-brand-ink">
                         {milestone.targetDate}
                       </div>
                     </div>
@@ -455,14 +427,14 @@ const RoadmapDetailView = ({ roadmap }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="backdrop-blur-xl bg-gradient-to-br from-panel/80 via-soft/60 to-panel/80 border-2 border-primary/20 hover:border-primary/40 rounded-3xl p-6 transition-all duration-300 shadow-xl shadow-primary/5 hover:shadow-primary/10"
+                  className="rounded-[20px] border border-line bg-panel p-5 shadow-card transition-colors hover:border-brand/60 sm:p-6"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary/20 text-primary-ink rounded-2xl">
-                      <BookOpen className="h-6 w-6" />
+                    <div className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-brand-soft text-brand-ink">
+                      <BookOpen className="size-5" aria-hidden="true" />
                     </div>
                     <div className="space-y-3 flex-1">
-                      <h3 className="font-semibold text-lg text-white">
+                      <h3 className="font-doc text-lg leading-snug text-text">
                         {resource.category}
                       </h3>
                       <ul className="space-y-2">
@@ -471,12 +443,12 @@ const RoadmapDetailView = ({ roadmap }) => {
                             key={i}
                             className="flex items-center gap-2 text-muted"
                           >
-                            <ChevronRight className="h-3 w-3 text-primary-ink" />
+                            <ChevronRight className="size-3 text-brand-ink" aria-hidden="true" />
                             <a
                               href={item.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="hover:text-primary-ink transition"
+                              className="rounded text-text underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               {item.title}
                             </a>

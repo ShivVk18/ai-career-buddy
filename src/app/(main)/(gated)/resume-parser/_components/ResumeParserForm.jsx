@@ -216,13 +216,13 @@ const ResumeParserComponent = ({ source, scan = createATSAnalysis, openById = ge
                     <>
                       <Upload className="mx-auto size-8 text-faint" aria-hidden="true" />
                       <p className="mt-3 text-sm text-text">drop your resume pdf, or tap to choose</p>
-                      <p className="mt-1 text-xs text-faint">pdf, up to 5 mb</p>
+                      <p className="mt-1 text-xs text-muted">pdf, up to 5 mb</p>
                     </>
                   )}
                 </label>
               </div>
             )}
-            {useSaved && <p className="text-xs text-faint" role="status">pip reads the resume you saved in the builder.</p>}
+            {useSaved && <p className="text-xs text-muted" role="status">pip reads the resume you saved in the builder.</p>}
           </div>
 
           {notice && <Note>{notice}</Note>}

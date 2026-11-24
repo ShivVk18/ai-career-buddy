@@ -185,6 +185,7 @@ export default function JobView({ id, notice }) {
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-panel px-4 text-xs font-medium text-text outline-none transition hover:border-pip focus-visible:ring-2 focus-visible:ring-pip/50 active:scale-95";
 
   return (
+    <div>
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <Link href="/dashboard" className="inline-flex min-h-10 items-center gap-1.5 text-xs text-muted hover:text-text rounded focus-visible:ring-2 focus-visible:ring-pip/50">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> home
@@ -254,25 +255,26 @@ export default function JobView({ id, notice }) {
           </Link>
         ))}
       </nav>
-
+    </div>
       {job.application ? (
-        <>
-          <PipelineProgress
-            status={bots.status}
-            loading={bots.loading}
-            error={bots.error}
-            retrying={bots.retrying}
-            onRetry={bots.retry}
-          />
+        <PipelineProgress
+          status={bots.status}
+          loading={bots.loading}
+          error={bots.error}
+          retrying={bots.retrying}
+          onRetry={bots.retry}
+        />
+      ) : (
+        <div className="mx-auto max-w-3xl p-4 sm:px-6 lg:px-8"><p className="text-sm text-muted">This job has no application yet.</p></div>
+      )}
+
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {job.application && (
           <StatusActions
             application={job.application}
             onChange={(app) => setJob((j) => ({ ...j, application: app }))}
           />
-        </>
-      ) : (
-        <p className="text-sm text-muted">This job has no application yet.</p>
-      )}
-
+        )}
       <div className="pt-2">
         <button
           type="button"
@@ -281,6 +283,7 @@ export default function JobView({ id, notice }) {
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete this job
         </button>
+      </div>
       </div>
     </div>
   );
