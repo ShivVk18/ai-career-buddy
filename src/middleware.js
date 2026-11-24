@@ -15,6 +15,8 @@ const isProtectedRoute = createRouteMatcher([
   "/jobs(.*)",
   "/applications(.*)",
   "/needs-you(.*)",
+  "/review(.*)",
+  "/offers(.*)",
   "/settings(.*)",
   "/api/chat(.*)",
 ]);
